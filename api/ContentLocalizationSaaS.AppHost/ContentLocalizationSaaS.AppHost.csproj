@@ -1,0 +1,19 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.1.2">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ContentLocalizationSaaS.Api\ContentLocalizationSaaS.Api.csproj" IsAspireProjectResource="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.2" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>4716e24a-6f5b-4c89-84f3-94e4e04913cb</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

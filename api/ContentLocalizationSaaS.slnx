@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="ContentLocalizationSaaS.Api.IntegrationTests/ContentLocalizationSaaS.Api.IntegrationTests.csproj" />
+  <Project Path="ContentLocalizationSaaS.Api/ContentLocalizationSaaS.Api.csproj" />
+  <Project Path="ContentLocalizationSaaS.AppHost/ContentLocalizationSaaS.AppHost.csproj" />
+  <Project Path="ContentLocalizationSaaS.Application.Tests/ContentLocalizationSaaS.Application.Tests.csproj" />
+  <Project Path="ContentLocalizationSaaS.Application/ContentLocalizationSaaS.Application.csproj" />
+  <Project Path="ContentLocalizationSaaS.Domain.Tests/ContentLocalizationSaaS.Domain.Tests.csproj" />
+  <Project Path="ContentLocalizationSaaS.Domain/ContentLocalizationSaaS.Domain.csproj" />
+  <Project Path="ContentLocalizationSaaS.Infrastructure/ContentLocalizationSaaS.Infrastructure.csproj" />
+  <Project Path="ContentLocalizationSaaS.ServiceDefaults/ContentLocalizationSaaS.ServiceDefaults.csproj" />
+</Solution>
