@@ -19,4 +19,12 @@ public class CreateProjectRequestValidatorTests
         var result = _validator.Validate(new CreateProjectRequest(Guid.NewGuid(), "Core Product", "en", "Website content"));
         Assert.True(result.IsValid);
     }
+
+    [Fact]
+    public void Should_Fail_When_Description_Too_Long()
+    {
+        var tooLong = new string('a', 2001);
+        var result = _validator.Validate(new CreateProjectRequest(Guid.NewGuid(), "Core Product", "en", tooLong));
+        Assert.False(result.IsValid);
+    }
 }

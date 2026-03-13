@@ -1,3 +1,4 @@
+using ContentLocalizationSaaS.Api.Authorization;
 using ContentLocalizationSaaS.Application;
 using ContentLocalizationSaaS.Application.Abstractions;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,7 @@ public sealed class ProjectsController(IProjectService projects) : ControllerBas
     }
 
     [HttpPost]
+    [RequireAppRole(AppRole.Editor)]
     public async Task<IActionResult> Create([FromBody] CreateProjectRequest request, CancellationToken cancellationToken)
     {
         var project = await projects.CreateAsync(request, cancellationToken);
@@ -30,6 +32,7 @@ public sealed class ProjectsController(IProjectService projects) : ControllerBas
     }
 
     [HttpPut("{id:guid}")]
+    [RequireAppRole(AppRole.Editor)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectRequest request, CancellationToken cancellationToken)
     {
         var project = await projects.UpdateAsync(id, request, cancellationToken);
@@ -37,6 +40,7 @@ public sealed class ProjectsController(IProjectService projects) : ControllerBas
     }
 
     [HttpGet("{id:guid}/audit-logs")]
+    [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> GetAuditLogs(Guid id, CancellationToken cancellationToken)
     {
         var logs = await projects.GetAuditLogsAsync(id, cancellationToken);

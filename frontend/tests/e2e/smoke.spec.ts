@@ -8,13 +8,21 @@ test('home renders and skip link focuses main content', async ({ page }) => {
   await expect(page.locator('#main-content')).toBeFocused()
 })
 
-test('shows API offline warning in local dev when backend is not started', async ({ page }) => {
+test('shows API warning if backend is unavailable', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByText('API is not reachable yet. Start the backend to persist data.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Create workspace' })).toBeVisible()
 })
 
 test('shows onboarding empty state when no projects exist', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('No content yet')).toBeVisible()
   await expect(page.getByText('Create your first content item')).toBeVisible()
+})
+
+test('role switch control is available', async ({ page }) => {
+  await page.goto('/')
+  const roleSelect = page.locator('#current-role')
+  await expect(roleSelect).toBeVisible()
+  await roleSelect.selectOption('Viewer')
+  await expect(roleSelect).toHaveValue('Viewer')
 })

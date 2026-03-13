@@ -4,10 +4,13 @@ const apiBase = 'http://localhost:5177'
 type Workspace = { id: string; name: string }
 type Project = { id: string; workspaceId: string; name: string; sourceLanguage: string; description: string }
 type ProjectAuditLog = { id: string; projectId: string; action: string; details: string; createdUtc: string }
+type PermissionState = { role: string; canRead: boolean; canWrite: boolean; canReview: boolean; canAdmin: boolean }
 
 const workspaces = ref<Workspace[]>([])
 const projects = ref<Project[]>([])
 const projectAuditLogs = ref<ProjectAuditLog[]>([])
+const currentRole = ref<'Viewer' | 'Editor' | 'Reviewer' | 'Admin'>('Admin')
+const permissions = ref<PermissionState>({ role: 'Admin', canRead: true, canWrite: true, canReview: true, canAdmin: true })
 
 const workspaceForm = reactive({ name: '' })
 const projectForm = reactive({ workspaceId: '', name: '', sourceLanguage: '', description: '' })
@@ -30,6 +33,8 @@ const settingsMessage = ref('')
 const hasAnyProject = computed(() => projects.value.length > 0)
 const selectedProject = computed(() => projects.value.find(x => x.id === projectSettingsForm.id) ?? null)
 const selectedProjectHasContent = computed(() => false)
+const canWrite = computed(() => permissions.value.canWrite)
+const canAdmin = computed(() => permissions.value.canAdmin)
 
 function validateWorkspace() {
   errors.workspaceName = workspaceForm.name.trim() ? '' : 'Workspace name is required'
@@ -51,10 +56,30 @@ function validateProjectSettings() {
   return !errors.settingsName && !errors.settingsLanguage && !errors.settingsDescription
 }
 
+function authHeaders() {
+  return { 'X-User-Role': currentRole.value }
+}
+
+function localPermissionsFor(role: string): PermissionState {
+  if (role === 'Admin') return { role, canRead: true, canWrite: true, canReview: true, canAdmin: true }
+  if (role === 'Reviewer') return { role, canRead: true, canWrite: false, canReview: true, canAdmin: false }
+  if (role === 'Editor') return { role, canRead: true, canWrite: true, canReview: false, canAdmin: false }
+  return { role, canRead: true, canWrite: false, canReview: false, canAdmin: false }
+}
+
+async function loadPermissions() {
+  try {
+    permissions.value = await $fetch(`${apiBase}/api/permissions/me`, { headers: authHeaders() })
+  } catch {
+    permissions.value = localPermissionsFor(currentRole.value)
+  }
+}
+
 async function loadData() {
   try {
-    workspaces.value = await $fetch(`${apiBase}/api/workspaces`)
-    projects.value = await $fetch(`${apiBase}/api/projects`)
+    await loadPermissions()
+    workspaces.value = await $fetch(`${apiBase}/api/workspaces`, { headers: authHeaders() })
+    projects.value = await $fetch(`${apiBase}/api/projects`, { headers: authHeaders() })
     apiWarning.value = ''
 
     if (!projectSettingsForm.id && projects.value.length > 0) {
@@ -79,19 +104,24 @@ function selectProject(project: Project) {
 }
 
 async function loadAuditLogs(projectId: string) {
-  projectAuditLogs.value = await $fetch(`${apiBase}/api/projects/${projectId}/audit-logs`)
+  if (!canAdmin.value) {
+    projectAuditLogs.value = []
+    return
+  }
+
+  projectAuditLogs.value = await $fetch(`${apiBase}/api/projects/${projectId}/audit-logs`, { headers: authHeaders() })
 }
 
 async function createWorkspace() {
   if (!validateWorkspace()) return
-  await $fetch(`${apiBase}/api/workspaces`, { method: 'POST', body: { name: workspaceForm.name } })
+  await $fetch(`${apiBase}/api/workspaces`, { method: 'POST', body: { name: workspaceForm.name }, headers: authHeaders() })
   workspaceForm.name = ''
   await loadData()
 }
 
 async function createProject() {
   if (!validateProject()) return
-  await $fetch(`${apiBase}/api/projects`, { method: 'POST', body: projectForm })
+  await $fetch(`${apiBase}/api/projects`, { method: 'POST', body: projectForm, headers: authHeaders() })
   projectForm.name = ''
   projectForm.sourceLanguage = ''
   projectForm.description = ''
@@ -104,6 +134,7 @@ async function saveProjectSettings() {
 
   await $fetch(`${apiBase}/api/projects/${projectSettingsForm.id}`, {
     method: 'PUT',
+    headers: authHeaders(),
     body: {
       name: projectSettingsForm.name,
       sourceLanguage: projectSettingsForm.sourceLanguage,
@@ -115,10 +146,28 @@ async function saveProjectSettings() {
   await loadData()
 }
 
+watch(currentRole, async () => {
+  settingsMessage.value = ''
+  permissions.value = localPermissionsFor(currentRole.value)
+  await loadData()
+})
+
 onMounted(loadData)
 </script>
 
 <template>
+  <section class="card" aria-label="Role selector">
+    <h2>Role simulation</h2>
+    <label for="current-role">Current role</label>
+    <select id="current-role" v-model="currentRole">
+      <option value="Viewer">Viewer</option>
+      <option value="Editor">Editor</option>
+      <option value="Reviewer">Reviewer</option>
+      <option value="Admin">Admin</option>
+    </select>
+    <p>Permissions: read={{ permissions.canRead }}, write={{ permissions.canWrite }}, review={{ permissions.canReview }}, admin={{ permissions.canAdmin }}</p>
+  </section>
+
   <section class="grid" aria-label="MVP vertical slice">
     <article class="card">
       <h2>Create workspace</h2>
@@ -138,6 +187,7 @@ onMounted(loadData)
     <article class="card">
       <h2>Create project</h2>
       <form @submit.prevent="createProject" novalidate>
+        <p v-if="!canWrite" class="error">Your role is read-only for project write actions.</p>
         <label for="project-workspace">Workspace</label>
         <select id="project-workspace" v-model="projectForm.workspaceId" aria-describedby="project-workspace-error" @blur="validateProject">
           <option value="">Select workspace</option>
@@ -157,7 +207,7 @@ onMounted(loadData)
         <textarea id="project-description" v-model="projectForm.description" aria-describedby="project-description-error" @blur="validateProject" />
         <p id="project-description-error" class="error" v-if="errors.projectDescription">{{ errors.projectDescription }}</p>
 
-        <button type="submit">Create project</button>
+        <button type="submit" :disabled="!canWrite">Create project</button>
       </form>
 
       <h3>Projects</h3>
@@ -182,6 +232,7 @@ onMounted(loadData)
   <section class="card" v-if="selectedProject">
     <h2>Project settings</h2>
     <p v-if="settingsMessage">{{ settingsMessage }}</p>
+    <p v-if="!canWrite" class="error">Role update detected: settings are read-only for this role.</p>
     <form @submit.prevent="saveProjectSettings" novalidate>
       <label for="settings-name">Project name</label>
       <input id="settings-name" v-model="projectSettingsForm.name" aria-describedby="settings-name-error" @blur="validateProjectSettings" />
@@ -195,14 +246,15 @@ onMounted(loadData)
       <textarea id="settings-description" v-model="projectSettingsForm.description" aria-describedby="settings-description-error" @blur="validateProjectSettings" />
       <p id="settings-description-error" class="error" v-if="errors.settingsDescription">{{ errors.settingsDescription }}</p>
 
-      <button type="submit">Save project settings</button>
+      <button type="submit" :disabled="!canWrite">Save project settings</button>
     </form>
 
     <h3>Audit log</h3>
-    <ul>
+    <p v-if="!canAdmin">Audit log is visible to admin role only.</p>
+    <ul v-else>
       <li v-for="log in projectAuditLogs" :key="log.id">{{ log.action }} · {{ log.createdUtc }}</li>
     </ul>
-    <p v-if="projectAuditLogs.length === 0">No changes recorded yet.</p>
+    <p v-if="canAdmin && projectAuditLogs.length === 0">No changes recorded yet.</p>
     <p v-if="!selectedProjectHasContent">This project has no content yet.</p>
   </section>
 </template>

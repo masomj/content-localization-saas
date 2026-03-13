@@ -64,4 +64,28 @@ public class WorkspaceValidationTests(AspireIntegrationFixture fixture) : IClass
         Assert.NotNull(logsJson);
         Assert.Contains(logsJson!, x => x?["action"]?.GetValue<string>() == "project_metadata_updated");
     }
+
+    [Fact]
+    public async Task ViewerRole_CannotAccess_AuditLogs_Endpoint()
+    {
+        var workspaceResponse = await fixture.ApiClient.PostAsJsonAsync("/api/workspaces", new { name = "Role Test Workspace" });
+        workspaceResponse.EnsureSuccessStatusCode();
+        var workspaceId = JsonNode.Parse(await workspaceResponse.Content.ReadAsStringAsync())?["id"]?.GetValue<string>();
+
+        var projectResponse = await fixture.ApiClient.PostAsJsonAsync("/api/projects", new
+        {
+            workspaceId,
+            name = "Role Test Project",
+            sourceLanguage = "en",
+            description = "desc"
+        });
+        projectResponse.EnsureSuccessStatusCode();
+        var projectId = JsonNode.Parse(await projectResponse.Content.ReadAsStringAsync())?["id"]?.GetValue<string>();
+
+        var req = new HttpRequestMessage(HttpMethod.Get, $"/api/projects/{projectId}/audit-logs");
+        req.Headers.Add("X-User-Role", "Viewer");
+        var response = await fixture.ApiClient.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }
