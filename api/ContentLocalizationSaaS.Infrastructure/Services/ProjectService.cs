@@ -42,7 +42,8 @@ internal sealed class ProjectService(
         {
             WorkspaceId = request.WorkspaceId,
             Name = request.Name.Trim(),
-            SourceLanguage = request.SourceLanguage.Trim()
+            SourceLanguage = request.SourceLanguage.Trim(),
+            Description = request.Description.Trim()
         };
 
         db.Projects.Add(project);
@@ -59,8 +60,31 @@ internal sealed class ProjectService(
 
         project.Name = request.Name.Trim();
         project.SourceLanguage = request.SourceLanguage.Trim();
+        project.Description = request.Description.Trim();
+
+        db.ProjectAuditLogs.Add(new ProjectAuditLog
+        {
+            ProjectId = project.Id,
+            Action = "project_metadata_updated",
+            Details = $"Updated name/sourceLanguage/description at {DateTime.UtcNow:O}"
+        });
+
         await db.SaveChangesAsync(cancellationToken);
         return project;
+    }
+
+    public async Task<IReadOnlyList<ProjectAuditLog>> GetAuditLogsAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        var projectExists = await db.Projects.AnyAsync(x => x.Id == projectId, cancellationToken);
+        if (!projectExists)
+        {
+            throw new ResourceNotFoundException(nameof(Project), projectId);
+        }
+
+        return await db.ProjectAuditLogs
+            .Where(x => x.ProjectId == projectId)
+            .OrderByDescending(x => x.CreatedUtc)
+            .ToListAsync(cancellationToken);
     }
 
     private static async Task ValidateAsync<T>(IValidator<T> validator, T request, CancellationToken cancellationToken)

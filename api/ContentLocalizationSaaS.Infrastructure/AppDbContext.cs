@@ -15,6 +15,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
 
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectAuditLog> ProjectAuditLogs => Set<ProjectAuditLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -33,7 +34,17 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
             e.Property(x => x.SourceLanguage).HasMaxLength(16).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(2000).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.WorkspaceId, x.Name });
+        });
+
+        builder.Entity<ProjectAuditLog>(e =>
+        {
+            e.ToTable("project_audit_logs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Action).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Details).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ProjectId, x.CreatedUtc });
         });
     }
 }

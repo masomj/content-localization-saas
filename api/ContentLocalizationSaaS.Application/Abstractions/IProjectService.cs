@@ -8,4 +8,5 @@ public interface IProjectService
     Task<Project> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<Project> CreateAsync(CreateProjectRequest request, CancellationToken cancellationToken);
     Task<Project> UpdateAsync(Guid id, UpdateProjectRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ProjectAuditLog>> GetAuditLogsAsync(Guid projectId, CancellationToken cancellationToken);
 }

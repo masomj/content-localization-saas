@@ -9,14 +9,14 @@ public class CreateProjectRequestValidatorTests
     [Fact]
     public void Should_Fail_When_Name_Is_Empty()
     {
-        var result = _validator.Validate(new CreateProjectRequest(Guid.NewGuid(), "", "en"));
+        var result = _validator.Validate(new CreateProjectRequest(Guid.NewGuid(), "", "en", ""));
         Assert.False(result.IsValid);
     }
 
     [Fact]
     public void Should_Pass_For_Valid_Request()
     {
-        var result = _validator.Validate(new CreateProjectRequest(Guid.NewGuid(), "Core Product", "en"));
+        var result = _validator.Validate(new CreateProjectRequest(Guid.NewGuid(), "Core Product", "en", "Website content"));
         Assert.True(result.IsValid);
     }
 }

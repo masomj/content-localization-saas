@@ -35,4 +35,11 @@ public sealed class ProjectsController(IProjectService projects) : ControllerBas
         var project = await projects.UpdateAsync(id, request, cancellationToken);
         return Ok(project);
     }
+
+    [HttpGet("{id:guid}/audit-logs")]
+    public async Task<IActionResult> GetAuditLogs(Guid id, CancellationToken cancellationToken)
+    {
+        var logs = await projects.GetAuditLogsAsync(id, cancellationToken);
+        return Ok(logs);
+    }
 }
