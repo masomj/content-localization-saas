@@ -110,20 +110,31 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
 
     [HttpGet("dead-letters")]
     [RequireAppRole(AppRole.Admin)]
-    public async Task<IActionResult> DeadLetters([FromQuery] Guid projectId, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeadLetters([FromQuery] Guid projectId, [FromQuery] int limit = 200, CancellationToken cancellationToken = default)
     {
         Response.Headers.CacheControl = "no-store";
 
+        var clampedLimit = Math.Clamp(limit, 1, 1000);
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
-        var logs = await db.WebhookDeliveryLogs
-            .Where(x => subIds.Contains(x.SubscriptionId) && x.Status == "dead_letter")
+        var query = db.WebhookDeliveryLogs
+            .Where(x => subIds.Contains(x.SubscriptionId) && x.Status == "dead_letter");
+
+        var total = await query.CountAsync(cancellationToken);
+        var logs = await query
             .OrderByDescending(x => x.CreatedUtc)
+            .Take(clampedLimit)
             .ToListAsync(cancellationToken);
+
+        Response.Headers["X-Total-Count"] = total.ToString();
+        Response.Headers["X-Result-Limit"] = clampedLimit.ToString();
 
         return Ok(new
         {
             generatedAtUtc = DateTime.UtcNow,
             count = logs.Count,
+            total,
+            truncated = total > logs.Count,
+            filters = new { projectId, limit = clampedLimit },
             logs
         });
     }

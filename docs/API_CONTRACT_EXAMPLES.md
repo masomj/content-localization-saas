@@ -61,6 +61,29 @@
 }
 ```
 
+## Dead-letter queue example
+`GET /api/webhooks/dead-letters?projectId=<guid>&limit=100`
+
+```json
+{
+  "generatedAtUtc": "2026-03-14T18:36:00Z",
+  "count": 2,
+  "total": 5,
+  "truncated": true,
+  "filters": {
+    "projectId": "5d6409d0-3af7-442f-86dd-9eb70d3ef96d",
+    "limit": 100
+  },
+  "logs": [
+    {
+      "id": "a8d5663a-3f67-4f1f-82b4-aed4e0ba6b84",
+      "status": "dead_letter",
+      "lastError": "max_retries_exceeded"
+    }
+  ]
+}
+```
+
 ## Webhook summary example
 `GET /api/webhooks/summary?projectId=<guid>`
 
