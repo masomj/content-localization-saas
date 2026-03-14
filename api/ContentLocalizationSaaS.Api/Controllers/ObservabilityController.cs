@@ -1,3 +1,4 @@
+using ContentLocalizationSaaS.Api.Authorization;
 using ContentLocalizationSaaS.Api.Middleware;
 using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ namespace ContentLocalizationSaaS.Api.Controllers;
 public sealed class ObservabilityController(AppDbContext db) : ControllerBase
 {
     [HttpGet("metrics")]
+    [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Metrics(CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;

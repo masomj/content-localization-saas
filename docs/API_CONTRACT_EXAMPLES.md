@@ -3,6 +3,7 @@
 ## Success example
 `POST /api/workspaces`
 
+
 ```json
 {
   "id": "5d6409d0-3af7-442f-86dd-9eb70d3ef96d",
@@ -42,6 +43,8 @@
 
 ## Idempotency audit example
 `GET /api/integration/exports/idempotency-audit?operation=export_bundle&limit=2&minHitCount=2`
+
+> Requires Admin role.
 
 ```json
 {
