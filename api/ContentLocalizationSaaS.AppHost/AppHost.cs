@@ -6,10 +6,16 @@ var postgres = builder
 
 var contentDb = postgres.AddDatabase("contentdb", "content_localization");
 
-builder
+var api = builder
     .AddProject<Projects.ContentLocalizationSaaS_Api>("api")
     .WithReference(contentDb)
     .WaitFor(contentDb);
+
+builder
+    .AddNpmApp("frontend", "..\\..\\frontend", "dev")
+    .WithReference(api)
+    .WaitFor(api)
+    .WithHttpEndpoint(env: "PORT");
 
 builder.Build().Run();
 
