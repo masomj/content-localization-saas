@@ -103,6 +103,35 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
         return Ok(logs);
     }
 
+    [HttpGet("summary")]
+    [RequireAppRole(AppRole.Admin)]
+    public async Task<IActionResult> Summary([FromQuery] Guid projectId, CancellationToken cancellationToken)
+    {
+        var since24h = DateTime.UtcNow.AddHours(-24);
+        var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
+
+        var query = db.WebhookDeliveryLogs.Where(x => subIds.Contains(x.SubscriptionId));
+
+        var total = await query.CountAsync(cancellationToken);
+        var pending = await query.CountAsync(x => x.Status == "pending", cancellationToken);
+        var delivered = await query.CountAsync(x => x.Status == "delivered", cancellationToken);
+        var deadLetter = await query.CountAsync(x => x.Status == "dead_letter", cancellationToken);
+        var created24h = await query.CountAsync(x => x.CreatedUtc >= since24h, cancellationToken);
+
+        return Ok(new
+        {
+            projectId,
+            total,
+            byStatus = new
+            {
+                pending,
+                delivered,
+                deadLetter
+            },
+            created24h
+        });
+    }
+
     [HttpPost("requeue")]
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Requeue([FromBody] RequeueWebhookDeliveryRequest request, CancellationToken cancellationToken)

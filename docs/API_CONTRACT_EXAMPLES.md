@@ -41,6 +41,22 @@
 }
 ```
 
+## Webhook summary example
+`GET /api/webhooks/summary?projectId=<guid>`
+
+```json
+{
+  "projectId": "5d6409d0-3af7-442f-86dd-9eb70d3ef96d",
+  "total": 120,
+  "byStatus": {
+    "pending": 7,
+    "delivered": 104,
+    "deadLetter": 9
+  },
+  "created24h": 16
+}
+```
+
 ## Webhook deliveries timeline example
 `GET /api/webhooks/deliveries?projectId=<guid>&status=dead_letter&sinceUtc=2026-03-14T00:00:00Z&untilUtc=2026-03-14T23:59:59Z&limit=100`
 
