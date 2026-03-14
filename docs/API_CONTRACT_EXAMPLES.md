@@ -47,6 +47,7 @@
 > Response headers include `Cache-Control: no-store`.
 > Response headers include `X-Window-Hours` with the effective clamped window on status/summary endpoints.
 > Response headers include `X-Generated-At-Utc` for status/metrics freshness.
+> Metrics endpoint includes `X-Window-Hours: 24`.
 > Webhook query endpoints also return `X-Generated-At-Utc` for list freshness.
 > Idempotency audit endpoint also returns `X-Generated-At-Utc`.
 

@@ -62,6 +62,7 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> Metrics(CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
+        Response.Headers["X-Window-Hours"] = "24";
 
         var now = DateTime.UtcNow;
         Response.Headers["X-Generated-At-Utc"] = now.ToString("O");
