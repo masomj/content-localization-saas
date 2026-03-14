@@ -10,11 +10,14 @@ using Microsoft.EntityFrameworkCore;
 namespace ContentLocalizationSaaS.Api.Controllers;
 
 public sealed record CreateWebhookSubscriptionRequest(Guid ProjectId, string EndpointUrl, string Secret);
+public sealed record RequeueWebhookDeliveryRequest(Guid DeliveryId);
 
 [ApiController]
 [Route("api/webhooks")]
 public sealed class WebhooksController(AppDbContext db) : ControllerBase
 {
+    private const int MaxAttempts = 5;
+
     [HttpGet("subscriptions")]
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Subscriptions([FromQuery] Guid projectId, CancellationToken cancellationToken)
@@ -45,11 +48,46 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
 
     [HttpGet("deliveries")]
     [RequireAppRole(AppRole.Admin)]
-    public async Task<IActionResult> Deliveries([FromQuery] Guid projectId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Deliveries([FromQuery] Guid projectId, [FromQuery] string? status, CancellationToken cancellationToken)
     {
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
-        var logs = await db.WebhookDeliveryLogs.Where(x => subIds.Contains(x.SubscriptionId)).OrderByDescending(x => x.CreatedUtc).ToListAsync(cancellationToken);
+        var query = db.WebhookDeliveryLogs.Where(x => subIds.Contains(x.SubscriptionId));
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var s = status.Trim().ToLowerInvariant();
+            query = query.Where(x => x.Status == s);
+        }
+
+        var logs = await query.OrderByDescending(x => x.CreatedUtc).ToListAsync(cancellationToken);
         return Ok(logs);
+    }
+
+    [HttpGet("dead-letters")]
+    [RequireAppRole(AppRole.Admin)]
+    public async Task<IActionResult> DeadLetters([FromQuery] Guid projectId, CancellationToken cancellationToken)
+    {
+        var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
+        var logs = await db.WebhookDeliveryLogs
+            .Where(x => subIds.Contains(x.SubscriptionId) && x.Status == "dead_letter")
+            .OrderByDescending(x => x.CreatedUtc)
+            .ToListAsync(cancellationToken);
+
+        return Ok(logs);
+    }
+
+    [HttpPost("requeue")]
+    [RequireAppRole(AppRole.Admin)]
+    public async Task<IActionResult> Requeue([FromBody] RequeueWebhookDeliveryRequest request, CancellationToken cancellationToken)
+    {
+        var row = await db.WebhookDeliveryLogs.FirstOrDefaultAsync(x => x.Id == request.DeliveryId, cancellationToken);
+        if (row is null) return NotFound();
+
+        row.Status = "pending";
+        row.NextAttemptUtc = DateTime.UtcNow;
+        row.LastError = string.Empty;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Ok(new { status = "requeued", row.Id });
     }
 
     [HttpPost("process-pending")]
@@ -80,9 +118,9 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
 
             if (simulatedFailure)
             {
-                if (log.AttemptCount >= 5)
+                if (log.AttemptCount >= MaxAttempts)
                 {
-                    log.Status = "failed";
+                    log.Status = "dead_letter";
                     log.LastError = "max_retries_exceeded";
                     log.NextAttemptUtc = null;
                 }
@@ -90,7 +128,7 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
                 {
                     log.Status = "pending";
                     log.LastError = "delivery_failed";
-                    var delayMinutes = Math.Pow(2, log.AttemptCount - 1); // 1,2,4,8...
+                    var delayMinutes = Math.Min(60, Math.Pow(2, log.AttemptCount - 1)); // 1,2,4,8... capped
                     log.NextAttemptUtc = DateTime.UtcNow.AddMinutes(delayMinutes);
                 }
             }
@@ -110,7 +148,12 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return Ok(new { processed = pending.Count });
+
+        var delivered = pending.Count(x => x.Status == "delivered");
+        var retried = pending.Count(x => x.Status == "pending");
+        var deadLettered = pending.Count(x => x.Status == "dead_letter");
+
+        return Ok(new { processed = pending.Count, delivered, retried, deadLettered, maxAttempts = MaxAttempts });
     }
 
     public static string ComputeSignature(string payloadJson, string secret)

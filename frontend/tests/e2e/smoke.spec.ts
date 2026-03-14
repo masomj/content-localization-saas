@@ -189,6 +189,7 @@ test('bundle/token and webhook controls render', async ({ page }) => {
   await expect(page.locator('#webhook-project')).toBeVisible()
   await expect(page.locator('#webhook-endpoint')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Create webhook subscription' })).toBeVisible()
+  await expect(page.getByText('Dead-letter queue')).toBeVisible()
 })
 
 test('plugin status/context details controls render', async ({ page }) => {

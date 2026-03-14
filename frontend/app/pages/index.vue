@@ -83,6 +83,7 @@ const exportBundleResult = ref<any>(null)
 const webhookForm = reactive({ projectId: '', endpointUrl: '', secret: 'dev-secret' })
 const webhookSubscriptions = ref<any[]>([])
 const webhookDeliveries = ref<any[]>([])
+const webhookDeadLetters = ref<any[]>([])
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -544,12 +545,22 @@ async function loadWebhookData() {
   if (!webhookForm.projectId) return
   webhookSubscriptions.value = await $fetch(`${apiBase}/api/webhooks/subscriptions?projectId=${webhookForm.projectId}`, { headers: authHeaders() })
   webhookDeliveries.value = await $fetch(`${apiBase}/api/webhooks/deliveries?projectId=${webhookForm.projectId}`, { headers: authHeaders() })
+  webhookDeadLetters.value = await $fetch(`${apiBase}/api/webhooks/dead-letters?projectId=${webhookForm.projectId}`, { headers: authHeaders() })
 }
 
 async function processPendingWebhooks() {
   await $fetch(`${apiBase}/api/webhooks/process-pending`, {
     method: 'POST',
     headers: authHeaders(),
+  })
+  await loadWebhookData()
+}
+
+async function requeueDeadLetter(deliveryId: string) {
+  await $fetch(`${apiBase}/api/webhooks/requeue`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: { deliveryId },
   })
   await loadWebhookData()
 }
@@ -1382,6 +1393,14 @@ onMounted(loadData)
     <h3>Delivery logs</h3>
     <ul>
       <li v-for="d in webhookDeliveries" :key="d.id">{{ d.eventType }} · status={{ d.status }} · attempts={{ d.attemptCount }}</li>
+    </ul>
+
+    <h3>Dead-letter queue</h3>
+    <ul>
+      <li v-for="d in webhookDeadLetters" :key="`dlq-${d.id}`">
+        {{ d.eventType }} · status={{ d.status }} · attempts={{ d.attemptCount }} · lastError={{ d.lastError }}
+        <button type="button" @click="requeueDeadLetter(d.id)">Requeue</button>
+      </li>
     </ul>
   </section>
 
