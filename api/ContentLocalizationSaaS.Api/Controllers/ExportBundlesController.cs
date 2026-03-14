@@ -15,11 +15,25 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
 {
     [HttpGet("idempotency-audit")]
     [RequireAppRole(AppRole.Admin)]
-    public async Task<IActionResult> IdempotencyAudit([FromQuery] string operation = "export_bundle", [FromQuery] int limit = 100, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> IdempotencyAudit(
+        [FromQuery] string operation = "export_bundle",
+        [FromQuery] int limit = 100,
+        [FromQuery] int minHitCount = 1,
+        [FromQuery] DateTime? sinceUtc = null,
+        CancellationToken cancellationToken = default)
     {
         var clampedLimit = Math.Clamp(limit, 1, 500);
-        var rows = await db.IdempotencyRecords
-            .Where(x => x.Operation == operation)
+        var clampedMinHits = Math.Max(1, minHitCount);
+
+        var query = db.IdempotencyRecords
+            .Where(x => x.Operation == operation && x.HitCount >= clampedMinHits);
+
+        if (sinceUtc.HasValue)
+        {
+            query = query.Where(x => x.LastSeenUtc >= sinceUtc.Value);
+        }
+
+        var rows = await query
             .OrderByDescending(x => x.LastSeenUtc)
             .Take(clampedLimit)
             .Select(x => new
@@ -32,7 +46,12 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             })
             .ToListAsync(cancellationToken);
 
-        return Ok(new { count = rows.Count, rows });
+        return Ok(new
+        {
+            count = rows.Count,
+            filters = new { operation, minHitCount = clampedMinHits, sinceUtc },
+            rows
+        });
     }
 
     private static readonly ConcurrentDictionary<string, Queue<DateTime>> RequestHistory = new();

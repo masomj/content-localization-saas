@@ -41,11 +41,16 @@
 ```
 
 ## Idempotency audit example
-`GET /api/integration/exports/idempotency-audit?operation=export_bundle&limit=2`
+`GET /api/integration/exports/idempotency-audit?operation=export_bundle&limit=2&minHitCount=2`
 
 ```json
 {
   "count": 2,
+  "filters": {
+    "operation": "export_bundle",
+    "minHitCount": 2,
+    "sinceUtc": null
+  },
   "rows": [
     {
       "operation": "export_bundle",
