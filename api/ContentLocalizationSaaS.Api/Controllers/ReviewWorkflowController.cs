@@ -14,6 +14,12 @@ public sealed record RejectContentItemRequest(Guid ContentItemId, string Reason)
 [Route("api/review-workflow")]
 public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
 {
+    private static readonly HashSet<string> SubmitAllowed = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "draft",
+        "outdated"
+    };
+
     private string CurrentActor => HttpContext.Request.Headers["X-Actor-Email"].ToString() is { Length: > 0 } raw
         ? raw.Trim().ToLowerInvariant()
         : "reviewer@example.com";
@@ -28,6 +34,18 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
         var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == request.ContentItemId, cancellationToken);
         if (item is null) return NotFound();
 
+        if (!SubmitAllowed.Contains(item.Status))
+        {
+            return Conflict(new
+            {
+                error = "invalid_transition",
+                from = item.Status,
+                to = "in_review",
+                guidance = "Only Draft/Outdated items can be submitted for review."
+            });
+        }
+
+        var previousStatus = item.Status;
         item.Status = "in_review";
         item.ReviewAssigneeEmail = request.ReviewerEmail.Trim().ToLowerInvariant();
         item.RejectionReason = string.Empty;
@@ -38,7 +56,7 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
             ActorEmail = CurrentActor,
             PreviousSource = item.Source,
             NewSource = item.Source,
-            PreviousStatus = "draft",
+            PreviousStatus = previousStatus,
             NewStatus = item.Status,
             DiffSummary = $"submitted for review to {item.ReviewAssigneeEmail}",
             EventType = "review_submit"
@@ -54,6 +72,28 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
     {
         var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == request.ContentItemId, cancellationToken);
         if (item is null) return NotFound();
+
+        if (!string.Equals(item.Status, "in_review", StringComparison.OrdinalIgnoreCase))
+        {
+            return Conflict(new
+            {
+                error = "invalid_transition",
+                from = item.Status,
+                to = "approved",
+                guidance = "Only In Review items can be approved."
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.ReviewAssigneeEmail) &&
+            !string.Equals(item.ReviewAssigneeEmail, CurrentActor, StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "reviewer_mismatch",
+                assignedReviewer = item.ReviewAssigneeEmail,
+                actor = CurrentActor
+            });
+        }
 
         var previousStatus = item.Status;
         item.Status = "approved";
@@ -140,6 +180,28 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
 
         var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == request.ContentItemId, cancellationToken);
         if (item is null) return NotFound();
+
+        if (!string.Equals(item.Status, "in_review", StringComparison.OrdinalIgnoreCase))
+        {
+            return Conflict(new
+            {
+                error = "invalid_transition",
+                from = item.Status,
+                to = "draft",
+                guidance = "Only In Review items can be rejected to editor."
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.ReviewAssigneeEmail) &&
+            !string.Equals(item.ReviewAssigneeEmail, CurrentActor, StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "reviewer_mismatch",
+                assignedReviewer = item.ReviewAssigneeEmail,
+                actor = CurrentActor
+            });
+        }
 
         var previousStatus = item.Status;
         item.Status = "draft";
