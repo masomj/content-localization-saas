@@ -10,6 +10,46 @@ namespace ContentLocalizationSaaS.Api.Controllers;
 [Route("api/observability")]
 public sealed class ObservabilityController(AppDbContext db) : ControllerBase
 {
+    [HttpGet("status")]
+    [RequireAppRole(AppRole.Admin)]
+    public async Task<IActionResult> Status(CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var since24h = now.AddHours(-24);
+
+        var deadLetterWebhooks = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "dead_letter", cancellationToken);
+        var failedWebhooks24h = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "dead_letter" && x.CreatedUtc >= since24h, cancellationToken);
+        var deliveredWebhooks24h = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "delivered" && x.CreatedUtc >= since24h, cancellationToken);
+        var pendingOldestCreatedUtc = await db.WebhookDeliveryLogs
+            .Where(x => x.Status == "pending")
+            .OrderBy(x => x.CreatedUtc)
+            .Select(x => (DateTime?)x.CreatedUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var pendingOldestAgeMinutes = pendingOldestCreatedUtc.HasValue
+            ? Math.Round((now - pendingOldestCreatedUtc.Value).TotalMinutes, 2)
+            : 0;
+
+        var totalTerminal24h = deliveredWebhooks24h + failedWebhooks24h;
+        var webhookSuccessRate24h = totalTerminal24h == 0
+            ? 1.0
+            : Math.Round((double)deliveredWebhooks24h / totalTerminal24h, 4);
+
+        var degraded = deadLetterWebhooks > 0 || pendingOldestAgeMinutes > 30 || webhookSuccessRate24h < 0.99;
+
+        return Ok(new
+        {
+            timestampUtc = now,
+            degraded,
+            summary = new
+            {
+                deadLetterWebhooks,
+                pendingOldestAgeMinutes,
+                webhookSuccessRate24h
+            }
+        });
+    }
+
     [HttpGet("metrics")]
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Metrics(CancellationToken cancellationToken)

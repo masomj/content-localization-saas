@@ -41,6 +41,21 @@
 }
 ```
 
+## Observability status example
+`GET /api/observability/status`
+
+```json
+{
+  "timestampUtc": "2026-03-14T18:10:00Z",
+  "degraded": false,
+  "summary": {
+    "deadLetterWebhooks": 0,
+    "pendingOldestAgeMinutes": 2.1,
+    "webhookSuccessRate24h": 1.0
+  }
+}
+```
+
 ## Webhook summary example
 `GET /api/webhooks/summary?projectId=<guid>`
 
