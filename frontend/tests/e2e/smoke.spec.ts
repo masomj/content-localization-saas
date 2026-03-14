@@ -77,3 +77,12 @@ test('language management and per-language task controls render', async ({ page 
   await expect(page.getByRole('heading', { name: 'Per-language tasks (Story 3.2)' })).toBeVisible()
   await expect(page.locator('#task-language')).toBeVisible()
 })
+
+test('all-languages grid filter and pagination controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'All-languages grid (Story 3.3)' })).toBeVisible()
+  await expect(page.locator('#grid-state-filter')).toBeVisible()
+  await expect(page.locator('#grid-sort-by')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Prev' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Next' })).toBeVisible()
+})

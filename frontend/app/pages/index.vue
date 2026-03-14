@@ -38,6 +38,9 @@ const projectLanguages = ref<any[]>([])
 const languageForm = reactive({ projectId: '', bcp47Code: '', isSource: false })
 const languageTaskForm = reactive({ contentItemId: '', languageCode: '', assigneeEmail: '', dueUtc: '', status: 'todo' })
 const languageTasks = ref<any[]>([])
+const localizationGrid = ref<any[]>([])
+const localizationGridMeta = reactive({ total: 0, page: 1, pageSize: 10 })
+const localizationFilters = reactive({ stateFilter: '', sortBy: 'itemKey', desc: false })
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -148,6 +151,22 @@ async function loadLanguageTasks() {
   languageTasks.value = await $fetch(`${apiBase}/api/language-tasks?${params.toString()}`, { headers: authHeaders() })
 }
 
+async function loadLocalizationGrid() {
+  const params = new URLSearchParams()
+  if (languageForm.projectId) params.set('projectId', languageForm.projectId)
+  if (localizationFilters.stateFilter) params.set('stateFilter', localizationFilters.stateFilter)
+  if (localizationFilters.sortBy) params.set('sortBy', localizationFilters.sortBy)
+  params.set('desc', String(localizationFilters.desc))
+  params.set('page', String(localizationGridMeta.page))
+  params.set('pageSize', String(localizationGridMeta.pageSize))
+
+  const response: any = await $fetch(`${apiBase}/api/localization-grid?${params.toString()}`, { headers: authHeaders() })
+  localizationGridMeta.total = response.total
+  localizationGridMeta.page = response.page
+  localizationGridMeta.pageSize = response.pageSize
+  localizationGrid.value = response.rows
+}
+
 async function loadData() {
   try {
     await loadPermissions()
@@ -174,6 +193,7 @@ async function loadData() {
     await loadSavedFilterPresets()
     await loadProjectLanguages()
     await loadLanguageTasks()
+    await loadLocalizationGrid()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -453,6 +473,16 @@ async function upsertLanguageTask() {
   await loadLanguageTasks()
 }
 
+async function setLocalizationPage(nextPage: number) {
+  localizationGridMeta.page = Math.max(1, nextPage)
+  await loadLocalizationGrid()
+}
+
+async function applyLocalizationFilters() {
+  localizationGridMeta.page = 1
+  await loadLocalizationGrid()
+}
+
 async function saveProjectSettings() {
   if (!projectSettingsForm.id) return
   if (!validateProjectSettings()) return
@@ -649,6 +679,39 @@ onMounted(loadData)
         <button type="button" @click="updateContentItem(item)">Save item edit</button>
       </li>
     </ul>
+  </section>
+
+  <section class="card">
+    <h2>All-languages grid (Story 3.3)</h2>
+
+    <label for="grid-state-filter">State filter</label>
+    <select id="grid-state-filter" v-model="localizationFilters.stateFilter" @change="applyLocalizationFilters">
+      <option value="">All</option>
+      <option value="missing">Missing</option>
+      <option value="outdated">Outdated</option>
+      <option value="review">Review</option>
+    </select>
+
+    <label for="grid-sort-by">Sort by</label>
+    <select id="grid-sort-by" v-model="localizationFilters.sortBy" @change="applyLocalizationFilters">
+      <option value="itemKey">Item key</option>
+      <option value="source">Source</option>
+      <option value="sourceStatus">Source status</option>
+    </select>
+
+    <label>
+      <input type="checkbox" v-model="localizationFilters.desc" @change="applyLocalizationFilters" /> Descending
+    </label>
+
+    <ul>
+      <li v-for="row in localizationGrid" :key="row.itemId">
+        {{ row.itemKey }} · source={{ row.sourceStatus }} · missing={{ row.hasMissing }} · outdated={{ row.hasOutdated }} · review={{ row.hasReview }}
+      </li>
+    </ul>
+
+    <p>Total {{ localizationGridMeta.total }} · Page {{ localizationGridMeta.page }}</p>
+    <button type="button" @click="setLocalizationPage(localizationGridMeta.page - 1)" :disabled="localizationGridMeta.page <= 1">Prev</button>
+    <button type="button" @click="setLocalizationPage(localizationGridMeta.page + 1)" :disabled="localizationGridMeta.page * localizationGridMeta.pageSize >= localizationGridMeta.total">Next</button>
   </section>
 
   <section class="card">
