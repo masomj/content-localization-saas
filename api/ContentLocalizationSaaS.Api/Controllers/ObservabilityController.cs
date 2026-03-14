@@ -14,6 +14,8 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Status(CancellationToken cancellationToken)
     {
+        Response.Headers.CacheControl = "no-store";
+
         var now = DateTime.UtcNow;
         var since24h = now.AddHours(-24);
 
@@ -54,6 +56,8 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Metrics(CancellationToken cancellationToken)
     {
+        Response.Headers.CacheControl = "no-store";
+
         var now = DateTime.UtcNow;
         var since24h = now.AddHours(-24);
 
