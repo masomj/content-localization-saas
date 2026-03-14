@@ -46,9 +46,23 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
         }
 
         var previousStatus = item.Status;
-        item.Status = "in_review";
-        item.ReviewAssigneeEmail = request.ReviewerEmail.Trim().ToLowerInvariant();
-        item.RejectionReason = string.Empty;
+        var reviewer = request.ReviewerEmail.Trim().ToLowerInvariant();
+
+        var updated = await db.ContentItems
+            .Where(x => x.Id == item.Id && x.Status == previousStatus)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Status, "in_review")
+                .SetProperty(x => x.ReviewAssigneeEmail, reviewer)
+                .SetProperty(x => x.RejectionReason, string.Empty), cancellationToken);
+
+        if (updated == 0)
+        {
+            return Conflict(new
+            {
+                error = "stale_write",
+                guidance = "Content item changed since read; refresh and retry."
+            });
+        }
 
         db.ContentItemRevisions.Add(new ContentItemRevision
         {
@@ -57,13 +71,14 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
             PreviousSource = item.Source,
             NewSource = item.Source,
             PreviousStatus = previousStatus,
-            NewStatus = item.Status,
-            DiffSummary = $"submitted for review to {item.ReviewAssigneeEmail}",
+            NewStatus = "in_review",
+            DiffSummary = $"submitted for review to {reviewer}",
             EventType = "review_submit"
         });
 
         await db.SaveChangesAsync(cancellationToken);
-        return Ok(item);
+        var updatedItem = await db.ContentItems.FirstAsync(x => x.Id == item.Id, cancellationToken);
+        return Ok(updatedItem);
     }
 
     [HttpPost("approve")]
@@ -96,10 +111,26 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
         }
 
         var previousStatus = item.Status;
-        item.Status = "approved";
-        item.ApprovedUtc = DateTime.UtcNow;
-        item.ApprovedByEmail = CurrentActor;
-        item.RejectionReason = string.Empty;
+        var approvedUtc = DateTime.UtcNow;
+
+        var updated = await db.ContentItems
+            .Where(x => x.Id == item.Id
+                        && x.Status == previousStatus
+                        && (string.IsNullOrEmpty(x.ReviewAssigneeEmail) || x.ReviewAssigneeEmail == CurrentActor))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Status, "approved")
+                .SetProperty(x => x.ApprovedUtc, approvedUtc)
+                .SetProperty(x => x.ApprovedByEmail, CurrentActor)
+                .SetProperty(x => x.RejectionReason, string.Empty), cancellationToken);
+
+        if (updated == 0)
+        {
+            return Conflict(new
+            {
+                error = "stale_write",
+                guidance = "Content item changed since read; refresh and retry."
+            });
+        }
 
         db.ContentItemRevisions.Add(new ContentItemRevision
         {
@@ -108,7 +139,7 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
             PreviousSource = item.Source,
             NewSource = item.Source,
             PreviousStatus = previousStatus,
-            NewStatus = item.Status,
+            NewStatus = "approved",
             DiffSummary = "approved",
             EventType = "review_approved"
         });
@@ -117,7 +148,7 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
         if (subscriptions.Count > 0)
         {
             var languageTasks = await db.ContentItemLanguageTasks.Where(x => x.ContentItemId == item.Id).ToListAsync(cancellationToken);
-            var version = item.ApprovedUtc?.Ticks ?? DateTime.UtcNow.Ticks;
+            var version = approvedUtc.Ticks;
 
             foreach (var sub in subscriptions)
             {
@@ -127,9 +158,9 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
                     itemKey = item.Key,
                     language = "source",
                     version,
-                    status = item.Status,
-                    approvedBy = item.ApprovedByEmail,
-                    approvedUtc = item.ApprovedUtc
+                    status = "approved",
+                    approvedBy = CurrentActor,
+                    approvedUtc = approvedUtc
                 };
 
                 var sourcePayloadJson = System.Text.Json.JsonSerializer.Serialize(sourcePayload);
@@ -158,8 +189,8 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
                         language = task.LanguageCode,
                         version,
                         status = task.Status,
-                        approvedBy = item.ApprovedByEmail,
-                        approvedUtc = item.ApprovedUtc
+                        approvedBy = CurrentActor,
+                        approvedUtc = approvedUtc
                     };
 
                     var payloadJson = System.Text.Json.JsonSerializer.Serialize(payload);
@@ -183,7 +214,8 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return Ok(item);
+        var updatedItem = await db.ContentItems.FirstAsync(x => x.Id == item.Id, cancellationToken);
+        return Ok(updatedItem);
     }
 
     [HttpPost("reject")]
@@ -218,8 +250,24 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
         }
 
         var previousStatus = item.Status;
-        item.Status = "draft";
-        item.RejectionReason = request.Reason.Trim();
+        var reason = request.Reason.Trim();
+
+        var updated = await db.ContentItems
+            .Where(x => x.Id == item.Id
+                        && x.Status == previousStatus
+                        && (string.IsNullOrEmpty(x.ReviewAssigneeEmail) || x.ReviewAssigneeEmail == CurrentActor))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Status, "draft")
+                .SetProperty(x => x.RejectionReason, reason), cancellationToken);
+
+        if (updated == 0)
+        {
+            return Conflict(new
+            {
+                error = "stale_write",
+                guidance = "Content item changed since read; refresh and retry."
+            });
+        }
 
         db.ContentItemRevisions.Add(new ContentItemRevision
         {
@@ -228,12 +276,13 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
             PreviousSource = item.Source,
             NewSource = item.Source,
             PreviousStatus = previousStatus,
-            NewStatus = item.Status,
-            DiffSummary = $"rejected: {item.RejectionReason}",
+            NewStatus = "draft",
+            DiffSummary = $"rejected: {reason}",
             EventType = "review_rejected"
         });
 
         await db.SaveChangesAsync(cancellationToken);
-        return Ok(item);
+        var updatedItem = await db.ContentItems.FirstAsync(x => x.Id == item.Id, cancellationToken);
+        return Ok(updatedItem);
     }
 }
