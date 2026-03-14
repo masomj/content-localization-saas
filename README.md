@@ -78,3 +78,13 @@ See `docs/ARCHITECTURE.md` for the detailed draft architecture.
 cd api
  dotnet build ContentLocalizationSaaS.Cli/ContentLocalizationSaaS.Cli.csproj -c Release
 ```
+
+## Integration test runtime note
+
+Aspire integration tests require a healthy container runtime.
+
+If integration tests fail with container-runtime health errors:
+
+- verify Docker/Podman daemon is running and responsive
+- run unit tests + Playwright as baseline while runtime issues are triaged
+- use CI artifacts from the integration job for diagnostics (`integration-tests.log` + `.trx`)
