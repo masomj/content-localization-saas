@@ -11,6 +11,8 @@ public sealed class CliSpecController : ControllerBase
     [RequireAppRole(AppRole.Viewer)]
     public IActionResult Spec()
     {
+        Response.Headers.CacheControl = "no-store";
+
         return Ok(new
         {
             version = "v1",

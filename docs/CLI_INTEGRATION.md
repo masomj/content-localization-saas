@@ -31,4 +31,5 @@ This document defines the integration contract for automation clients using the 
 ## Machine-readable spec endpoint
 - Endpoint: `GET /api/cli/spec`
 - Auth: Viewer+
+- Cache policy: `Cache-Control: no-store`
 - Returns CLI version, command list, env vars, and exit-code map.
