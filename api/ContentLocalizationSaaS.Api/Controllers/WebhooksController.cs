@@ -76,6 +76,9 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
             query = query.Where(x => x.Status == s);
         }
 
+        if (sinceUtc.HasValue && untilUtc.HasValue && sinceUtc.Value > untilUtc.Value)
+            return BadRequest(new { error = "invalid_time_window", guidance = "sinceUtc must be <= untilUtc" });
+
         if (sinceUtc.HasValue)
         {
             query = query.Where(x => x.CreatedUtc >= sinceUtc.Value);

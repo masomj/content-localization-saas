@@ -37,6 +37,9 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         var query = db.IdempotencyRecords
             .Where(x => x.Operation == normalizedOperation && x.HitCount >= clampedMinHits);
 
+        if (sinceUtc.HasValue && sinceUtc.Value > DateTime.UtcNow.AddMinutes(5))
+            return BadRequest(new { error = "invalid_sinceUtc", guidance = "sinceUtc cannot be in the far future" });
+
         if (sinceUtc.HasValue)
         {
             query = query.Where(x => x.LastSeenUtc >= sinceUtc.Value);
