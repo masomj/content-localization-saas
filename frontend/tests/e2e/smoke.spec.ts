@@ -47,3 +47,11 @@ test('reusable copy components section renders', async ({ page }) => {
   await expect(page.locator('#copy-component-name')).toBeVisible()
   await expect(page.locator('#copy-component-source')).toBeVisible()
 })
+
+test('usage references panel render with filters', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Usage references (Story 2.3)' })).toBeVisible()
+  await expect(page.locator('#usage-project-filter')).toBeVisible()
+  await expect(page.locator('#usage-screen-filter')).toBeVisible()
+  await expect(page.locator('#usage-component-filter')).toBeVisible()
+})

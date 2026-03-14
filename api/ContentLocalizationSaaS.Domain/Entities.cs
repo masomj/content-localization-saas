@@ -79,3 +79,14 @@ public sealed class CopyComponent
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class UsageReference
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemId { get; set; }
+    public Guid ProjectId { get; set; }
+    public string Screen { get; set; } = string.Empty;
+    public string Component { get; set; } = string.Empty;
+    public string ReferencePath { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

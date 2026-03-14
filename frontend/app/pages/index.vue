@@ -21,6 +21,9 @@ const contentItemForm = reactive({ projectId: '', key: '', source: '', status: '
 const copyComponentForm = reactive({ projectId: '', name: '', source: '' })
 const copyComponents = ref<any[]>([])
 const contentItems = ref<any[]>([])
+const usageReferences = ref<any[]>([])
+const usageFilters = reactive({ projectId: '', screen: '', component: '' })
+const selectedContentItemId = ref('')
 const contentSearch = ref('')
 const contentError = ref('')
 
@@ -101,6 +104,17 @@ async function loadCopyComponents() {
   copyComponents.value = await $fetch(`${apiBase}/api/copy-components${qs ? `?${qs}` : ''}`, { headers: authHeaders() })
 }
 
+async function loadUsageReferences() {
+  const params = new URLSearchParams()
+  if (selectedContentItemId.value) params.set('contentItemId', selectedContentItemId.value)
+  if (usageFilters.projectId) params.set('projectId', usageFilters.projectId)
+  if (usageFilters.screen.trim()) params.set('screen', usageFilters.screen.trim())
+  if (usageFilters.component.trim()) params.set('component', usageFilters.component.trim())
+
+  const qs = params.toString()
+  usageReferences.value = await $fetch(`${apiBase}/api/usage-references${qs ? `?${qs}` : ''}`, { headers: authHeaders() })
+}
+
 async function loadData() {
   try {
     await loadPermissions()
@@ -112,6 +126,7 @@ async function loadData() {
       selectProject(projects.value[0])
       contentItemForm.projectId = projects.value[0].id
       copyComponentForm.projectId = projects.value[0].id
+      usageFilters.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
@@ -121,6 +136,7 @@ async function loadData() {
 
     await loadContentItems()
     await loadCopyComponents()
+    await loadUsageReferences()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -243,6 +259,26 @@ async function linkContentItemToComponent(contentItemId: string, componentId: st
   })
 
   await loadContentItems()
+}
+
+async function addUsageReference(contentItemId: string) {
+  const item = contentItems.value.find(x => x.id === contentItemId)
+  if (!item) return
+
+  await $fetch(`${apiBase}/api/usage-references`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      contentItemId,
+      projectId: item.projectId,
+      screen: 'MainScreen',
+      component: 'TextBlock',
+      referencePath: 'ui.main.textblock',
+    },
+  })
+
+  selectedContentItemId.value = contentItemId
+  await loadUsageReferences()
 }
 
 async function saveProjectSettings() {
@@ -414,14 +450,38 @@ onMounted(loadData)
 
     <ul>
       <li v-for="item in contentItems" :key="item.id">
-        {{ item.key }} · {{ item.status }} · {{ item.tags }}
+        <button type="button" @click="selectedContentItemId = item.id; loadUsageReferences()">{{ item.key }}</button>
+        · {{ item.status }} · {{ item.tags }}
         <span v-if="item.copyComponentId"> · linked</span>
         <select v-if="copyComponents.length > 0" @change="linkContentItemToComponent(item.id, ($event.target as HTMLSelectElement).value)">
           <option value="">Link to component</option>
           <option v-for="cc in copyComponents" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
         </select>
+        <button type="button" @click="addUsageReference(item.id)">Add usage ref</button>
       </li>
     </ul>
+  </section>
+
+  <section class="card">
+    <h2>Usage references (Story 2.3)</h2>
+    <p>Open an item from the content list to inspect known linked references.</p>
+
+    <label for="usage-project-filter">Filter by project</label>
+    <select id="usage-project-filter" v-model="usageFilters.projectId" @change="loadUsageReferences">
+      <option value="">All projects</option>
+      <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+    </select>
+
+    <label for="usage-screen-filter">Filter by screen</label>
+    <input id="usage-screen-filter" v-model="usageFilters.screen" @input="loadUsageReferences" />
+
+    <label for="usage-component-filter">Filter by component</label>
+    <input id="usage-component-filter" v-model="usageFilters.component" @input="loadUsageReferences" />
+
+    <ul v-if="usageReferences.length > 0">
+      <li v-for="u in usageReferences" :key="u.id">{{ u.screen || 'n/a' }} · {{ u.component || 'n/a' }} · {{ u.referencePath || 'n/a' }}</li>
+    </ul>
+    <p v-else>No linked references found for current filters (unlinked content).</p>
   </section>
 
   <section class="card">

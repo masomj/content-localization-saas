@@ -21,6 +21,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<MembershipAuditLog> MembershipAuditLogs => Set<MembershipAuditLog>();
     public DbSet<ContentItem> ContentItems => Set<ContentItem>();
     public DbSet<CopyComponent> CopyComponents => Set<CopyComponent>();
+    public DbSet<UsageReference> UsageReferences => Set<UsageReference>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -108,6 +109,17 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
             e.Property(x => x.Source).HasMaxLength(4000).IsRequired();
             e.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+        });
+
+        builder.Entity<UsageReference>(e =>
+        {
+            e.ToTable("usage_references");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Screen).HasMaxLength(200).HasDefaultValue(string.Empty);
+            e.Property(x => x.Component).HasMaxLength(200).HasDefaultValue(string.Empty);
+            e.Property(x => x.ReferencePath).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.ContentItemId);
+            e.HasIndex(x => new { x.ProjectId, x.Screen, x.Component });
         });
     }
 }
