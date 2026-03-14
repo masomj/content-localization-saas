@@ -1,0 +1,59 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '23 3 * * 1'
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'csharp', 'javascript-typescript' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Setup .NET
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Setup Node
+        if: matrix.language == 'javascript-typescript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build C#
+        if: matrix.language == 'csharp'
+        run: |
+          dotnet restore ContentLocalizationSaaS.slnx
+          dotnet build ContentLocalizationSaaS.slnx --configuration Release --no-restore --nologo
+        working-directory: api
+
+      - name: Install frontend deps
+        if: matrix.language == 'javascript-typescript'
+        run: npm ci
+        working-directory: frontend
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
