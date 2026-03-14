@@ -65,6 +65,7 @@ See `docs/ARCHITECTURE.md` for the detailed draft architecture.
 
 - Versioning policy: `docs/API_VERSIONING.md`
 - Contract payload examples (success + error): `docs/API_CONTRACT_EXAMPLES.md`
+- OpenAPI-focused canonical examples: `docs/OPENAPI_EXAMPLES.md`
 
 ## CLI
 
