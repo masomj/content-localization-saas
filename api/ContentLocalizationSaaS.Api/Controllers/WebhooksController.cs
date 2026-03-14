@@ -101,9 +101,14 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
             .Take(100)
             .ToListAsync(cancellationToken);
 
+        var subIds = pending.Select(x => x.SubscriptionId).Distinct().ToList();
+        var subscriptions = await db.WebhookSubscriptions
+            .Where(x => subIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
         foreach (var log in pending)
         {
-            var sub = await db.WebhookSubscriptions.FirstOrDefaultAsync(x => x.Id == log.SubscriptionId, cancellationToken);
+            subscriptions.TryGetValue(log.SubscriptionId, out var sub);
             if (sub is null || !sub.IsActive)
             {
                 log.Status = "failed";

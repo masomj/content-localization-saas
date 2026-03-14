@@ -29,7 +29,7 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> Submit([FromBody] SubmitForReviewRequest request, CancellationToken cancellationToken)
     {
         if (request.ContentItemId == Guid.Empty || string.IsNullOrWhiteSpace(request.ReviewerEmail))
-            return BadRequest(new { error = "contentItemId and reviewerEmail required" });
+            return BadRequest(new { error = "contentItemId_and_reviewerEmail_required" });
 
         var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == request.ContentItemId, cancellationToken);
         if (item is null) return NotFound();
