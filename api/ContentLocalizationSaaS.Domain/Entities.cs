@@ -25,3 +25,33 @@ public sealed class ProjectAuditLog
     public string Details { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public enum InviteStatus
+{
+    Pending = 0,
+    Accepted = 1,
+    Expired = 2,
+    Revoked = 3
+}
+
+public sealed class WorkspaceInvite
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceId { get; set; }
+    public required string Email { get; set; }
+    public required string Role { get; set; }
+    public required string Token { get; set; }
+    public InviteStatus Status { get; set; } = InviteStatus.Pending;
+    public DateTime ExpiresUtc { get; set; } = DateTime.UtcNow.AddDays(7);
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class WorkspaceMembership
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceId { get; set; }
+    public required string Email { get; set; }
+    public required string Role { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

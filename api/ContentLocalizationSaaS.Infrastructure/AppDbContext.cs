@@ -16,6 +16,8 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectAuditLog> ProjectAuditLogs => Set<ProjectAuditLog>();
+    public DbSet<WorkspaceInvite> WorkspaceInvites => Set<WorkspaceInvite>();
+    public DbSet<WorkspaceMembership> WorkspaceMemberships => Set<WorkspaceMembership>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -45,6 +47,26 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Action).HasMaxLength(64).IsRequired();
             e.Property(x => x.Details).HasMaxLength(4000).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.CreatedUtc });
+        });
+
+        builder.Entity<WorkspaceInvite>(e =>
+        {
+            e.ToTable("workspace_invites");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Email).HasMaxLength(320).IsRequired();
+            e.Property(x => x.Role).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Token).HasMaxLength(128).IsRequired();
+            e.HasIndex(x => x.Token).IsUnique();
+            e.HasIndex(x => new { x.WorkspaceId, x.Email, x.Status });
+        });
+
+        builder.Entity<WorkspaceMembership>(e =>
+        {
+            e.ToTable("workspace_memberships");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Email).HasMaxLength(320).IsRequired();
+            e.Property(x => x.Role).HasMaxLength(32).IsRequired();
+            e.HasIndex(x => new { x.WorkspaceId, x.Email }).IsUnique();
         });
     }
 }
