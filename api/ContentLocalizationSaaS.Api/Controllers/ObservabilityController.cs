@@ -17,6 +17,8 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
         Response.Headers.CacheControl = "no-store";
 
         var clampedWindowHours = Math.Clamp(windowHours, 1, 168);
+        Response.Headers["X-Window-Hours"] = clampedWindowHours.ToString();
+
         var now = DateTime.UtcNow;
         var since24h = now.AddHours(-clampedWindowHours);
 

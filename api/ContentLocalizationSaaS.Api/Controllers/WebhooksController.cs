@@ -155,6 +155,8 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
             return BadRequest(new { error = "projectId_required" });
 
         var clampedWindowHours = Math.Clamp(windowHours, 1, 168);
+        Response.Headers["X-Window-Hours"] = clampedWindowHours.ToString();
+
         var since24h = DateTime.UtcNow.AddHours(-clampedWindowHours);
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
 
