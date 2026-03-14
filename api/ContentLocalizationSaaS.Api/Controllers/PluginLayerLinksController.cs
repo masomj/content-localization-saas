@@ -95,6 +95,66 @@ public sealed class PluginLayerLinksController(AppDbContext db) : ControllerBase
         return Ok(new { link, contentItem = item });
     }
 
+    [HttpGet("details")]
+    public async Task<IActionResult> GetLayerDetails(
+        [FromQuery] Guid projectId,
+        [FromQuery] string designFileId,
+        [FromQuery] string layerId,
+        [FromQuery] string? targetLanguage,
+        CancellationToken cancellationToken)
+    {
+        var link = await db.DesignLayerLinks.FirstOrDefaultAsync(
+            x => x.ProjectId == projectId && x.DesignFileId == designFileId && x.LayerId == layerId,
+            cancellationToken);
+
+        if (link is null) return NotFound();
+
+        var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == link.ContentItemId, cancellationToken);
+        if (item is null) return NotFound();
+
+        var lastEditor = await db.ContentItemRevisions
+            .Where(x => x.ContentItemId == item.Id)
+            .OrderByDescending(x => x.CreatedUtc)
+            .Select(x => x.ActorEmail)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        object? target = null;
+        if (!string.IsNullOrWhiteSpace(targetLanguage))
+        {
+            var langTask = await db.ContentItemLanguageTasks
+                .FirstOrDefaultAsync(x => x.ContentItemId == item.Id && x.LanguageCode == targetLanguage, cancellationToken);
+
+            if (langTask is not null)
+            {
+                target = new
+                {
+                    language = langTask.LanguageCode,
+                    translationText = langTask.TranslationText,
+                    status = langTask.Status,
+                    isOutdated = langTask.IsOutdated
+                };
+            }
+            else
+            {
+                target = new { language = targetLanguage, translationText = string.Empty, status = "missing", isOutdated = false };
+            }
+        }
+
+        return Ok(new
+        {
+            link,
+            item = new
+            {
+                item.Id,
+                item.Key,
+                item.Status,
+                item.Context,
+                lastEditor = lastEditor ?? "unknown"
+            },
+            target
+        });
+    }
+
     [HttpPost("duplicate-layer")]
     public async Task<IActionResult> DuplicateLayer([FromBody] DuplicateLayerRequest request, CancellationToken cancellationToken)
     {

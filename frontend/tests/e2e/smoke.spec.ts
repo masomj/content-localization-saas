@@ -160,3 +160,11 @@ test('plugin sync and diagnostics controls render', async ({ page }) => {
   await expect(page.locator('#plugin-scan-layers')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Scan plugin issues' })).toBeVisible()
 })
+
+test('plugin status/context details controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Figma layer linking (Story 5.2)' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Plugin item details (Story 5.5)' })).toBeVisible()
+  await expect(page.locator('#plugin-target-language')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Load linked item details' })).toBeVisible()
+})

@@ -66,6 +66,8 @@ const pluginPullUpdates = ref<any[]>([])
 const pluginPushResult = ref<any>(null)
 const pluginScan = reactive({ monitoredLayerIdsCsv: '' })
 const pluginIssues = ref<any[]>([])
+const pluginDetails = ref<any>(null)
+const pluginTargetLanguage = ref('')
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -334,6 +336,22 @@ async function loadLayerLink() {
     currentLayerLink.value = await $fetch(`${apiBase}/api/plugin-links/layer?projectId=${layerLinkForm.projectId}&designFileId=${encodeURIComponent(layerLinkForm.designFileId)}&layerId=${encodeURIComponent(layerLinkForm.layerId)}`, { headers: authHeaders() })
   } catch {
     currentLayerLink.value = null
+  }
+}
+
+async function loadPluginLayerDetails() {
+  if (!layerLinkForm.projectId || !layerLinkForm.layerId.trim()) return
+  try {
+    const params = new URLSearchParams({
+      projectId: layerLinkForm.projectId,
+      designFileId: layerLinkForm.designFileId,
+      layerId: layerLinkForm.layerId,
+    })
+    if (pluginTargetLanguage.value.trim()) params.set('targetLanguage', pluginTargetLanguage.value.trim())
+
+    pluginDetails.value = await $fetch(`${apiBase}/api/plugin-links/details?${params.toString()}`, { headers: authHeaders() })
+  } catch {
+    pluginDetails.value = null
   }
 }
 
@@ -1220,8 +1238,24 @@ onMounted(loadData)
     <label for="layer-source-text">Source text</label>
     <textarea id="layer-source-text" v-model="layerLinkForm.sourceText" />
 
-    <button type="button" @click="linkLayerToExistingOrNew">Link selected layer</button>
-    <button type="button" @click="simulateDuplicateLayer">Simulate duplicate behavior</button>
+    <button type="button" @click="linkLayerToExistingOrNew" :disabled="!canWrite">Link selected layer</button>
+    <button type="button" @click="simulateDuplicateLayer" :disabled="!canWrite">Simulate duplicate behavior</button>
+
+    <h3>Plugin item details (Story 5.5)</h3>
+    <label for="plugin-target-language">Target language</label>
+    <input id="plugin-target-language" v-model="pluginTargetLanguage" placeholder="fr-CA" />
+    <button type="button" @click="loadPluginLayerDetails">Load linked item details</button>
+
+    <div v-if="pluginDetails">
+      <p>Status: {{ pluginDetails.item.status }}</p>
+      <p>Last editor: {{ pluginDetails.item.lastEditor }}</p>
+      <p>Context: {{ pluginDetails.item.context || 'none' }}</p>
+      <div v-if="pluginDetails.target">
+        <p>Target language: {{ pluginDetails.target.language }}</p>
+        <p>Target status: {{ pluginDetails.target.status }}</p>
+        <p>Target text: {{ pluginDetails.target.translationText || '(empty)' }}</p>
+      </div>
+    </div>
 
     <div v-if="currentLayerLink">
       <p>Current layer link loaded.</p>
