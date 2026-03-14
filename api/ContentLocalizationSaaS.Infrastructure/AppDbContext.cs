@@ -330,6 +330,127 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.LastError).HasMaxLength(500).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.SubscriptionId, x.Status, x.NextAttemptUtc });
         });
+
+        // Story 8.1: explicit FK constraints for core relations
+        builder.Entity<Project>()
+            .HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ProjectAuditLog>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<WorkspaceInvite>()
+            .HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<WorkspaceMembership>()
+            .HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ContentItem>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ContentItem>()
+            .HasOne<CopyComponent>()
+            .WithMany()
+            .HasForeignKey(x => x.CopyComponentId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<CopyComponent>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<UsageReference>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ContentItemRevision>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ProjectLanguage>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ContentItemLanguageTask>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DiscussionThread>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DiscussionComment>()
+            .HasOne<DiscussionThread>()
+            .WithMany()
+            .HasForeignKey(x => x.ThreadId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ExternalReviewLink>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DesignLayerLink>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DesignLayerLink>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<PluginSyncConflict>()
+            .HasOne<DesignLayerLink>()
+            .WithMany()
+            .HasForeignKey(x => x.DesignLayerLinkId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ProjectKeyConvention>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<WebhookSubscription>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<WebhookDeliveryLog>()
+            .HasOne<WebhookSubscription>()
+            .WithMany()
+            .HasForeignKey(x => x.SubscriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
