@@ -46,6 +46,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapDefaultEndpoints();
+app.UseObservabilityMiddleware();
 app.UseApiExceptionMiddleware();
 app.UseHttpsRedirection();
 app.UseAuthentication();
