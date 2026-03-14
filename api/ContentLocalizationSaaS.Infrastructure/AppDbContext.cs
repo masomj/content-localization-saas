@@ -35,6 +35,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ActivityFeedEvent> ActivityFeedEvents => Set<ActivityFeedEvent>();
     public DbSet<PluginSession> PluginSessions => Set<PluginSession>();
     public DbSet<DesignLayerLink> DesignLayerLinks => Set<DesignLayerLink>();
+    public DbSet<PluginSyncConflict> PluginSyncConflicts => Set<PluginSyncConflict>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -274,6 +275,16 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.DuplicateLinkRule).HasMaxLength(32).HasDefaultValue("preserve");
             e.HasIndex(x => new { x.ProjectId, x.DesignFileId, x.LayerId }).IsUnique();
             e.HasIndex(x => x.ContentItemId);
+        });
+
+        builder.Entity<PluginSyncConflict>(e =>
+        {
+            e.ToTable("plugin_sync_conflicts");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.CurrentText).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.Property(x => x.ProposedText).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.Property(x => x.ResolutionState).HasMaxLength(32).HasDefaultValue("open");
+            e.HasIndex(x => new { x.DesignLayerLinkId, x.ResolutionState, x.CreatedUtc });
         });
     }
 }

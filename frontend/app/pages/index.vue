@@ -61,6 +61,11 @@ const layerLinkForm = reactive({ projectId: '', designFileId: 'figma-file-1', la
 const layerLinkSearch = ref('')
 const layerSearchResults = ref<any[]>([])
 const currentLayerLink = ref<any>(null)
+const pluginSyncForm = reactive({ projectId: '', designFileId: 'figma-file-1', languageCode: '', pushLayerId: '', baseSourceText: '', newText: '' })
+const pluginPullUpdates = ref<any[]>([])
+const pluginPushResult = ref<any>(null)
+const pluginScan = reactive({ monitoredLayerIdsCsv: '' })
+const pluginIssues = ref<any[]>([])
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -346,6 +351,60 @@ async function simulateDuplicateLayer() {
   })
 }
 
+async function pluginPullSync() {
+  if (!pluginSyncForm.projectId) return
+  const res: any = await $fetch(`${apiBase}/api/plugin-sync/pull`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: pluginSyncForm.projectId,
+      designFileId: pluginSyncForm.designFileId,
+      languageCode: pluginSyncForm.languageCode || null,
+    },
+  })
+
+  pluginPullUpdates.value = res.updates ?? []
+}
+
+async function pluginPushSync() {
+  if (!pluginSyncForm.projectId || !pluginSyncForm.pushLayerId.trim()) return
+  pluginPushResult.value = await $fetch(`${apiBase}/api/plugin-sync/push`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: pluginSyncForm.projectId,
+      designFileId: pluginSyncForm.designFileId,
+      items: [
+        {
+          layerId: pluginSyncForm.pushLayerId,
+          baseSourceText: pluginSyncForm.baseSourceText,
+          newText: pluginSyncForm.newText,
+        },
+      ],
+    },
+  })
+}
+
+async function scanPluginIssues() {
+  if (!pluginSyncForm.projectId) return
+  const monitoredLayerIds = pluginScan.monitoredLayerIdsCsv
+    .split(',')
+    .map(x => x.trim())
+    .filter(Boolean)
+
+  const res: any = await $fetch(`${apiBase}/api/plugin-diagnostics/scan`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: pluginSyncForm.projectId,
+      designFileId: pluginSyncForm.designFileId,
+      monitoredLayerIds,
+    },
+  })
+
+  pluginIssues.value = res.issues ?? []
+}
+
 async function createExternalReviewLink() {
   if (!externalReviewForm.contentItemId || !externalReviewForm.expiresUtc) return
   const res: any = await $fetch(`${apiBase}/api/external-review/links`, {
@@ -406,6 +465,7 @@ async function loadData() {
       pluginAuth.workspaceId = projects.value[0].workspaceId
       pluginAuth.selectedWorkspaceId = projects.value[0].workspaceId
       layerLinkForm.projectId = projects.value[0].id
+      pluginSyncForm.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
@@ -1072,6 +1132,56 @@ onMounted(loadData)
     <h3>Authorized projects</h3>
     <ul>
       <li v-for="p in pluginProjects" :key="`plugin-${p.id}`">{{ p.name }}</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Plugin sync (Story 5.3)</h2>
+
+    <label for="plugin-sync-project">Project</label>
+    <select id="plugin-sync-project" v-model="pluginSyncForm.projectId">
+      <option value="">Select project</option>
+      <option v-for="p in projects" :key="`sync-${p.id}`" :value="p.id">{{ p.name }}</option>
+    </select>
+
+    <label for="plugin-sync-file">Design file id</label>
+    <input id="plugin-sync-file" v-model="pluginSyncForm.designFileId" />
+
+    <label for="plugin-sync-language">Language (optional)</label>
+    <input id="plugin-sync-language" v-model="pluginSyncForm.languageCode" placeholder="fr-CA" />
+
+    <button type="button" @click="pluginPullSync">Pull approved text to plugin</button>
+    <ul>
+      <li v-for="u in pluginPullUpdates" :key="`pull-${u.layerId}`">{{ u.layerId }} -> {{ u.text }}</li>
+    </ul>
+
+    <h3>Push plugin text updates</h3>
+    <label for="plugin-push-layer">Layer id</label>
+    <input id="plugin-push-layer" v-model="pluginSyncForm.pushLayerId" />
+
+    <label for="plugin-push-base">Base source text</label>
+    <textarea id="plugin-push-base" v-model="pluginSyncForm.baseSourceText" />
+
+    <label for="plugin-push-new">New text</label>
+    <textarea id="plugin-push-new" v-model="pluginSyncForm.newText" />
+
+    <button type="button" @click="pluginPushSync">Push plugin update</button>
+    <div v-if="pluginPushResult">
+      <p>Conflicts present: {{ pluginPushResult.requiresConflictResolution }}</p>
+      <pre>{{ JSON.stringify(pluginPushResult, null, 2) }}</pre>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Plugin diagnostics (Story 5.4)</h2>
+    <label for="plugin-scan-layers">Monitored layer ids (comma separated)</label>
+    <input id="plugin-scan-layers" v-model="pluginScan.monitoredLayerIdsCsv" placeholder="layer-a,layer-b" />
+    <button type="button" @click="scanPluginIssues">Scan plugin issues</button>
+
+    <ul>
+      <li v-for="issue in pluginIssues" :key="`${issue.issueType}-${issue.layerId}`">
+        {{ issue.issueType }} · {{ issue.layerId }} · {{ issue.message }}
+      </li>
     </ul>
   </section>
 

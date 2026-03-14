@@ -149,3 +149,14 @@ test('figma layer linking controls render', async ({ page }) => {
   await expect(page.locator('#layer-duplicate-rule')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Link selected layer' })).toBeVisible()
 })
+
+test('plugin sync and diagnostics controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Plugin sync (Story 5.3)' })).toBeVisible()
+  await expect(page.locator('#plugin-sync-project')).toBeVisible()
+  await expect(page.locator('#plugin-push-layer')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pull approved text to plugin' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Plugin diagnostics (Story 5.4)' })).toBeVisible()
+  await expect(page.locator('#plugin-scan-layers')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Scan plugin issues' })).toBeVisible()
+})

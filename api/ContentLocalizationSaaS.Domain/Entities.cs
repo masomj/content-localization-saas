@@ -226,3 +226,13 @@ public sealed class DesignLayerLink
     public string DuplicateLinkRule { get; set; } = "preserve"; // preserve|clear
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class PluginSyncConflict
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid DesignLayerLinkId { get; set; }
+    public string CurrentText { get; set; } = string.Empty;
+    public string ProposedText { get; set; } = string.Empty;
+    public string ResolutionState { get; set; } = "open";
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
