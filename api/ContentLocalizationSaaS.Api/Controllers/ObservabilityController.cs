@@ -26,6 +26,24 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
             .Where(x => x.HitCount > 1)
             .SumAsync(x => (int?)x.HitCount - 1, cancellationToken) ?? 0;
 
+        var deliveredWebhooks24h = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "delivered" && x.CreatedUtc >= since24h, cancellationToken);
+        var webhookAttempts24h = await db.WebhookDeliveryLogs
+            .Where(x => x.CreatedUtc >= since24h)
+            .SumAsync(x => (int?)x.AttemptCount, cancellationToken) ?? 0;
+        var pendingOldestCreatedUtc = await db.WebhookDeliveryLogs
+            .Where(x => x.Status == "pending")
+            .OrderBy(x => x.CreatedUtc)
+            .Select(x => (DateTime?)x.CreatedUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        var pendingOldestAgeMinutes = pendingOldestCreatedUtc.HasValue
+            ? Math.Round((now - pendingOldestCreatedUtc.Value).TotalMinutes, 2)
+            : 0;
+
+        var totalTerminal24h = deliveredWebhooks24h + failedWebhooks24h;
+        var webhookSuccessRate24h = totalTerminal24h == 0
+            ? 1.0
+            : Math.Round((double)deliveredWebhooks24h / totalTerminal24h, 4);
+
         var correlationId = HttpContext.Items[ObservabilityMiddleware.CorrelationHeader]?.ToString()
                             ?? HttpContext.Response.Headers[ObservabilityMiddleware.CorrelationHeader].ToString();
 
@@ -40,7 +58,11 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
                 failedWebhooks24h,
                 unreadNotifications,
                 idempotencyReplayEvents,
-                idempotencyReplayHits
+                idempotencyReplayHits,
+                deliveredWebhooks24h,
+                webhookAttempts24h,
+                pendingOldestAgeMinutes,
+                webhookSuccessRate24h
             }
         });
     }
