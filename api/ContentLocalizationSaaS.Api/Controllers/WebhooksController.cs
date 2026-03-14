@@ -63,6 +63,7 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
         CancellationToken cancellationToken = default)
     {
         Response.Headers.CacheControl = "no-store";
+        Response.Headers["X-Generated-At-Utc"] = DateTime.UtcNow.ToString("O");
 
         if (projectId == Guid.Empty)
             return BadRequest(new { error = "projectId_required" });
@@ -116,6 +117,7 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
     public async Task<IActionResult> DeadLetters([FromQuery] Guid projectId, [FromQuery] int limit = 200, CancellationToken cancellationToken = default)
     {
         Response.Headers.CacheControl = "no-store";
+        Response.Headers["X-Generated-At-Utc"] = DateTime.UtcNow.ToString("O");
 
         if (projectId == Guid.Empty)
             return BadRequest(new { error = "projectId_required" });
@@ -150,6 +152,7 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
     public async Task<IActionResult> Summary([FromQuery] Guid projectId, [FromQuery] int windowHours = 24, CancellationToken cancellationToken = default)
     {
         Response.Headers.CacheControl = "no-store";
+        Response.Headers["X-Generated-At-Utc"] = DateTime.UtcNow.ToString("O");
 
         if (projectId == Guid.Empty)
             return BadRequest(new { error = "projectId_required" });
