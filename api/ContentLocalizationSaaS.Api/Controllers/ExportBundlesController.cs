@@ -28,6 +28,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         CancellationToken cancellationToken = default)
     {
         Response.Headers.CacheControl = "no-store";
+        Response.Headers["X-Generated-At-Utc"] = DateTime.UtcNow.ToString("O");
 
         var normalizedOperation = operation.Trim().ToLowerInvariant();
         if (!AllowedIdempotencyOperations.Contains(normalizedOperation))

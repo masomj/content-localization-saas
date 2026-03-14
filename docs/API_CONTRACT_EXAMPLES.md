@@ -48,6 +48,7 @@
 > Response headers include `X-Window-Hours` with the effective clamped window on status/summary endpoints.
 > Response headers include `X-Generated-At-Utc` for status/metrics freshness.
 > Webhook query endpoints also return `X-Generated-At-Utc` for list freshness.
+> Idempotency audit endpoint also returns `X-Generated-At-Utc`.
 
 > Webhook audit/list endpoints (`/api/webhooks/deliveries`, `/api/webhooks/dead-letters`, `/api/webhooks/summary`) and idempotency audit (`/api/integration/exports/idempotency-audit`) also return `Cache-Control: no-store`.
 
