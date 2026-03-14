@@ -19,6 +19,12 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
         var deadLetterWebhooks = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "dead_letter", cancellationToken);
         var failedWebhooks24h = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "dead_letter" && x.CreatedUtc >= since24h, cancellationToken);
         var unreadNotifications = await db.UserNotifications.CountAsync(x => !x.IsRead, cancellationToken);
+        var idempotencyReplayEvents = await db.IdempotencyRecords
+            .Where(x => x.HitCount > 1)
+            .CountAsync(cancellationToken);
+        var idempotencyReplayHits = await db.IdempotencyRecords
+            .Where(x => x.HitCount > 1)
+            .SumAsync(x => (int?)x.HitCount - 1, cancellationToken) ?? 0;
 
         var correlationId = HttpContext.Items[ObservabilityMiddleware.CorrelationHeader]?.ToString()
                             ?? HttpContext.Response.Headers[ObservabilityMiddleware.CorrelationHeader].ToString();
@@ -32,7 +38,9 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
                 pendingWebhooks,
                 deadLetterWebhooks,
                 failedWebhooks24h,
-                unreadNotifications
+                unreadNotifications,
+                idempotencyReplayEvents,
+                idempotencyReplayHits
             }
         });
     }
