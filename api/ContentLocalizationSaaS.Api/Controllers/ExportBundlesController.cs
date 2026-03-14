@@ -27,6 +27,8 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         [FromQuery] DateTime? sinceUtc = null,
         CancellationToken cancellationToken = default)
     {
+        Response.Headers.CacheControl = "no-store";
+
         var normalizedOperation = operation.Trim().ToLowerInvariant();
         if (!AllowedIdempotencyOperations.Contains(normalizedOperation))
             return BadRequest(new { error = "unsupported_operation", allowed = AllowedIdempotencyOperations.OrderBy(x => x) });

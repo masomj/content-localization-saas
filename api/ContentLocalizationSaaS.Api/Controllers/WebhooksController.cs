@@ -62,6 +62,8 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
         [FromQuery] int limit = 200,
         CancellationToken cancellationToken = default)
     {
+        Response.Headers.CacheControl = "no-store";
+
         var clampedLimit = Math.Clamp(limit, 1, 1000);
 
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
@@ -109,6 +111,8 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> DeadLetters([FromQuery] Guid projectId, CancellationToken cancellationToken)
     {
+        Response.Headers.CacheControl = "no-store";
+
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
         var logs = await db.WebhookDeliveryLogs
             .Where(x => subIds.Contains(x.SubscriptionId) && x.Status == "dead_letter")
@@ -122,6 +126,8 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Summary([FromQuery] Guid projectId, CancellationToken cancellationToken)
     {
+        Response.Headers.CacheControl = "no-store";
+
         var since24h = DateTime.UtcNow.AddHours(-24);
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
 

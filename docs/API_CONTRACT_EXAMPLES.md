@@ -46,6 +46,8 @@
 
 > Response headers include `Cache-Control: no-store`.
 
+> Webhook audit/list endpoints (`/api/webhooks/deliveries`, `/api/webhooks/dead-letters`, `/api/webhooks/summary`) and idempotency audit (`/api/integration/exports/idempotency-audit`) also return `Cache-Control: no-store`.
+
 ```json
 {
   "timestampUtc": "2026-03-14T18:10:00Z",
