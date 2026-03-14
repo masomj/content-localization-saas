@@ -65,3 +65,13 @@ See `docs/ARCHITECTURE.md` for the detailed draft architecture.
 
 - Versioning policy: `docs/API_VERSIONING.md`
 - Contract payload examples (success + error): `docs/API_CONTRACT_EXAMPLES.md`
+
+## CLI
+
+- Official CLI docs and CI usage: `docs/CLI.md`
+- Build command:
+
+```bash
+cd api
+ dotnet build ContentLocalizationSaaS.Cli/ContentLocalizationSaaS.Cli.csproj -c Release
+```
