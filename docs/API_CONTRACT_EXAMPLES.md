@@ -39,3 +39,21 @@
   }
 }
 ```
+
+## Idempotency audit example
+`GET /api/integration/exports/idempotency-audit?operation=export_bundle&limit=2`
+
+```json
+{
+  "count": 2,
+  "rows": [
+    {
+      "operation": "export_bundle",
+      "key": "f311f0f0a4744f9d8f4d40ef8cd7e0f8",
+      "hitCount": 3,
+      "firstSeenUtc": "2026-03-14T17:40:12Z",
+      "lastSeenUtc": "2026-03-14T17:43:10Z"
+    }
+  ]
+}
+```

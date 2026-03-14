@@ -13,6 +13,28 @@ namespace ContentLocalizationSaaS.Api.Controllers;
 [Route("api/integration/exports")]
 public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
 {
+    [HttpGet("idempotency-audit")]
+    [RequireAppRole(AppRole.Admin)]
+    public async Task<IActionResult> IdempotencyAudit([FromQuery] string operation = "export_bundle", [FromQuery] int limit = 100, CancellationToken cancellationToken = default)
+    {
+        var clampedLimit = Math.Clamp(limit, 1, 500);
+        var rows = await db.IdempotencyRecords
+            .Where(x => x.Operation == operation)
+            .OrderByDescending(x => x.LastSeenUtc)
+            .Take(clampedLimit)
+            .Select(x => new
+            {
+                x.Operation,
+                x.Key,
+                x.HitCount,
+                x.FirstSeenUtc,
+                x.LastSeenUtc
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(new { count = rows.Count, rows });
+    }
+
     private static readonly ConcurrentDictionary<string, Queue<DateTime>> RequestHistory = new();
     private const int MaxPerMinute = 30;
 
