@@ -73,6 +73,61 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
             EventType = "review_approved"
         });
 
+        var subscriptions = await db.WebhookSubscriptions.Where(x => x.ProjectId == item.ProjectId && x.IsActive).ToListAsync(cancellationToken);
+        if (subscriptions.Count > 0)
+        {
+            var languageTasks = await db.ContentItemLanguageTasks.Where(x => x.ContentItemId == item.Id).ToListAsync(cancellationToken);
+            var version = item.ApprovedUtc?.Ticks ?? DateTime.UtcNow.Ticks;
+
+            foreach (var sub in subscriptions)
+            {
+                var sourcePayload = new
+                {
+                    projectId = item.ProjectId,
+                    itemKey = item.Key,
+                    language = "source",
+                    version,
+                    status = item.Status,
+                    approvedBy = item.ApprovedByEmail,
+                    approvedUtc = item.ApprovedUtc
+                };
+
+                db.WebhookDeliveryLogs.Add(new WebhookDeliveryLog
+                {
+                    SubscriptionId = sub.Id,
+                    EventType = "content.approved",
+                    PayloadJson = System.Text.Json.JsonSerializer.Serialize(sourcePayload),
+                    AttemptCount = 0,
+                    Status = "pending",
+                    NextAttemptUtc = DateTime.UtcNow
+                });
+
+                foreach (var task in languageTasks)
+                {
+                    var payload = new
+                    {
+                        projectId = item.ProjectId,
+                        itemKey = item.Key,
+                        language = task.LanguageCode,
+                        version,
+                        status = task.Status,
+                        approvedBy = item.ApprovedByEmail,
+                        approvedUtc = item.ApprovedUtc
+                    };
+
+                    db.WebhookDeliveryLogs.Add(new WebhookDeliveryLog
+                    {
+                        SubscriptionId = sub.Id,
+                        EventType = "content.approved",
+                        PayloadJson = System.Text.Json.JsonSerializer.Serialize(payload),
+                        AttemptCount = 0,
+                        Status = "pending",
+                        NextAttemptUtc = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         return Ok(item);
     }

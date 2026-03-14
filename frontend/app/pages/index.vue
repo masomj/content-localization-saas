@@ -76,6 +76,12 @@ const keySuggestion = ref('')
 const keyValidationInput = ref('')
 const keyValidationResult = ref<any>(null)
 const keyMigrationReport = ref<any[]>([])
+const integrationToken = ref('')
+const integrationTokenScope = ref('exports:read')
+const exportBundleResult = ref<any>(null)
+const webhookForm = reactive({ projectId: '', endpointUrl: '', secret: 'dev-secret' })
+const webhookSubscriptions = ref<any[]>([])
+const webhookDeliveries = ref<any[]>([])
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -479,6 +485,50 @@ async function loadKeyMigrationReport() {
   keyMigrationReport.value = res.report
 }
 
+async function createIntegrationToken() {
+  const res: any = await $fetch(`${apiBase}/api/integration/tokens`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: { name: 'ci-token', scope: integrationTokenScope.value },
+  })
+  integrationToken.value = res.token
+}
+
+async function loadExportBundle() {
+  if (!pluginSyncForm.projectId || !integrationToken.value) return
+  exportBundleResult.value = await $fetch(`${apiBase}/api/integration/exports/bundle?projectId=${pluginSyncForm.projectId}`, {
+    headers: { ...authHeaders(), 'X-Api-Token': integrationToken.value },
+  })
+}
+
+async function createWebhookSubscription() {
+  if (!webhookForm.projectId || !webhookForm.endpointUrl.trim() || !webhookForm.secret.trim()) return
+  await $fetch(`${apiBase}/api/webhooks/subscriptions`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: webhookForm.projectId,
+      endpointUrl: webhookForm.endpointUrl,
+      secret: webhookForm.secret,
+    },
+  })
+  await loadWebhookData()
+}
+
+async function loadWebhookData() {
+  if (!webhookForm.projectId) return
+  webhookSubscriptions.value = await $fetch(`${apiBase}/api/webhooks/subscriptions?projectId=${webhookForm.projectId}`, { headers: authHeaders() })
+  webhookDeliveries.value = await $fetch(`${apiBase}/api/webhooks/deliveries?projectId=${webhookForm.projectId}`, { headers: authHeaders() })
+}
+
+async function processPendingWebhooks() {
+  await $fetch(`${apiBase}/api/webhooks/process-pending`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+  await loadWebhookData()
+}
+
 async function createExternalReviewLink() {
   if (!externalReviewForm.contentItemId || !externalReviewForm.expiresUtc) return
   const res: any = await $fetch(`${apiBase}/api/external-review/links`, {
@@ -541,6 +591,7 @@ async function loadData() {
       layerLinkForm.projectId = projects.value[0].id
       pluginSyncForm.projectId = projects.value[0].id
       keyConvention.projectId = projects.value[0].id
+      webhookForm.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
@@ -1252,6 +1303,50 @@ onMounted(loadData)
         {{ row.currentKey }} -> {{ row.suggestedKey }}
         <span v-if="row.needsMigration"> (needs migration)</span>
       </li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Bundle export + API tokens (Story 6.3/6.4)</h2>
+
+    <label for="integration-token-scope">Token scope</label>
+    <input id="integration-token-scope" v-model="integrationTokenScope" placeholder="exports:read" />
+    <button type="button" @click="createIntegrationToken">Create API token</button>
+    <p v-if="integrationToken">Token: {{ integrationToken }}</p>
+
+    <button type="button" @click="loadExportBundle">Load export bundle</button>
+    <div v-if="exportBundleResult">
+      <p>Bundle URL available: {{ !!exportBundleResult.signedBundleUrl }}</p>
+      <pre>{{ JSON.stringify(exportBundleResult.payload, null, 2) }}</pre>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Webhooks (Story 6.5)</h2>
+
+    <label for="webhook-project">Project</label>
+    <select id="webhook-project" v-model="webhookForm.projectId" @change="loadWebhookData">
+      <option value="">Select project</option>
+      <option v-for="p in projects" :key="`wh-${p.id}`" :value="p.id">{{ p.name }}</option>
+    </select>
+
+    <label for="webhook-endpoint">Endpoint URL</label>
+    <input id="webhook-endpoint" v-model="webhookForm.endpointUrl" placeholder="https://example.com/webhook" />
+
+    <label for="webhook-secret">Secret</label>
+    <input id="webhook-secret" v-model="webhookForm.secret" />
+
+    <button type="button" @click="createWebhookSubscription">Create webhook subscription</button>
+    <button type="button" @click="processPendingWebhooks">Process pending deliveries</button>
+
+    <h3>Subscriptions</h3>
+    <ul>
+      <li v-for="s in webhookSubscriptions" :key="s.id">{{ s.endpointUrl }} · active={{ s.isActive }}</li>
+    </ul>
+
+    <h3>Delivery logs</h3>
+    <ul>
+      <li v-for="d in webhookDeliveries" :key="d.id">{{ d.eventType }} · status={{ d.status }} · attempts={{ d.attemptCount }}</li>
     </ul>
   </section>
 

@@ -177,6 +177,19 @@ test('key convention controls render', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Generate migration report' })).toBeVisible()
 })
 
+test('bundle/token and webhook controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Bundle export + API tokens (Story 6.3/6.4)' })).toBeVisible()
+  await expect(page.locator('#integration-token-scope')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Create API token' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Load export bundle' })).toBeVisible()
+
+  await expect(page.getByRole('heading', { name: 'Webhooks (Story 6.5)' })).toBeVisible()
+  await expect(page.locator('#webhook-project')).toBeVisible()
+  await expect(page.locator('#webhook-endpoint')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Create webhook subscription' })).toBeVisible()
+})
+
 test('plugin status/context details controls render', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Figma layer linking (Story 5.2)' })).toBeVisible()

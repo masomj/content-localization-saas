@@ -37,6 +37,9 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<DesignLayerLink> DesignLayerLinks => Set<DesignLayerLink>();
     public DbSet<PluginSyncConflict> PluginSyncConflicts => Set<PluginSyncConflict>();
     public DbSet<ProjectKeyConvention> ProjectKeyConventions => Set<ProjectKeyConvention>();
+    public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
+    public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
+    public DbSet<WebhookDeliveryLog> WebhookDeliveryLogs => Set<WebhookDeliveryLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -295,6 +298,36 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Convention).HasMaxLength(32).HasDefaultValue("dot.case");
             e.Property(x => x.Prefix).HasMaxLength(64).HasDefaultValue(string.Empty);
             e.HasIndex(x => x.ProjectId).IsUnique();
+        });
+
+        builder.Entity<ApiToken>(e =>
+        {
+            e.ToTable("api_tokens");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            e.Property(x => x.TokenHash).HasMaxLength(128).IsRequired();
+            e.Property(x => x.Scope).HasMaxLength(128).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.TokenHash).IsUnique();
+        });
+
+        builder.Entity<WebhookSubscription>(e =>
+        {
+            e.ToTable("webhook_subscriptions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EndpointUrl).HasMaxLength(500).IsRequired();
+            e.Property(x => x.Secret).HasMaxLength(128).IsRequired();
+            e.HasIndex(x => new { x.ProjectId, x.IsActive });
+        });
+
+        builder.Entity<WebhookDeliveryLog>(e =>
+        {
+            e.ToTable("webhook_delivery_logs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(64).IsRequired();
+            e.Property(x => x.PayloadJson).HasMaxLength(8000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue("pending");
+            e.Property(x => x.LastError).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.SubscriptionId, x.Status, x.NextAttemptUtc });
         });
     }
 }

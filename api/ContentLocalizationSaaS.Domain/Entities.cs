@@ -225,6 +225,41 @@ public sealed class ProjectKeyConvention
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 }
 
+public sealed class ApiToken
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public string TokenHash { get; set; } = string.Empty;
+    public string Scope { get; set; } = string.Empty;
+    public bool IsRevoked { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? RevokedUtc { get; set; }
+}
+
+public sealed class WebhookSubscription
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public string EndpointUrl { get; set; } = string.Empty;
+    public string Secret { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class WebhookDeliveryLog
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid SubscriptionId { get; set; }
+    public string EventType { get; set; } = string.Empty;
+    public string PayloadJson { get; set; } = string.Empty;
+    public int AttemptCount { get; set; } = 0;
+    public string Status { get; set; } = "pending"; // pending|delivered|failed
+    public DateTime? NextAttemptUtc { get; set; }
+    public string LastError { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? DeliveredUtc { get; set; }
+}
+
 public sealed class DesignLayerLink
 {
     public Guid Id { get; set; } = Guid.NewGuid();
