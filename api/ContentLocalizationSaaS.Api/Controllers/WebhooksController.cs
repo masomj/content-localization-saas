@@ -120,7 +120,12 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
             .OrderByDescending(x => x.CreatedUtc)
             .ToListAsync(cancellationToken);
 
-        return Ok(logs);
+        return Ok(new
+        {
+            generatedAtUtc = DateTime.UtcNow,
+            count = logs.Count,
+            logs
+        });
     }
 
     [HttpGet("summary")]
@@ -142,6 +147,7 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
 
         return Ok(new
         {
+            generatedAtUtc = DateTime.UtcNow,
             projectId,
             total,
             byStatus = new
