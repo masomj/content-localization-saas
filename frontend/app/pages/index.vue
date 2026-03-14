@@ -68,6 +68,8 @@ const pluginScan = reactive({ monitoredLayerIdsCsv: '' })
 const pluginIssues = ref<any[]>([])
 const pluginDetails = ref<any>(null)
 const pluginTargetLanguage = ref('')
+const neutralExport = ref<any>(null)
+const neutralExportError = ref('')
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -421,6 +423,17 @@ async function scanPluginIssues() {
   })
 
   pluginIssues.value = res.issues ?? []
+}
+
+async function loadNeutralExport() {
+  if (!pluginSyncForm.projectId) return
+  neutralExportError.value = ''
+  try {
+    neutralExport.value = await $fetch(`${apiBase}/api/exports/neutral?projectId=${pluginSyncForm.projectId}`, { headers: authHeaders() })
+  } catch (e: any) {
+    neutralExport.value = null
+    neutralExportError.value = e?.data?.error ?? 'neutral_export_failed'
+  }
 }
 
 async function createExternalReviewLink() {
@@ -1151,6 +1164,16 @@ onMounted(loadData)
     <ul>
       <li v-for="p in pluginProjects" :key="`plugin-${p.id}`">{{ p.name }}</li>
     </ul>
+  </section>
+
+  <section class="card">
+    <h2>Neutral i18n export (Story 6.1)</h2>
+    <button type="button" @click="loadNeutralExport">Generate neutral export</button>
+    <p v-if="neutralExportError" class="error">{{ neutralExportError }}</p>
+    <div v-if="neutralExport">
+      <p>Schema: {{ neutralExport.schema }}</p>
+      <pre>{{ JSON.stringify(neutralExport.files, null, 2) }}</pre>
+    </div>
   </section>
 
   <section class="card">

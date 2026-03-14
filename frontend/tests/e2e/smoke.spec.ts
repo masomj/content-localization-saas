@@ -161,6 +161,12 @@ test('plugin sync and diagnostics controls render', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Scan plugin issues' })).toBeVisible()
 })
 
+test('neutral export controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Neutral i18n export (Story 6.1)' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Generate neutral export' })).toBeVisible()
+})
+
 test('plugin status/context details controls render', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Figma layer linking (Story 5.2)' })).toBeVisible()
