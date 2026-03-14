@@ -17,6 +17,12 @@ public sealed record RequeueWebhookDeliveryRequest(Guid DeliveryId);
 public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksController> logger) : ControllerBase
 {
     private const int MaxAttempts = 5;
+    private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "pending",
+        "delivered",
+        "dead_letter"
+    };
 
     [HttpGet("subscriptions")]
     [RequireAppRole(AppRole.Admin)]
@@ -64,6 +70,9 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
         if (!string.IsNullOrWhiteSpace(status))
         {
             var s = status.Trim().ToLowerInvariant();
+            if (!AllowedStatuses.Contains(s))
+                return BadRequest(new { error = "unsupported_status", allowed = AllowedStatuses.OrderBy(x => x) });
+
             query = query.Where(x => x.Status == s);
         }
 

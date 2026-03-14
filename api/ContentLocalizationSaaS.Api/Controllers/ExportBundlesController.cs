@@ -13,6 +13,11 @@ namespace ContentLocalizationSaaS.Api.Controllers;
 [Route("api/integration/exports")]
 public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
 {
+    private static readonly HashSet<string> AllowedIdempotencyOperations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "export_bundle"
+    };
+
     [HttpGet("idempotency-audit")]
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> IdempotencyAudit(
@@ -22,11 +27,15 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         [FromQuery] DateTime? sinceUtc = null,
         CancellationToken cancellationToken = default)
     {
+        var normalizedOperation = operation.Trim().ToLowerInvariant();
+        if (!AllowedIdempotencyOperations.Contains(normalizedOperation))
+            return BadRequest(new { error = "unsupported_operation", allowed = AllowedIdempotencyOperations.OrderBy(x => x) });
+
         var clampedLimit = Math.Clamp(limit, 1, 500);
         var clampedMinHits = Math.Max(1, minHitCount);
 
         var query = db.IdempotencyRecords
-            .Where(x => x.Operation == operation && x.HitCount >= clampedMinHits);
+            .Where(x => x.Operation == normalizedOperation && x.HitCount >= clampedMinHits);
 
         if (sinceUtc.HasValue)
         {
@@ -53,7 +62,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             count = rows.Count,
             total,
             truncated = total > rows.Count,
-            filters = new { operation, minHitCount = clampedMinHits, sinceUtc, limit = clampedLimit },
+            filters = new { operation = normalizedOperation, minHitCount = clampedMinHits, sinceUtc, limit = clampedLimit },
             rows
         });
     }
