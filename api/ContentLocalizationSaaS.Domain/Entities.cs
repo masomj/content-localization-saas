@@ -268,6 +268,9 @@ public sealed class IdempotencyRecord
     public string Operation { get; set; } = string.Empty;
     public string Key { get; set; } = string.Empty;
     public string ResponseJson { get; set; } = string.Empty;
+    public int HitCount { get; set; } = 1;
+    public DateTime FirstSeenUtc { get; set; } = DateTime.UtcNow;
+    public DateTime LastSeenUtc { get; set; } = DateTime.UtcNow;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 

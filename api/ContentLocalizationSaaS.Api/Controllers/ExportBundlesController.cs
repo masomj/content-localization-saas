@@ -29,6 +29,13 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             var existing = await db.IdempotencyRecords.FirstOrDefaultAsync(x => x.Operation == "export_bundle" && x.Key == requestId, cancellationToken);
             if (existing is not null)
             {
+                existing.HitCount += 1;
+                existing.LastSeenUtc = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+
+                Response.Headers["X-Idempotency-Replay"] = "true";
+                Response.Headers["X-Idempotency-HitCount"] = existing.HitCount.ToString();
+
                 var parsed = JsonSerializer.Deserialize<object>(existing.ResponseJson);
                 return Ok(parsed);
             }
@@ -126,7 +133,10 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             {
                 Operation = "export_bundle",
                 Key = requestId,
-                ResponseJson = JsonSerializer.Serialize(responseObj)
+                ResponseJson = JsonSerializer.Serialize(responseObj),
+                HitCount = 1,
+                FirstSeenUtc = DateTime.UtcNow,
+                LastSeenUtc = DateTime.UtcNow
             });
             await db.SaveChangesAsync(cancellationToken);
         }

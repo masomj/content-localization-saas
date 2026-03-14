@@ -341,6 +341,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Operation).HasMaxLength(64).IsRequired();
             e.Property(x => x.Key).HasMaxLength(128).IsRequired();
             e.Property(x => x.ResponseJson).HasMaxLength(8000).HasDefaultValue(string.Empty);
+            e.Property(x => x.HitCount).HasDefaultValue(1);
             e.HasIndex(x => new { x.Operation, x.Key }).IsUnique();
         });
 
