@@ -69,6 +69,8 @@ See `docs/ARCHITECTURE.md` for the detailed draft architecture.
 ## CLI
 
 - Official CLI docs and CI usage: `docs/CLI.md`
+- Integration contract/spec (Story 6.6): `docs/CLI_INTEGRATION.md`
+- Machine-readable CLI spec endpoint: `GET /api/cli/spec`
 - Build command:
 
 ```bash
