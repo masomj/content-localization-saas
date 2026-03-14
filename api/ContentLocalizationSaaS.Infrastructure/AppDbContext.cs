@@ -26,6 +26,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ContentItemRevision> ContentItemRevisions => Set<ContentItemRevision>();
     public DbSet<ProjectLanguage> ProjectLanguages => Set<ProjectLanguage>();
     public DbSet<ContentItemLanguageTask> ContentItemLanguageTasks => Set<ContentItemLanguageTask>();
+    public DbSet<TranslationMemoryEntry> TranslationMemoryEntries => Set<TranslationMemoryEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -166,9 +167,20 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasKey(x => x.Id);
             e.Property(x => x.LanguageCode).HasMaxLength(35).IsRequired();
             e.Property(x => x.AssigneeEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.Property(x => x.TranslationText).HasMaxLength(4000).HasDefaultValue(string.Empty);
             e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue("todo");
             e.HasIndex(x => new { x.ContentItemId, x.LanguageCode }).IsUnique();
             e.HasIndex(x => x.DueUtc);
+        });
+
+        builder.Entity<TranslationMemoryEntry>(e =>
+        {
+            e.ToTable("translation_memory_entries");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SourceText).HasMaxLength(4000).IsRequired();
+            e.Property(x => x.LanguageCode).HasMaxLength(35).IsRequired();
+            e.Property(x => x.TranslationText).HasMaxLength(4000).IsRequired();
+            e.HasIndex(x => new { x.ProjectId, x.LanguageCode, x.SourceText, x.IsApproved });
         });
     }
 }

@@ -36,8 +36,9 @@ const savedFilterPresets = ref<any[]>([])
 const newPresetName = ref('')
 const projectLanguages = ref<any[]>([])
 const languageForm = reactive({ projectId: '', bcp47Code: '', isSource: false })
-const languageTaskForm = reactive({ contentItemId: '', languageCode: '', assigneeEmail: '', dueUtc: '', status: 'todo' })
+const languageTaskForm = reactive({ contentItemId: '', languageCode: '', assigneeEmail: '', dueUtc: '', status: 'todo', translationText: '' })
 const languageTasks = ref<any[]>([])
+const translationSuggestion = ref<any>(null)
 const localizationGrid = ref<any[]>([])
 const localizationGridMeta = reactive({ total: 0, page: 1, pageSize: 10 })
 const localizationFilters = reactive({ stateFilter: '', sortBy: 'itemKey', desc: false })
@@ -465,8 +466,54 @@ async function upsertLanguageTask() {
       contentItemId: languageTaskForm.contentItemId,
       languageCode: languageTaskForm.languageCode,
       assigneeEmail: languageTaskForm.assigneeEmail,
+      translationText: languageTaskForm.translationText,
       dueUtc: languageTaskForm.dueUtc || null,
       status: languageTaskForm.status,
+    },
+  })
+
+  await loadLanguageTasks()
+}
+
+async function loadTranslationSuggestion() {
+  if (!languageTaskForm.contentItemId || !languageTaskForm.languageCode.trim()) {
+    translationSuggestion.value = null
+    return
+  }
+
+  translationSuggestion.value = await $fetch(
+    `${apiBase}/api/language-tasks/suggestions?contentItemId=${languageTaskForm.contentItemId}&languageCode=${languageTaskForm.languageCode}`,
+    { headers: authHeaders() }
+  )
+}
+
+async function applyTranslationSuggestion() {
+  if (!languageTaskForm.contentItemId || !languageTaskForm.languageCode.trim()) return
+
+  await $fetch(`${apiBase}/api/language-tasks/apply-memory`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      contentItemId: languageTaskForm.contentItemId,
+      languageCode: languageTaskForm.languageCode,
+      acceptSuggestion: true,
+    },
+  })
+
+  await loadLanguageTasks()
+}
+
+async function saveManualTranslationToMemoryCandidate() {
+  if (!languageTaskForm.contentItemId || !languageTaskForm.languageCode.trim() || !languageTaskForm.translationText.trim()) return
+
+  await $fetch(`${apiBase}/api/language-tasks/apply-memory`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      contentItemId: languageTaskForm.contentItemId,
+      languageCode: languageTaskForm.languageCode,
+      acceptSuggestion: false,
+      manualTranslationText: languageTaskForm.translationText,
     },
   })
 
@@ -754,7 +801,7 @@ onMounted(loadData)
       </select>
 
       <label for="task-language">Language code</label>
-      <input id="task-language" v-model="languageTaskForm.languageCode" placeholder="fr-CA" />
+      <input id="task-language" v-model="languageTaskForm.languageCode" placeholder="fr-CA" @blur="loadTranslationSuggestion" />
 
       <label for="task-assignee">Assignee email</label>
       <input id="task-assignee" v-model="languageTaskForm.assigneeEmail" placeholder="translator@example.com" />
@@ -765,6 +812,16 @@ onMounted(loadData)
       <label for="task-status">Status</label>
       <input id="task-status" v-model="languageTaskForm.status" placeholder="in_progress" />
 
+      <label for="task-translation">Translation text</label>
+      <textarea id="task-translation" v-model="languageTaskForm.translationText" />
+
+      <button type="button" @click="loadTranslationSuggestion">Check memory suggestion</button>
+      <div v-if="translationSuggestion?.hasSuggestion">
+        <p>Suggested translation: {{ translationSuggestion.suggestion.translationText }}</p>
+        <button type="button" @click="applyTranslationSuggestion">Apply suggestion</button>
+      </div>
+
+      <button type="button" @click="saveManualTranslationToMemoryCandidate">Save manual as memory candidate</button>
       <button type="submit" :disabled="!canWrite">Save language task</button>
     </form>
 

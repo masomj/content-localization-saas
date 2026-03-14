@@ -86,3 +86,10 @@ test('all-languages grid filter and pagination controls render', async ({ page }
   await expect(page.getByRole('button', { name: 'Prev' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Next' })).toBeVisible()
 })
+
+test('translation memory suggestion controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: 'Check memory suggestion' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save manual as memory candidate' })).toBeVisible()
+  await expect(page.locator('#task-translation')).toBeVisible()
+})

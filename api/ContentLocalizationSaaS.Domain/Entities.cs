@@ -121,7 +121,19 @@ public sealed class ContentItemLanguageTask
     public Guid ContentItemId { get; set; }
     public required string LanguageCode { get; set; }
     public string AssigneeEmail { get; set; } = string.Empty;
+    public string TranslationText { get; set; } = string.Empty;
     public DateTime? DueUtc { get; set; }
     public string Status { get; set; } = "todo";
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class TranslationMemoryEntry
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string SourceText { get; set; }
+    public required string LanguageCode { get; set; }
+    public required string TranslationText { get; set; }
+    public bool IsApproved { get; set; } = true;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }

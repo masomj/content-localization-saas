@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ContentLocalizationSaaS.Api.Controllers;
 
-public sealed record UpsertLanguageTaskRequest(Guid ContentItemId, string LanguageCode, string? AssigneeEmail, DateTime? DueUtc, string Status);
+public sealed record UpsertLanguageTaskRequest(Guid ContentItemId, string LanguageCode, string? AssigneeEmail, DateTime? DueUtc, string Status, string? TranslationText);
+public sealed record ApplyTranslationMemoryRequest(Guid ContentItemId, string LanguageCode, bool AcceptSuggestion, string? ManualTranslationText);
 
 [ApiController]
 [Route("api/language-tasks")]
@@ -21,6 +22,24 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
 
         var rows = await query.OrderBy(x => x.LanguageCode).ToListAsync(cancellationToken);
         return Ok(rows);
+    }
+
+    [HttpGet("suggestions")]
+    public async Task<IActionResult> Suggestions([FromQuery] Guid contentItemId, [FromQuery] string languageCode, CancellationToken cancellationToken)
+    {
+        var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == contentItemId, cancellationToken);
+        if (item is null) return NotFound();
+
+        var suggestion = await db.TranslationMemoryEntries
+            .Where(x => x.ProjectId == item.ProjectId && x.LanguageCode == languageCode && x.SourceText == item.Source && x.IsApproved)
+            .OrderByDescending(x => x.CreatedUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return Ok(new
+        {
+            hasSuggestion = suggestion is not null,
+            suggestion = suggestion is null ? null : new { suggestion.Id, suggestion.TranslationText, suggestion.CreatedUtc }
+        });
     }
 
     [HttpPost]
@@ -40,6 +59,7 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
                 ContentItemId = request.ContentItemId,
                 LanguageCode = request.LanguageCode,
                 AssigneeEmail = request.AssigneeEmail?.Trim().ToLowerInvariant() ?? string.Empty,
+                TranslationText = request.TranslationText?.Trim() ?? string.Empty,
                 DueUtc = request.DueUtc,
                 Status = request.Status.Trim()
             };
@@ -48,11 +68,69 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
         else
         {
             existing.AssigneeEmail = request.AssigneeEmail?.Trim().ToLowerInvariant() ?? string.Empty;
+            existing.TranslationText = request.TranslationText?.Trim() ?? existing.TranslationText;
             existing.DueUtc = request.DueUtc;
             existing.Status = request.Status.Trim();
         }
 
         await db.SaveChangesAsync(cancellationToken);
         return Ok(existing);
+    }
+
+    [HttpPost("apply-memory")]
+    [RequireAppRole(AppRole.Editor)]
+    public async Task<IActionResult> ApplyTranslationMemory([FromBody] ApplyTranslationMemoryRequest request, CancellationToken cancellationToken)
+    {
+        var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == request.ContentItemId, cancellationToken);
+        if (item is null) return NotFound();
+
+        var task = await db.ContentItemLanguageTasks
+            .FirstOrDefaultAsync(x => x.ContentItemId == request.ContentItemId && x.LanguageCode == request.LanguageCode, cancellationToken);
+
+        if (task is null)
+        {
+            task = new ContentItemLanguageTask
+            {
+                ContentItemId = request.ContentItemId,
+                LanguageCode = request.LanguageCode,
+                Status = "todo"
+            };
+            db.ContentItemLanguageTasks.Add(task);
+        }
+
+        if (request.AcceptSuggestion)
+        {
+            var memory = await db.TranslationMemoryEntries
+                .Where(x => x.ProjectId == item.ProjectId && x.LanguageCode == request.LanguageCode && x.SourceText == item.Source && x.IsApproved)
+                .OrderByDescending(x => x.CreatedUtc)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (memory is null) return BadRequest(new { error = "no_memory_suggestion" });
+
+            task.TranslationText = memory.TranslationText;
+            task.Status = "pending_review";
+            await db.SaveChangesAsync(cancellationToken);
+            return Ok(new { status = "suggestion_applied", task.TranslationText, task.Status });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ManualTranslationText))
+        {
+            return BadRequest(new { error = "manual_translation_required" });
+        }
+
+        task.TranslationText = request.ManualTranslationText.Trim();
+        task.Status = "pending_review";
+
+        db.TranslationMemoryEntries.Add(new TranslationMemoryEntry
+        {
+            ProjectId = item.ProjectId,
+            SourceText = item.Source,
+            LanguageCode = request.LanguageCode,
+            TranslationText = task.TranslationText,
+            IsApproved = false
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(new { status = "manual_translation_recorded", task.TranslationText, task.Status, memoryCandidate = true });
     }
 }
