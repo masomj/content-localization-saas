@@ -48,18 +48,39 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
 
     [HttpGet("deliveries")]
     [RequireAppRole(AppRole.Admin)]
-    public async Task<IActionResult> Deliveries([FromQuery] Guid projectId, [FromQuery] string? status, CancellationToken cancellationToken)
+    public async Task<IActionResult> Deliveries(
+        [FromQuery] Guid projectId,
+        [FromQuery] string? status,
+        [FromQuery] DateTime? sinceUtc,
+        [FromQuery] DateTime? untilUtc,
+        CancellationToken cancellationToken)
     {
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
         var query = db.WebhookDeliveryLogs.Where(x => subIds.Contains(x.SubscriptionId));
+
         if (!string.IsNullOrWhiteSpace(status))
         {
             var s = status.Trim().ToLowerInvariant();
             query = query.Where(x => x.Status == s);
         }
 
+        if (sinceUtc.HasValue)
+        {
+            query = query.Where(x => x.CreatedUtc >= sinceUtc.Value);
+        }
+
+        if (untilUtc.HasValue)
+        {
+            query = query.Where(x => x.CreatedUtc <= untilUtc.Value);
+        }
+
         var logs = await query.OrderByDescending(x => x.CreatedUtc).ToListAsync(cancellationToken);
-        return Ok(logs);
+        return Ok(new
+        {
+            count = logs.Count,
+            filters = new { projectId, status, sinceUtc, untilUtc },
+            logs
+        });
     }
 
     [HttpGet("dead-letters")]
