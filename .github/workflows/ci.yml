@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  ASPIRE_CONTAINER_RUNTIME: docker
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -45,6 +48,51 @@ jobs:
       - name: Optional backend lint (dotnet format)
         run: dotnet format ContentLocalizationSaaS.slnx --verify-no-changes --no-restore
         working-directory: api
+
+  integration:
+    name: Integration tests (Aspire)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Container runtime health
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker version
+          docker info
+
+      - name: Restore
+        run: dotnet restore ContentLocalizationSaaS.slnx
+        working-directory: api
+
+      - name: Run integration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet test ContentLocalizationSaaS.Api.IntegrationTests/ContentLocalizationSaaS.Api.IntegrationTests.csproj \
+            --configuration Release \
+            --nologo \
+            --logger "trx;LogFileName=integration-tests.trx" \
+            2>&1 | tee integration-tests.log
+        working-directory: api
+
+      - name: Upload integration diagnostics (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-diagnostics
+          path: |
+            api/integration-tests.log
+            api/**/integration-tests.trx
+          if-no-files-found: ignore
 
   frontend:
     name: Frontend lint + e2e
