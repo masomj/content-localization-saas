@@ -216,6 +216,15 @@ public sealed class PluginSession
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 
+public sealed class ProjectKeyConvention
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public string Convention { get; set; } = "dot.case"; // dot.case | snake_case | kebab-case
+    public string Prefix { get; set; } = string.Empty;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
 public sealed class DesignLayerLink
 {
     public Guid Id { get; set; } = Guid.NewGuid();

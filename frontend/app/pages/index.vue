@@ -70,6 +70,12 @@ const pluginDetails = ref<any>(null)
 const pluginTargetLanguage = ref('')
 const neutralExport = ref<any>(null)
 const neutralExportError = ref('')
+const keyConvention = reactive({ projectId: '', convention: 'dot.case', prefix: '' })
+const keySuggestionInput = ref('')
+const keySuggestion = ref('')
+const keyValidationInput = ref('')
+const keyValidationResult = ref<any>(null)
+const keyMigrationReport = ref<any[]>([])
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -436,6 +442,43 @@ async function loadNeutralExport() {
   }
 }
 
+async function loadKeyConvention() {
+  if (!keyConvention.projectId) return
+  const row: any = await $fetch(`${apiBase}/api/key-conventions?projectId=${keyConvention.projectId}`, { headers: authHeaders() })
+  keyConvention.convention = row.convention
+  keyConvention.prefix = row.prefix
+}
+
+async function saveKeyConvention() {
+  if (!keyConvention.projectId) return
+  await $fetch(`${apiBase}/api/key-conventions`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: keyConvention.projectId,
+      convention: keyConvention.convention,
+      prefix: keyConvention.prefix,
+    },
+  })
+}
+
+async function suggestKey() {
+  if (!keyConvention.projectId || !keySuggestionInput.value.trim()) return
+  const res: any = await $fetch(`${apiBase}/api/key-conventions/suggest?projectId=${keyConvention.projectId}&text=${encodeURIComponent(keySuggestionInput.value)}`, { headers: authHeaders() })
+  keySuggestion.value = res.suggestion
+}
+
+async function validateKeyInput() {
+  if (!keyConvention.projectId || !keyValidationInput.value.trim()) return
+  keyValidationResult.value = await $fetch(`${apiBase}/api/key-conventions/validate?projectId=${keyConvention.projectId}&key=${encodeURIComponent(keyValidationInput.value)}`, { headers: authHeaders() })
+}
+
+async function loadKeyMigrationReport() {
+  if (!keyConvention.projectId) return
+  const res: any = await $fetch(`${apiBase}/api/key-conventions/migration-report?projectId=${keyConvention.projectId}`, { headers: authHeaders() })
+  keyMigrationReport.value = res.report
+}
+
 async function createExternalReviewLink() {
   if (!externalReviewForm.contentItemId || !externalReviewForm.expiresUtc) return
   const res: any = await $fetch(`${apiBase}/api/external-review/links`, {
@@ -497,6 +540,7 @@ async function loadData() {
       pluginAuth.selectedWorkspaceId = projects.value[0].workspaceId
       layerLinkForm.projectId = projects.value[0].id
       pluginSyncForm.projectId = projects.value[0].id
+      keyConvention.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
@@ -1163,6 +1207,51 @@ onMounted(loadData)
     <h3>Authorized projects</h3>
     <ul>
       <li v-for="p in pluginProjects" :key="`plugin-${p.id}`">{{ p.name }}</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Key convention controls (Story 6.2)</h2>
+
+    <label for="key-convention-project">Project</label>
+    <select id="key-convention-project" v-model="keyConvention.projectId" @change="loadKeyConvention">
+      <option value="">Select project</option>
+      <option v-for="p in projects" :key="`kc-${p.id}`" :value="p.id">{{ p.name }}</option>
+    </select>
+
+    <label for="key-convention-type">Convention</label>
+    <select id="key-convention-type" v-model="keyConvention.convention">
+      <option value="dot.case">dot.case</option>
+      <option value="snake_case">snake_case</option>
+      <option value="kebab-case">kebab-case</option>
+    </select>
+
+    <label for="key-convention-prefix">Prefix</label>
+    <input id="key-convention-prefix" v-model="keyConvention.prefix" placeholder="checkout." />
+    <button type="button" @click="saveKeyConvention">Save key convention</button>
+
+    <h3>Suggest key</h3>
+    <input v-model="keySuggestionInput" placeholder="Primary checkout button label" aria-label="Key suggestion input" />
+    <button type="button" @click="suggestKey">Suggest key</button>
+    <p v-if="keySuggestion">Suggested: {{ keySuggestion }}</p>
+
+    <h3>Validate manual key</h3>
+    <input v-model="keyValidationInput" placeholder="checkout.primary.button" aria-label="Manual key input" />
+    <button type="button" @click="validateKeyInput">Validate key</button>
+    <div v-if="keyValidationResult">
+      <p>Valid: {{ keyValidationResult.valid }}</p>
+      <ul>
+        <li v-for="err in keyValidationResult.errors" :key="`key-err-${err}`">{{ err }}</li>
+      </ul>
+    </div>
+
+    <h3>Migration helper</h3>
+    <button type="button" @click="loadKeyMigrationReport">Generate migration report</button>
+    <ul>
+      <li v-for="row in keyMigrationReport" :key="`migration-${row.currentKey}`">
+        {{ row.currentKey }} -> {{ row.suggestedKey }}
+        <span v-if="row.needsMigration"> (needs migration)</span>
+      </li>
     </ul>
   </section>
 

@@ -36,6 +36,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<PluginSession> PluginSessions => Set<PluginSession>();
     public DbSet<DesignLayerLink> DesignLayerLinks => Set<DesignLayerLink>();
     public DbSet<PluginSyncConflict> PluginSyncConflicts => Set<PluginSyncConflict>();
+    public DbSet<ProjectKeyConvention> ProjectKeyConventions => Set<ProjectKeyConvention>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -285,6 +286,15 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.ProposedText).HasMaxLength(4000).HasDefaultValue(string.Empty);
             e.Property(x => x.ResolutionState).HasMaxLength(32).HasDefaultValue("open");
             e.HasIndex(x => new { x.DesignLayerLinkId, x.ResolutionState, x.CreatedUtc });
+        });
+
+        builder.Entity<ProjectKeyConvention>(e =>
+        {
+            e.ToTable("project_key_conventions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Convention).HasMaxLength(32).HasDefaultValue("dot.case");
+            e.Property(x => x.Prefix).HasMaxLength(64).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.ProjectId).IsUnique();
         });
     }
 }

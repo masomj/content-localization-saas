@@ -167,6 +167,16 @@ test('neutral export controls render', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Generate neutral export' })).toBeVisible()
 })
 
+test('key convention controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Key convention controls (Story 6.2)' })).toBeVisible()
+  await expect(page.locator('#key-convention-project')).toBeVisible()
+  await expect(page.locator('#key-convention-type')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save key convention' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Suggest key' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Generate migration report' })).toBeVisible()
+})
+
 test('plugin status/context details controls render', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Figma layer linking (Story 5.2)' })).toBeVisible()
