@@ -55,3 +55,16 @@ public sealed class WorkspaceMembership
     public bool IsActive { get; set; } = true;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class ContentItem
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string Key { get; set; }
+    public required string Source { get; set; }
+    public required string Status { get; set; }
+    public string Tags { get; set; } = string.Empty; // pipe-delimited for MVP
+    public string Context { get; set; } = string.Empty;
+    public string Notes { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

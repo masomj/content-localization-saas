@@ -11,6 +11,7 @@ builder.Services.AddControllers();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProjectRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateContentItemRequestValidator>();
 
 var app = builder.Build();
 

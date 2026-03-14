@@ -32,3 +32,11 @@ test('membership audit filter controls render for admin', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Membership audit' })).toBeVisible()
   await expect(page.locator('#audit-target-email')).toBeVisible()
 })
+
+test('content item schema form fields render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Content item schema (Story 2.1)' })).toBeVisible()
+  await expect(page.locator('#content-key')).toBeVisible()
+  await expect(page.locator('#content-source')).toBeVisible()
+  await expect(page.locator('#content-status')).toBeVisible()
+})

@@ -17,6 +17,10 @@ const permissions = ref<PermissionState>({ role: 'Admin', canRead: true, canWrit
 const workspaceForm = reactive({ name: '' })
 const projectForm = reactive({ workspaceId: '', name: '', sourceLanguage: '', description: '' })
 const projectSettingsForm = reactive({ id: '', name: '', sourceLanguage: '', description: '' })
+const contentItemForm = reactive({ projectId: '', key: '', source: '', status: 'draft', tags: '', context: '', notes: '' })
+const contentItems = ref<any[]>([])
+const contentSearch = ref('')
+const contentError = ref('')
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -27,6 +31,9 @@ const errors = reactive<Record<string, string>>({
   settingsName: '',
   settingsLanguage: '',
   settingsDescription: '',
+  contentKey: '',
+  contentSource: '',
+  contentStatus: '',
 })
 
 const apiWarning = ref('')
@@ -77,6 +84,14 @@ async function loadPermissions() {
   }
 }
 
+async function loadContentItems() {
+  const params = new URLSearchParams()
+  if (contentItemForm.projectId) params.set('projectId', contentItemForm.projectId)
+  if (contentSearch.value.trim()) params.set('search', contentSearch.value.trim())
+  const qs = params.toString()
+  contentItems.value = await $fetch(`${apiBase}/api/content-items${qs ? `?${qs}` : ''}`, { headers: authHeaders() })
+}
+
 async function loadData() {
   try {
     await loadPermissions()
@@ -86,12 +101,15 @@ async function loadData() {
 
     if (!projectSettingsForm.id && projects.value.length > 0) {
       selectProject(projects.value[0])
+      contentItemForm.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
       const next = projects.value.find(x => x.id === projectSettingsForm.id)
       if (next) selectProject(next)
     }
+
+    await loadContentItems()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -128,6 +146,44 @@ async function createProject() {
   projectForm.sourceLanguage = ''
   projectForm.description = ''
   await loadData()
+}
+
+function validateContentItem() {
+  errors.contentKey = contentItemForm.key.trim() ? '' : 'Key is required'
+  errors.contentSource = contentItemForm.source.trim() ? '' : 'Source is required'
+  errors.contentStatus = contentItemForm.status.trim() ? '' : 'Status is required'
+  return !errors.contentKey && !errors.contentSource && !errors.contentStatus
+}
+
+async function createContentItem() {
+  if (!validateContentItem()) return
+  contentError.value = ''
+
+  try {
+    await $fetch(`${apiBase}/api/content-items`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        projectId: contentItemForm.projectId,
+        key: contentItemForm.key,
+        source: contentItemForm.source,
+        status: contentItemForm.status,
+        tags: contentItemForm.tags.split(',').map(x => x.trim()).filter(Boolean),
+        context: contentItemForm.context,
+        notes: contentItemForm.notes,
+      },
+    })
+
+    contentItemForm.key = ''
+    contentItemForm.source = ''
+    contentItemForm.tags = ''
+    contentItemForm.context = ''
+    contentItemForm.notes = ''
+
+    await loadContentItems()
+  } catch (e: any) {
+    contentError.value = e?.data?.errors?.Key?.[0] ?? e?.data?.title ?? 'Could not create content item.'
+  }
 }
 
 async function saveProjectSettings() {
@@ -258,6 +314,50 @@ onMounted(loadData)
     </ul>
     <p v-if="canAdmin && projectAuditLogs.length === 0">No changes recorded yet.</p>
     <p v-if="!selectedProjectHasContent">This project has no content yet.</p>
+  </section>
+
+  <section class="card">
+    <h2>Content item schema (Story 2.1)</h2>
+    <form @submit.prevent="createContentItem" novalidate>
+      <label for="content-project">Project</label>
+      <select id="content-project" v-model="contentItemForm.projectId">
+        <option value="">Select project</option>
+        <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+      </select>
+
+      <label for="content-key">Key</label>
+      <input id="content-key" v-model="contentItemForm.key" placeholder="auth.login.title" />
+      <p class="error" v-if="errors.contentKey">{{ errors.contentKey }}</p>
+
+      <label for="content-source">Source</label>
+      <textarea id="content-source" v-model="contentItemForm.source" />
+      <p class="error" v-if="errors.contentSource">{{ errors.contentSource }}</p>
+
+      <label for="content-status">Status</label>
+      <input id="content-status" v-model="contentItemForm.status" placeholder="draft" />
+      <p class="error" v-if="errors.contentStatus">{{ errors.contentStatus }}</p>
+
+      <label for="content-tags">Tags (comma separated)</label>
+      <input id="content-tags" v-model="contentItemForm.tags" placeholder="auth,login" />
+
+      <label for="content-context">Context</label>
+      <input id="content-context" v-model="contentItemForm.context" />
+
+      <label for="content-notes">Notes</label>
+      <textarea id="content-notes" v-model="contentItemForm.notes" />
+
+      <button type="submit" :disabled="!canWrite">Create content item</button>
+      <p v-if="contentError" class="error">{{ contentError }}</p>
+    </form>
+
+    <h3>Search content</h3>
+    <input v-model="contentSearch" @input="loadContentItems" placeholder="Search tags/context/notes/key" aria-label="Search content" />
+
+    <ul>
+      <li v-for="item in contentItems" :key="item.id">
+        {{ item.key }} · {{ item.status }} · {{ item.tags }}
+      </li>
+    </ul>
   </section>
 
   <MembershipAuditPanel v-if="canAdmin" :api-base="apiBase" />

@@ -19,6 +19,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<WorkspaceInvite> WorkspaceInvites => Set<WorkspaceInvite>();
     public DbSet<WorkspaceMembership> WorkspaceMemberships => Set<WorkspaceMembership>();
     public DbSet<MembershipAuditLog> MembershipAuditLogs => Set<MembershipAuditLog>();
+    public DbSet<ContentItem> ContentItems => Set<ContentItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -83,6 +84,20 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => x.TargetEmail);
             e.HasIndex(x => x.Action);
         });
+
+        builder.Entity<ContentItem>(e =>
+        {
+            e.ToTable("content_items");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Key).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Source).HasMaxLength(4000).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Tags).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Context).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Notes).HasMaxLength(2000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
+            e.HasIndex(x => x.Tags);
+        });
     }
 }
 
@@ -104,6 +119,7 @@ public static class DependencyInjection
 
         services.AddScoped<IWorkspaceService, WorkspaceService>();
         services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IContentItemService, ContentItemService>();
 
         return services;
     }
