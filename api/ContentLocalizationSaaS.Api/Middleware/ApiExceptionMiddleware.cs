@@ -19,7 +19,17 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        logger.LogError(exception, "Unhandled exception while processing {Method} {Path}", context.Request.Method, context.Request.Path);
+        var actor = context.Request.Headers["X-Actor-Email"].ToString();
+        var projectId = ResolveProjectId(context);
+        var endpoint = $"{context.Request.Method} {context.Request.Path}";
+
+        logger.LogError(
+            exception,
+            "Unhandled exception at {Endpoint} (actor={Actor}, projectId={ProjectId}, traceId={TraceId})",
+            endpoint,
+            string.IsNullOrWhiteSpace(actor) ? "unknown" : actor,
+            projectId ?? "unknown",
+            context.TraceIdentifier);
 
         var (statusCode, payload) = exception switch
         {
@@ -48,6 +58,23 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
 
         context.Response.StatusCode = statusCode;
         await context.Response.WriteAsJsonAsync(payload);
+    }
+
+    private static string? ResolveProjectId(HttpContext context)
+    {
+        if (context.Request.Query.TryGetValue("projectId", out var queryProjectId))
+        {
+            var value = queryProjectId.ToString();
+            if (!string.IsNullOrWhiteSpace(value)) return value;
+        }
+
+        if (context.Request.RouteValues.TryGetValue("projectId", out var routeProjectId) && routeProjectId is not null)
+        {
+            var value = routeProjectId.ToString();
+            if (!string.IsNullOrWhiteSpace(value)) return value;
+        }
+
+        return null;
     }
 }
 
