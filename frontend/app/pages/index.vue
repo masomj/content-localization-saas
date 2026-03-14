@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import MembershipAuditPanel from '../components/MembershipAuditPanel.vue'
+
 const apiBase = 'http://localhost:5177'
 
 type Workspace = { id: string; name: string }
@@ -257,4 +259,6 @@ onMounted(loadData)
     <p v-if="canAdmin && projectAuditLogs.length === 0">No changes recorded yet.</p>
     <p v-if="!selectedProjectHasContent">This project has no content yet.</p>
   </section>
+
+  <MembershipAuditPanel v-if="canAdmin" :api-base="apiBase" />
 </template>

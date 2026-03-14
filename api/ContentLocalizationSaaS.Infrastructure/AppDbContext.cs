@@ -18,6 +18,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ProjectAuditLog> ProjectAuditLogs => Set<ProjectAuditLog>();
     public DbSet<WorkspaceInvite> WorkspaceInvites => Set<WorkspaceInvite>();
     public DbSet<WorkspaceMembership> WorkspaceMemberships => Set<WorkspaceMembership>();
+    public DbSet<MembershipAuditLog> MembershipAuditLogs => Set<MembershipAuditLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -67,6 +68,20 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Email).HasMaxLength(320).IsRequired();
             e.Property(x => x.Role).HasMaxLength(32).IsRequired();
             e.HasIndex(x => new { x.WorkspaceId, x.Email }).IsUnique();
+        });
+
+        builder.Entity<MembershipAuditLog>(e =>
+        {
+            e.ToTable("membership_audit_logs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ActorEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.TargetEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.Action).HasMaxLength(64).IsRequired();
+            e.Property(x => x.OldValue).HasMaxLength(256).HasDefaultValue(string.Empty);
+            e.Property(x => x.NewValue).HasMaxLength(256).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.WorkspaceId, x.CreatedUtc });
+            e.HasIndex(x => x.TargetEmail);
+            e.HasIndex(x => x.Action);
         });
     }
 }

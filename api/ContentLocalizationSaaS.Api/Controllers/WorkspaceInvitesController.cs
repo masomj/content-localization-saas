@@ -9,12 +9,17 @@ namespace ContentLocalizationSaaS.Api.Controllers;
 public sealed record CreateInviteRequest(Guid WorkspaceId, string Email, string Role);
 public sealed record AcceptInviteRequest(string Token, string Email);
 public sealed record RevokeMembershipRequest(Guid WorkspaceId, string Email);
+public sealed record ChangeMembershipRoleRequest(Guid WorkspaceId, string Email, string Role);
 
 [ApiController]
 [Route("api/admin/invites")]
 [RequireAppRole(AppRole.Admin)]
 public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
 {
+    private string ActorEmail => HttpContext.Request.Headers["X-Actor-Email"].ToString().Trim().ToLowerInvariant() is { Length: > 0 } actor
+        ? actor
+        : "admin@system.local";
+
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
@@ -48,6 +53,16 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
         };
 
         db.WorkspaceInvites.Add(invite);
+        db.MembershipAuditLogs.Add(new MembershipAuditLog
+        {
+            WorkspaceId = request.WorkspaceId,
+            ActorEmail = ActorEmail,
+            TargetEmail = invite.Email,
+            Action = "invite_created",
+            OldValue = string.Empty,
+            NewValue = $"role={invite.Role};status={invite.Status}"
+        });
+
         await db.SaveChangesAsync(cancellationToken);
         return Ok(invite);
     }
@@ -70,12 +85,14 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
             return BadRequest(new { error = "invite_expired" });
         }
 
+        var oldStatus = invite.Status;
         invite.Status = InviteStatus.Accepted;
 
         var email = request.Email.Trim().ToLowerInvariant();
         var membership = await db.WorkspaceMemberships
             .FirstOrDefaultAsync(x => x.WorkspaceId == invite.WorkspaceId && x.Email == email, cancellationToken);
 
+        string membershipOld = "none";
         if (membership is null)
         {
             membership = new WorkspaceMembership
@@ -89,9 +106,30 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
         }
         else
         {
+            membershipOld = $"role={membership.Role};active={membership.IsActive}";
             membership.Role = invite.Role;
             membership.IsActive = true;
         }
+
+        db.MembershipAuditLogs.AddRange(
+            new MembershipAuditLog
+            {
+                WorkspaceId = invite.WorkspaceId,
+                ActorEmail = ActorEmail,
+                TargetEmail = email,
+                Action = "invite_accepted",
+                OldValue = oldStatus.ToString(),
+                NewValue = invite.Status.ToString()
+            },
+            new MembershipAuditLog
+            {
+                WorkspaceId = invite.WorkspaceId,
+                ActorEmail = ActorEmail,
+                TargetEmail = email,
+                Action = "membership_upserted",
+                OldValue = membershipOld,
+                NewValue = $"role={membership.Role};active={membership.IsActive}"
+            });
 
         await db.SaveChangesAsync(cancellationToken);
         return Ok(new { status = "accepted", workspaceId = invite.WorkspaceId, role = invite.Role });
@@ -106,6 +144,7 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
 
         if (membership is null) return NotFound();
 
+        var oldMembership = $"role={membership.Role};active={membership.IsActive}";
         membership.IsActive = false;
 
         var pendingInvites = await db.WorkspaceInvites
@@ -117,7 +156,51 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
             invite.Status = InviteStatus.Revoked;
         }
 
+        db.MembershipAuditLogs.Add(new MembershipAuditLog
+        {
+            WorkspaceId = request.WorkspaceId,
+            ActorEmail = ActorEmail,
+            TargetEmail = email,
+            Action = "membership_revoked",
+            OldValue = oldMembership,
+            NewValue = $"role={membership.Role};active={membership.IsActive}"
+        });
+
         await db.SaveChangesAsync(cancellationToken);
         return Ok(new { status = "revoked" });
+    }
+
+    [HttpPost("change-role")]
+    public async Task<IActionResult> ChangeRole([FromBody] ChangeMembershipRoleRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Role) || request.WorkspaceId == Guid.Empty)
+        {
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["request"] = ["workspaceId, email and role are required"]
+            }));
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var membership = await db.WorkspaceMemberships
+            .FirstOrDefaultAsync(x => x.WorkspaceId == request.WorkspaceId && x.Email == email, cancellationToken);
+
+        if (membership is null) return NotFound();
+
+        var oldRole = membership.Role;
+        membership.Role = request.Role.Trim();
+
+        db.MembershipAuditLogs.Add(new MembershipAuditLog
+        {
+            WorkspaceId = request.WorkspaceId,
+            ActorEmail = ActorEmail,
+            TargetEmail = email,
+            Action = "membership_role_changed",
+            OldValue = oldRole,
+            NewValue = membership.Role
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(new { status = "updated", role = membership.Role });
     }
 }

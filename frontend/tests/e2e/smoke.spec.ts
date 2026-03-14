@@ -26,3 +26,9 @@ test('role switch control is available', async ({ page }) => {
   await roleSelect.selectOption('Viewer')
   await expect(roleSelect).toHaveValue('Viewer')
 })
+
+test('membership audit filter controls render for admin', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Membership audit' })).toBeVisible()
+  await expect(page.locator('#audit-target-email')).toBeVisible()
+})
