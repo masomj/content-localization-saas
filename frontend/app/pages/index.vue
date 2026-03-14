@@ -42,6 +42,11 @@ const translationSuggestion = ref<any>(null)
 const localizationGrid = ref<any[]>([])
 const localizationGridMeta = reactive({ total: 0, page: 1, pageSize: 10 })
 const localizationFilters = reactive({ stateFilter: '', sortBy: 'itemKey', desc: false })
+const discussionThreads = ref<any[]>([])
+const discussionComments = ref<any[]>([])
+const selectedThreadId = ref('')
+const newThreadForm = reactive({ contentItemId: '', title: '', body: '' })
+const replyBody = ref('')
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -168,6 +173,21 @@ async function loadLocalizationGrid() {
   localizationGrid.value = response.rows
 }
 
+async function loadDiscussionThreads() {
+  if (!newThreadForm.contentItemId) {
+    discussionThreads.value = []
+    discussionComments.value = []
+    return
+  }
+
+  discussionThreads.value = await $fetch(`${apiBase}/api/discussions/threads?contentItemId=${newThreadForm.contentItemId}`, { headers: authHeaders() })
+}
+
+async function loadDiscussionComments(threadId: string) {
+  selectedThreadId.value = threadId
+  discussionComments.value = await $fetch(`${apiBase}/api/discussions/threads/${threadId}/comments`, { headers: authHeaders() })
+}
+
 async function loadData() {
   try {
     await loadPermissions()
@@ -181,6 +201,7 @@ async function loadData() {
       copyComponentForm.projectId = projects.value[0].id
       usageFilters.projectId = projects.value[0].id
       languageForm.projectId = projects.value[0].id
+      newThreadForm.contentItemId = ''
     }
 
     if (projectSettingsForm.id) {
@@ -195,6 +216,7 @@ async function loadData() {
     await loadProjectLanguages()
     await loadLanguageTasks()
     await loadLocalizationGrid()
+    await loadDiscussionThreads()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -530,6 +552,54 @@ async function applyLocalizationFilters() {
   await loadLocalizationGrid()
 }
 
+async function createDiscussionThread() {
+  if (!newThreadForm.contentItemId || !newThreadForm.body.trim()) return
+
+  await $fetch(`${apiBase}/api/discussions/threads`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'X-Actor-Email': 'member@example.com' },
+    body: {
+      contentItemId: newThreadForm.contentItemId,
+      title: newThreadForm.title,
+      body: newThreadForm.body,
+    },
+  })
+
+  newThreadForm.title = ''
+  newThreadForm.body = ''
+  await loadDiscussionThreads()
+}
+
+async function postDiscussionReply() {
+  if (!selectedThreadId.value || !replyBody.value.trim()) return
+
+  await $fetch(`${apiBase}/api/discussions/replies`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'X-Actor-Email': 'member@example.com' },
+    body: {
+      threadId: selectedThreadId.value,
+      parentCommentId: null,
+      body: replyBody.value,
+    },
+  })
+
+  replyBody.value = ''
+  await loadDiscussionComments(selectedThreadId.value)
+}
+
+async function resolveDiscussionThread(threadId: string) {
+  await $fetch(`${apiBase}/api/discussions/threads/${threadId}/resolve`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+
+  await loadDiscussionThreads()
+  if (selectedThreadId.value === threadId)
+  {
+    await loadDiscussionComments(threadId)
+  }
+}
+
 async function saveProjectSettings() {
   if (!projectSettingsForm.id) return
   if (!validateProjectSettings()) return
@@ -726,6 +796,50 @@ onMounted(loadData)
         <button type="button" @click="updateContentItem(item)">Save item edit</button>
       </li>
     </ul>
+  </section>
+
+  <section class="card">
+    <h2>Discussion threads (Story 4.1)</h2>
+
+    <form @submit.prevent="createDiscussionThread" novalidate>
+      <label for="discussion-content-item">Content item</label>
+      <select id="discussion-content-item" v-model="newThreadForm.contentItemId" @change="loadDiscussionThreads">
+        <option value="">Select item</option>
+        <option v-for="item in contentItems" :key="item.id" :value="item.id">{{ item.key }}</option>
+      </select>
+
+      <label for="discussion-title">Thread title</label>
+      <input id="discussion-title" v-model="newThreadForm.title" />
+
+      <label for="discussion-body">Comment</label>
+      <textarea id="discussion-body" v-model="newThreadForm.body" />
+
+      <button type="submit" :disabled="!canWrite">Post thread</button>
+    </form>
+
+    <ul>
+      <li v-for="thread in discussionThreads" :key="thread.id">
+        <button type="button" @click="loadDiscussionComments(thread.id)">
+          {{ thread.title || 'Untitled thread' }} · by {{ thread.createdByEmail }} · {{ thread.createdUtc }}
+        </button>
+        <button type="button" @click="resolveDiscussionThread(thread.id)">Resolve</button>
+        <span v-if="thread.isResolved">(resolved)</span>
+      </li>
+    </ul>
+
+    <div v-if="selectedThreadId">
+      <h3>Thread comments</h3>
+      <ul>
+        <li v-for="comment in discussionComments" :key="comment.id">
+          {{ comment.authorEmail }} · {{ comment.createdUtc }}
+          <p>{{ comment.body }}</p>
+        </li>
+      </ul>
+
+      <label for="discussion-reply">Reply</label>
+      <textarea id="discussion-reply" v-model="replyBody" />
+      <button type="button" @click="postDiscussionReply" :disabled="!canWrite">Post reply</button>
+    </div>
   </section>
 
   <section class="card">

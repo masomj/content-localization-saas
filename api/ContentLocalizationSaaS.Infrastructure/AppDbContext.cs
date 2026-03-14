@@ -27,6 +27,8 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ProjectLanguage> ProjectLanguages => Set<ProjectLanguage>();
     public DbSet<ContentItemLanguageTask> ContentItemLanguageTasks => Set<ContentItemLanguageTask>();
     public DbSet<TranslationMemoryEntry> TranslationMemoryEntries => Set<TranslationMemoryEntry>();
+    public DbSet<DiscussionThread> DiscussionThreads => Set<DiscussionThread>();
+    public DbSet<DiscussionComment> DiscussionComments => Set<DiscussionComment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -183,6 +185,25 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.LanguageCode).HasMaxLength(35).IsRequired();
             e.Property(x => x.TranslationText).HasMaxLength(4000).IsRequired();
             e.HasIndex(x => new { x.ProjectId, x.LanguageCode, x.SourceText, x.IsApproved });
+        });
+
+        builder.Entity<DiscussionThread>(e =>
+        {
+            e.ToTable("discussion_threads");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(200).HasDefaultValue(string.Empty);
+            e.Property(x => x.CreatedByEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ContentItemId, x.IsResolved });
+        });
+
+        builder.Entity<DiscussionComment>(e =>
+        {
+            e.ToTable("discussion_comments");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Body).HasMaxLength(4000).IsRequired();
+            e.Property(x => x.AuthorEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ThreadId, x.CreatedUtc });
+            e.HasIndex(x => x.ParentCommentId);
         });
     }
 }

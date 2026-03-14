@@ -98,3 +98,11 @@ test('outdated translation indicators can render', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('Per-language tasks (Story 3.2)')).toBeVisible()
 })
+
+test('discussion thread controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Discussion threads (Story 4.1)' })).toBeVisible()
+  await expect(page.locator('#discussion-content-item')).toBeVisible()
+  await expect(page.locator('#discussion-body')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Post thread' })).toBeVisible()
+})

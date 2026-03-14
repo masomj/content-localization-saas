@@ -139,3 +139,24 @@ public sealed class TranslationMemoryEntry
     public bool IsApproved { get; set; } = true;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class DiscussionThread
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string CreatedByEmail { get; set; } = string.Empty;
+    public bool IsResolved { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? ResolvedUtc { get; set; }
+}
+
+public sealed class DiscussionComment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ThreadId { get; set; }
+    public Guid? ParentCommentId { get; set; }
+    public string Body { get; set; } = string.Empty;
+    public string AuthorEmail { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
