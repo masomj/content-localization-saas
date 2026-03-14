@@ -31,6 +31,8 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<DiscussionComment> DiscussionComments => Set<DiscussionComment>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<ExternalReviewLink> ExternalReviewLinks => Set<ExternalReviewLink>();
+    public DbSet<ActivityFeedEvent> ActivityFeedEvents => Set<ActivityFeedEvent>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -228,6 +230,27 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Message).HasMaxLength(1000).IsRequired();
             e.Property(x => x.ChannelUsed).HasMaxLength(32).HasDefaultValue("in_app");
             e.HasIndex(x => new { x.UserEmail, x.IsRead, x.CreatedUtc });
+        });
+
+        builder.Entity<ExternalReviewLink>(e =>
+        {
+            e.ToTable("external_review_links");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Token).HasMaxLength(128).IsRequired();
+            e.HasIndex(x => x.Token).IsUnique();
+            e.HasIndex(x => new { x.ContentItemId, x.ExpiresUtc });
+        });
+
+        builder.Entity<ActivityFeedEvent>(e =>
+        {
+            e.ToTable("activity_feed_events");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ActorEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.Property(x => x.Message).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ProjectId, x.CreatedUtc });
+            e.HasIndex(x => x.EventType);
+            e.HasIndex(x => x.ActorEmail);
         });
     }
 }

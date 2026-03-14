@@ -83,8 +83,8 @@ test('all-languages grid filter and pagination controls render', async ({ page }
   await expect(page.getByRole('heading', { name: 'All-languages grid (Story 3.3)' })).toBeVisible()
   await expect(page.locator('#grid-state-filter')).toBeVisible()
   await expect(page.locator('#grid-sort-by')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Prev' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Next' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Prev', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeVisible()
 })
 
 test('translation memory suggestion controls render', async ({ page }) => {
@@ -120,4 +120,14 @@ test('review workflow controls render', async ({ page }) => {
   await expect(page.locator('#review-content-item')).toBeVisible()
   await expect(page.locator('#reviewer-email')).toBeVisible()
   await expect(page.locator('#review-rejection-reason')).toBeVisible()
+})
+
+test('external review and activity feed controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'External review links (Story 4.4)' })).toBeVisible()
+  await expect(page.locator('#external-review-item')).toBeVisible()
+  await expect(page.locator('#external-review-expiry')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Activity feed (Story 4.5)' })).toBeVisible()
+  await expect(page.locator('#activity-project')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Export activity feed' })).toBeVisible()
 })

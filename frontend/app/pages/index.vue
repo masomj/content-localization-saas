@@ -51,6 +51,9 @@ const notificationsUserEmail = ref('member@example.com')
 const notifications = ref<any[]>([])
 const notificationPrefs = reactive({ inAppEnabled: true, emailEnabled: false, slackEnabled: false })
 const reviewForm = reactive({ contentItemId: '', reviewerEmail: 'reviewer@example.com', rejectionReason: '' })
+const externalReviewForm = reactive({ contentItemId: '', commentEnabled: true, expiresUtc: '', token: '', authorEmail: '', body: '' })
+const activityFeed = ref<any[]>([])
+const activityFilter = reactive({ projectId: '', eventType: '', actor: '', page: 1, pageSize: 20, total: 0 })
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -209,6 +212,62 @@ async function setNotificationPreferences() {
   })
 }
 
+async function loadActivityFeed() {
+  if (!activityFilter.projectId) {
+    activityFeed.value = []
+    return
+  }
+
+  const params = new URLSearchParams({
+    projectId: activityFilter.projectId,
+    page: String(activityFilter.page),
+    pageSize: String(activityFilter.pageSize),
+  })
+  if (activityFilter.eventType.trim()) params.set('eventType', activityFilter.eventType.trim())
+  if (activityFilter.actor.trim()) params.set('actor', activityFilter.actor.trim().toLowerCase())
+
+  const res: any = await $fetch(`${apiBase}/api/activity-feed?${params.toString()}`, { headers: authHeaders() })
+  activityFeed.value = res.rows
+  activityFilter.total = res.total
+}
+
+function activityExportUrl() {
+  if (!activityFilter.projectId) return '#'
+  return `${apiBase}/api/activity-feed/export?projectId=${activityFilter.projectId}`
+}
+
+async function createExternalReviewLink() {
+  if (!externalReviewForm.contentItemId || !externalReviewForm.expiresUtc) return
+  const res: any = await $fetch(`${apiBase}/api/external-review/links`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      contentItemId: externalReviewForm.contentItemId,
+      commentEnabled: externalReviewForm.commentEnabled,
+      expiresUtc: externalReviewForm.expiresUtc,
+    },
+  })
+
+  externalReviewForm.token = res.token
+  await loadActivityFeed()
+}
+
+async function postExternalReviewComment() {
+  if (!externalReviewForm.token || !externalReviewForm.authorEmail.trim() || !externalReviewForm.body.trim()) return
+  await $fetch(`${apiBase}/api/external-review/comments`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      token: externalReviewForm.token,
+      authorEmail: externalReviewForm.authorEmail,
+      body: externalReviewForm.body,
+    },
+  })
+
+  externalReviewForm.body = ''
+  await loadActivityFeed()
+}
+
 async function markNotificationRead(notificationId: string, isRead: boolean) {
   await $fetch(`${apiBase}/api/notifications/mark`, {
     method: 'POST',
@@ -233,6 +292,7 @@ async function loadData() {
       usageFilters.projectId = projects.value[0].id
       languageForm.projectId = projects.value[0].id
       newThreadForm.contentItemId = ''
+      activityFilter.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
@@ -249,6 +309,7 @@ async function loadData() {
     await loadLocalizationGrid()
     await loadDiscussionThreads()
     await loadNotifications()
+    await loadActivityFeed()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -870,6 +931,57 @@ onMounted(loadData)
         <button type="button" @click="updateContentItem(item)">Save item edit</button>
       </li>
     </ul>
+  </section>
+
+  <section class="card">
+    <h2>External review links (Story 4.4)</h2>
+
+    <label for="external-review-item">Content item</label>
+    <select id="external-review-item" v-model="externalReviewForm.contentItemId">
+      <option value="">Select item</option>
+      <option v-for="item in contentItems" :key="item.id" :value="item.id">{{ item.key }}</option>
+    </select>
+
+    <label for="external-review-expiry">Expiry UTC</label>
+    <input id="external-review-expiry" v-model="externalReviewForm.expiresUtc" placeholder="2026-03-20T12:00:00Z" />
+
+    <label>
+      <input type="checkbox" v-model="externalReviewForm.commentEnabled" /> Enable comments
+    </label>
+
+    <button type="button" @click="createExternalReviewLink">Generate external review link</button>
+    <p v-if="externalReviewForm.token">Token: {{ externalReviewForm.token }}</p>
+
+    <label for="external-author-email">External commenter email</label>
+    <input id="external-author-email" v-model="externalReviewForm.authorEmail" />
+
+    <label for="external-comment-body">External comment</label>
+    <textarea id="external-comment-body" v-model="externalReviewForm.body" />
+    <button type="button" @click="postExternalReviewComment">Post external comment</button>
+  </section>
+
+  <section class="card">
+    <h2>Activity feed (Story 4.5)</h2>
+
+    <label for="activity-project">Project</label>
+    <select id="activity-project" v-model="activityFilter.projectId" @change="loadActivityFeed">
+      <option value="">Select project</option>
+      <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+    </select>
+
+    <label for="activity-event-type">Event type</label>
+    <input id="activity-event-type" v-model="activityFilter.eventType" @input="loadActivityFeed" />
+
+    <label for="activity-actor">Actor</label>
+    <input id="activity-actor" v-model="activityFilter.actor" @input="loadActivityFeed" />
+
+    <ul>
+      <li v-for="ev in activityFeed" :key="ev.id">{{ ev.createdUtc }} · {{ ev.eventType }} · {{ ev.actorEmail }} · {{ ev.message }}</li>
+    </ul>
+
+    <button type="button" @click="activityFilter.page = Math.max(1, activityFilter.page - 1); loadActivityFeed()" :disabled="activityFilter.page <= 1">Prev feed</button>
+    <button type="button" @click="activityFilter.page = activityFilter.page + 1; loadActivityFeed()" :disabled="activityFilter.page * activityFilter.pageSize >= activityFilter.total">Next feed</button>
+    <a :href="activityExportUrl()">Export activity feed</a>
   </section>
 
   <section class="card">

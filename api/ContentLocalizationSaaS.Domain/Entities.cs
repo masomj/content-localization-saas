@@ -185,3 +185,23 @@ public sealed class UserNotification
     public bool IsRead { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class ExternalReviewLink
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemId { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public bool CommentEnabled { get; set; }
+    public DateTime ExpiresUtc { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class ActivityFeedEvent
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public string EventType { get; set; } = string.Empty;
+    public string ActorEmail { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
