@@ -60,15 +60,17 @@ public sealed class DiscussionThreadsController(AppDbContext db) : ControllerBas
         db.DiscussionThreads.Add(thread);
         await db.SaveChangesAsync(cancellationToken);
 
-        db.DiscussionComments.Add(new DiscussionComment
+        var openingComment = new DiscussionComment
         {
             ThreadId = thread.Id,
             ParentCommentId = null,
             Body = request.Body.Trim(),
             AuthorEmail = CurrentActor
-        });
+        };
 
+        db.DiscussionComments.Add(openingComment);
         await db.SaveChangesAsync(cancellationToken);
+        await NotificationsController.CreateMentionNotificationsAsync(db, openingComment.Body, CurrentActor, cancellationToken);
         return Ok(thread);
     }
 
@@ -91,6 +93,7 @@ public sealed class DiscussionThreadsController(AppDbContext db) : ControllerBas
 
         db.DiscussionComments.Add(comment);
         await db.SaveChangesAsync(cancellationToken);
+        await NotificationsController.CreateMentionNotificationsAsync(db, comment.Body, CurrentActor, cancellationToken);
         return Ok(comment);
     }
 

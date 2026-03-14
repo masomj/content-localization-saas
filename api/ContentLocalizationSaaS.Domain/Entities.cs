@@ -160,3 +160,24 @@ public sealed class DiscussionComment
     public string AuthorEmail { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class NotificationPreference
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string UserEmail { get; set; } = string.Empty;
+    public bool InAppEnabled { get; set; } = true;
+    public bool EmailEnabled { get; set; }
+    public bool SlackEnabled { get; set; }
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class UserNotification
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string UserEmail { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string ChannelUsed { get; set; } = "in_app";
+    public bool IsRead { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

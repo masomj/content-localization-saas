@@ -29,6 +29,8 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<TranslationMemoryEntry> TranslationMemoryEntries => Set<TranslationMemoryEntry>();
     public DbSet<DiscussionThread> DiscussionThreads => Set<DiscussionThread>();
     public DbSet<DiscussionComment> DiscussionComments => Set<DiscussionComment>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -204,6 +206,25 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.AuthorEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ThreadId, x.CreatedUtc });
             e.HasIndex(x => x.ParentCommentId);
+        });
+
+        builder.Entity<NotificationPreference>(e =>
+        {
+            e.ToTable("notification_preferences");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserEmail).HasMaxLength(320).IsRequired();
+            e.HasIndex(x => x.UserEmail).IsUnique();
+        });
+
+        builder.Entity<UserNotification>(e =>
+        {
+            e.ToTable("user_notifications");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.Type).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Message).HasMaxLength(1000).IsRequired();
+            e.Property(x => x.ChannelUsed).HasMaxLength(32).HasDefaultValue("in_app");
+            e.HasIndex(x => new { x.UserEmail, x.IsRead, x.CreatedUtc });
         });
     }
 }

@@ -47,6 +47,9 @@ const discussionComments = ref<any[]>([])
 const selectedThreadId = ref('')
 const newThreadForm = reactive({ contentItemId: '', title: '', body: '' })
 const replyBody = ref('')
+const notificationsUserEmail = ref('member@example.com')
+const notifications = ref<any[]>([])
+const notificationPrefs = reactive({ inAppEnabled: true, emailEnabled: false, slackEnabled: false })
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -188,6 +191,33 @@ async function loadDiscussionComments(threadId: string) {
   discussionComments.value = await $fetch(`${apiBase}/api/discussions/threads/${threadId}/comments`, { headers: authHeaders() })
 }
 
+async function loadNotifications() {
+  notifications.value = await $fetch(`${apiBase}/api/notifications?userEmail=${encodeURIComponent(notificationsUserEmail.value)}`, { headers: authHeaders() })
+}
+
+async function setNotificationPreferences() {
+  await $fetch(`${apiBase}/api/notifications/preferences`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      userEmail: notificationsUserEmail.value,
+      inAppEnabled: notificationPrefs.inAppEnabled,
+      emailEnabled: notificationPrefs.emailEnabled,
+      slackEnabled: notificationPrefs.slackEnabled,
+    },
+  })
+}
+
+async function markNotificationRead(notificationId: string, isRead: boolean) {
+  await $fetch(`${apiBase}/api/notifications/mark`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: { notificationId, isRead },
+  })
+
+  await loadNotifications()
+}
+
 async function loadData() {
   try {
     await loadPermissions()
@@ -217,6 +247,7 @@ async function loadData() {
     await loadLanguageTasks()
     await loadLocalizationGrid()
     await loadDiscussionThreads()
+    await loadNotifications()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -794,6 +825,33 @@ onMounted(loadData)
         </select>
         <button type="button" @click="addUsageReference(item.id)">Add usage ref</button>
         <button type="button" @click="updateContentItem(item)">Save item edit</button>
+      </li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Mentions and notifications (Story 4.2)</h2>
+    <p>Use @email in comments/replies to notify collaborators.</p>
+
+    <label for="notifications-user-email">Notifications user</label>
+    <input id="notifications-user-email" v-model="notificationsUserEmail" @blur="loadNotifications" />
+
+    <label>
+      <input type="checkbox" v-model="notificationPrefs.inAppEnabled" /> In-app
+    </label>
+    <label>
+      <input type="checkbox" v-model="notificationPrefs.emailEnabled" /> Email
+    </label>
+    <label>
+      <input type="checkbox" v-model="notificationPrefs.slackEnabled" /> Slack
+    </label>
+    <button type="button" @click="setNotificationPreferences">Save notification preferences</button>
+
+    <h3>Notifications</h3>
+    <ul>
+      <li v-for="n in notifications" :key="n.id">
+        {{ n.message }} · channel={{ n.channelUsed }} · read={{ n.isRead }}
+        <button type="button" @click="markNotificationRead(n.id, !n.isRead)">{{ n.isRead ? 'Mark unread' : 'Mark read' }}</button>
       </li>
     </ul>
   </section>

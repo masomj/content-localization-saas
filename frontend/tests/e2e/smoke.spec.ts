@@ -106,3 +106,10 @@ test('discussion thread controls render', async ({ page }) => {
   await expect(page.locator('#discussion-body')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Post thread' })).toBeVisible()
 })
+
+test('mentions and notifications controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Mentions and notifications (Story 4.2)' })).toBeVisible()
+  await expect(page.locator('#notifications-user-email')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save notification preferences' })).toBeVisible()
+})
