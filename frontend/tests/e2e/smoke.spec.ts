@@ -131,3 +131,12 @@ test('external review and activity feed controls render', async ({ page }) => {
   await expect(page.locator('#activity-project')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Export activity feed' })).toBeVisible()
 })
+
+test('plugin authentication controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Plugin authentication (Story 5.1)' })).toBeVisible()
+  await expect(page.locator('#plugin-user-email')).toBeVisible()
+  await expect(page.locator('#plugin-workspace-id')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Connect plugin' })).toBeVisible()
+  await expect(page.locator('#plugin-switch-workspace')).toBeVisible()
+})

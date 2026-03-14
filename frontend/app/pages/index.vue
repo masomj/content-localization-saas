@@ -54,6 +54,9 @@ const reviewForm = reactive({ contentItemId: '', reviewerEmail: 'reviewer@exampl
 const externalReviewForm = reactive({ contentItemId: '', commentEnabled: true, expiresUtc: '', token: '', authorEmail: '', body: '' })
 const activityFeed = ref<any[]>([])
 const activityFilter = reactive({ projectId: '', eventType: '', actor: '', page: 1, pageSize: 20, total: 0 })
+const pluginAuth = reactive({ userEmail: 'member@example.com', workspaceId: '', token: '', expiresUtc: '', selectedWorkspaceId: '' })
+const pluginProjects = ref<any[]>([])
+const pluginStatus = ref('')
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -236,6 +239,57 @@ function activityExportUrl() {
   return `${apiBase}/api/activity-feed/export?projectId=${activityFilter.projectId}`
 }
 
+async function pluginLogin() {
+  if (!pluginAuth.userEmail.trim() || !pluginAuth.workspaceId) return
+  const res: any = await $fetch(`${apiBase}/api/plugin-auth/login`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      userEmail: pluginAuth.userEmail,
+      workspaceId: pluginAuth.workspaceId,
+    },
+  })
+
+  pluginAuth.token = res.token
+  pluginAuth.expiresUtc = res.expiresUtc
+  pluginStatus.value = 'connected'
+  await pluginLoadProjects()
+}
+
+async function pluginLoadProjects() {
+  if (!pluginAuth.token) return
+  try {
+    const res: any = await $fetch(`${apiBase}/api/plugin-auth/projects?token=${pluginAuth.token}`, { headers: authHeaders() })
+    pluginProjects.value = res.projects
+    pluginAuth.selectedWorkspaceId = res.workspaceId
+    pluginStatus.value = 'connected'
+  } catch (e: any) {
+    if (e?.statusCode === 401) {
+      pluginStatus.value = 'reauth_required'
+    } else {
+      pluginStatus.value = 'error'
+    }
+  }
+}
+
+async function pluginSwitchWorkspace() {
+  if (!pluginAuth.token || !pluginAuth.selectedWorkspaceId) return
+  try {
+    const res: any = await $fetch(`${apiBase}/api/plugin-auth/switch-workspace`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        token: pluginAuth.token,
+        workspaceId: pluginAuth.selectedWorkspaceId,
+      },
+    })
+    pluginProjects.value = res.projects
+    pluginStatus.value = 'connected'
+  } catch (e: any) {
+    pluginStatus.value = e?.statusCode === 401 ? 'reauth_required' : 'error'
+  }
+}
+
 async function createExternalReviewLink() {
   if (!externalReviewForm.contentItemId || !externalReviewForm.expiresUtc) return
   const res: any = await $fetch(`${apiBase}/api/external-review/links`, {
@@ -293,6 +347,8 @@ async function loadData() {
       languageForm.projectId = projects.value[0].id
       newThreadForm.contentItemId = ''
       activityFilter.projectId = projects.value[0].id
+      pluginAuth.workspaceId = projects.value[0].workspaceId
+      pluginAuth.selectedWorkspaceId = projects.value[0].workspaceId
     }
 
     if (projectSettingsForm.id) {
@@ -930,6 +986,35 @@ onMounted(loadData)
         <button type="button" @click="addUsageReference(item.id)">Add usage ref</button>
         <button type="button" @click="updateContentItem(item)">Save item edit</button>
       </li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Plugin authentication (Story 5.1)</h2>
+
+    <label for="plugin-user-email">Plugin user email</label>
+    <input id="plugin-user-email" v-model="pluginAuth.userEmail" />
+
+    <label for="plugin-workspace-id">Workspace</label>
+    <select id="plugin-workspace-id" v-model="pluginAuth.workspaceId">
+      <option value="">Select workspace</option>
+      <option v-for="w in workspaces" :key="w.id" :value="w.id">{{ w.name }}</option>
+    </select>
+
+    <button type="button" @click="pluginLogin">Connect plugin</button>
+    <p>Status: {{ pluginStatus || 'disconnected' }}</p>
+    <p v-if="pluginAuth.expiresUtc">Token expires: {{ pluginAuth.expiresUtc }}</p>
+
+    <label for="plugin-switch-workspace">Switch workspace</label>
+    <select id="plugin-switch-workspace" v-model="pluginAuth.selectedWorkspaceId">
+      <option value="">Select workspace</option>
+      <option v-for="w in workspaces" :key="`switch-${w.id}`" :value="w.id">{{ w.name }}</option>
+    </select>
+    <button type="button" @click="pluginSwitchWorkspace">Switch plugin context</button>
+
+    <h3>Authorized projects</h3>
+    <ul>
+      <li v-for="p in pluginProjects" :key="`plugin-${p.id}`">{{ p.name }}</li>
     </ul>
   </section>
 

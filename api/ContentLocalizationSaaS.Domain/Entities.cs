@@ -205,3 +205,13 @@ public sealed class ActivityFeedEvent
     public string Message { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class PluginSession
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Token { get; set; } = string.Empty;
+    public string UserEmail { get; set; } = string.Empty;
+    public Guid WorkspaceId { get; set; }
+    public DateTime ExpiresUtc { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

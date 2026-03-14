@@ -33,6 +33,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<ExternalReviewLink> ExternalReviewLinks => Set<ExternalReviewLink>();
     public DbSet<ActivityFeedEvent> ActivityFeedEvents => Set<ActivityFeedEvent>();
+    public DbSet<PluginSession> PluginSessions => Set<PluginSession>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -251,6 +252,16 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => new { x.ProjectId, x.CreatedUtc });
             e.HasIndex(x => x.EventType);
             e.HasIndex(x => x.ActorEmail);
+        });
+
+        builder.Entity<PluginSession>(e =>
+        {
+            e.ToTable("plugin_sessions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Token).HasMaxLength(128).IsRequired();
+            e.Property(x => x.UserEmail).HasMaxLength(320).IsRequired();
+            e.HasIndex(x => x.Token).IsUnique();
+            e.HasIndex(x => new { x.UserEmail, x.ExpiresUtc });
         });
     }
 }
