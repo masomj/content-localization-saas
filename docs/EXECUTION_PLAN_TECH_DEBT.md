@@ -163,3 +163,25 @@ As a platform engineer, I want an official CLI binary/package so teams can integ
 4. Epic 8.1 + 8.2
 5. Epic 10.2
 6. Epic 9.3 / 11.x
+
+---
+
+## Execution status (2026-03-14)
+
+### Completed
+- 7.1 ✅
+- 7.2 ✅
+- 7.3 ✅
+- 8.1 ✅
+- 8.2 ✅ (including stale-write guards)
+- 9.1 ✅ (dead-letter + requeue + worker improvements)
+- 9.2 ✅ (idempotency + replay audit + filtering)
+- 9.3 ✅ (correlation, structured logs, SLO-style metrics)
+- 10.1 ✅
+- 10.2 ✅ (CI job wiring + diagnostics artifacts)
+- 11.1 ✅ (ProblemDetails consistency + versioning/contracts docs)
+- 11.2 ✅ (production CLI + documented exit-code contract)
+
+### Remaining risk / follow-up
+- Integration runtime health remains environment-dependent (container runtime must be healthy for Aspire integration suite execution).
+- Keep CI integration diagnostics artifacts enabled to speed root-cause triage when runtime failures recur.
