@@ -183,6 +183,7 @@ test('bundle/token and webhook controls render', async ({ page }) => {
   await expect(page.locator('#integration-token-scope')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Create API token' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Load export bundle' })).toBeVisible()
+  await expect(page.getByText('Token lifecycle')).toBeVisible()
 
   await expect(page.getByRole('heading', { name: 'Webhooks (Story 6.5)' })).toBeVisible()
   await expect(page.locator('#webhook-project')).toBeVisible()

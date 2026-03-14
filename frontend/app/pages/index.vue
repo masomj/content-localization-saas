@@ -78,6 +78,7 @@ const keyValidationResult = ref<any>(null)
 const keyMigrationReport = ref<any[]>([])
 const integrationToken = ref('')
 const integrationTokenScope = ref('exports:read')
+const integrationTokens = ref<any[]>([])
 const exportBundleResult = ref<any>(null)
 const webhookForm = reactive({ projectId: '', endpointUrl: '', secret: 'dev-secret' })
 const webhookSubscriptions = ref<any[]>([])
@@ -485,6 +486,10 @@ async function loadKeyMigrationReport() {
   keyMigrationReport.value = res.report
 }
 
+async function loadIntegrationTokens() {
+  integrationTokens.value = await $fetch(`${apiBase}/api/integration/tokens`, { headers: authHeaders() })
+}
+
 async function createIntegrationToken() {
   const res: any = await $fetch(`${apiBase}/api/integration/tokens`, {
     method: 'POST',
@@ -492,6 +497,26 @@ async function createIntegrationToken() {
     body: { name: 'ci-token', scope: integrationTokenScope.value },
   })
   integrationToken.value = res.token
+  await loadIntegrationTokens()
+}
+
+async function rotateIntegrationToken(tokenId: string) {
+  const res: any = await $fetch(`${apiBase}/api/integration/tokens/rotate`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: { tokenId },
+  })
+  integrationToken.value = res.token
+  await loadIntegrationTokens()
+}
+
+async function revokeIntegrationToken(tokenId: string) {
+  await $fetch(`${apiBase}/api/integration/tokens/revoke`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: { tokenId },
+  })
+  await loadIntegrationTokens()
 }
 
 async function loadExportBundle() {
@@ -609,6 +634,7 @@ async function loadData() {
     await loadDiscussionThreads()
     await loadNotifications()
     await loadActivityFeed()
+    await loadIntegrationTokens()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -1313,6 +1339,15 @@ onMounted(loadData)
     <input id="integration-token-scope" v-model="integrationTokenScope" placeholder="exports:read" />
     <button type="button" @click="createIntegrationToken">Create API token</button>
     <p v-if="integrationToken">Token: {{ integrationToken }}</p>
+
+    <h3>Token lifecycle</h3>
+    <ul>
+      <li v-for="t in integrationTokens" :key="t.id">
+        {{ t.name }} · scope={{ t.scope }} · revoked={{ t.isRevoked }} · expires={{ t.expiresUtc }} · lastUsed={{ t.lastUsedUtc || 'never' }}
+        <button type="button" @click="rotateIntegrationToken(t.id)" :disabled="t.isRevoked">Rotate</button>
+        <button type="button" @click="revokeIntegrationToken(t.id)" :disabled="t.isRevoked">Revoke</button>
+      </li>
+    </ul>
 
     <button type="button" @click="loadExportBundle">Load export bundle</button>
     <div v-if="exportBundleResult">
