@@ -11,7 +11,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddOpenApi();
-builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ProblemDetailsResultFilter>();
+});
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProjectRequestValidator>();

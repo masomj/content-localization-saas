@@ -60,3 +60,8 @@ This is an initial architecture scaffold with:
 - starter xUnit tests (validator + API health integration)
 
 See `docs/ARCHITECTURE.md` for the detailed draft architecture.
+
+## API contracts
+
+- Versioning policy: `docs/API_VERSIONING.md`
+- Contract payload examples (success + error): `docs/API_CONTRACT_EXAMPLES.md`
