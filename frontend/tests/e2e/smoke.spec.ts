@@ -140,3 +140,12 @@ test('plugin authentication controls render', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Connect plugin' })).toBeVisible()
   await expect(page.locator('#plugin-switch-workspace')).toBeVisible()
 })
+
+test('figma layer linking controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Figma layer linking (Story 5.2)' })).toBeVisible()
+  await expect(page.locator('#layer-link-project')).toBeVisible()
+  await expect(page.locator('#layer-link-id')).toBeVisible()
+  await expect(page.locator('#layer-duplicate-rule')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Link selected layer' })).toBeVisible()
+})

@@ -34,6 +34,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ExternalReviewLink> ExternalReviewLinks => Set<ExternalReviewLink>();
     public DbSet<ActivityFeedEvent> ActivityFeedEvents => Set<ActivityFeedEvent>();
     public DbSet<PluginSession> PluginSessions => Set<PluginSession>();
+    public DbSet<DesignLayerLink> DesignLayerLinks => Set<DesignLayerLink>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -262,6 +263,17 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.UserEmail).HasMaxLength(320).IsRequired();
             e.HasIndex(x => x.Token).IsUnique();
             e.HasIndex(x => new { x.UserEmail, x.ExpiresUtc });
+        });
+
+        builder.Entity<DesignLayerLink>(e =>
+        {
+            e.ToTable("design_layer_links");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DesignFileId).HasMaxLength(120).IsRequired();
+            e.Property(x => x.LayerId).HasMaxLength(120).IsRequired();
+            e.Property(x => x.DuplicateLinkRule).HasMaxLength(32).HasDefaultValue("preserve");
+            e.HasIndex(x => new { x.ProjectId, x.DesignFileId, x.LayerId }).IsUnique();
+            e.HasIndex(x => x.ContentItemId);
         });
     }
 }

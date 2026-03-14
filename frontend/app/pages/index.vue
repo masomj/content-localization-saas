@@ -57,6 +57,10 @@ const activityFilter = reactive({ projectId: '', eventType: '', actor: '', page:
 const pluginAuth = reactive({ userEmail: 'member@example.com', workspaceId: '', token: '', expiresUtc: '', selectedWorkspaceId: '' })
 const pluginProjects = ref<any[]>([])
 const pluginStatus = ref('')
+const layerLinkForm = reactive({ projectId: '', designFileId: 'figma-file-1', layerId: '', duplicateRule: 'preserve', selectedContentItemId: '', createNewKey: '', sourceText: '' })
+const layerLinkSearch = ref('')
+const layerSearchResults = ref<any[]>([])
+const currentLayerLink = ref<any>(null)
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -290,6 +294,58 @@ async function pluginSwitchWorkspace() {
   }
 }
 
+async function searchLayerLinkItems() {
+  if (!layerLinkForm.projectId) return
+  layerSearchResults.value = await $fetch(`${apiBase}/api/plugin-links/search-items?projectId=${layerLinkForm.projectId}&q=${encodeURIComponent(layerLinkSearch.value)}`, { headers: authHeaders() })
+}
+
+async function linkLayerToExistingOrNew() {
+  if (!layerLinkForm.projectId || !layerLinkForm.layerId.trim()) return
+
+  const body: any = {
+    projectId: layerLinkForm.projectId,
+    designFileId: layerLinkForm.designFileId,
+    layerId: layerLinkForm.layerId,
+    duplicateLinkRule: layerLinkForm.duplicateRule,
+  }
+
+  if (layerLinkForm.selectedContentItemId) {
+    body.contentItemId = layerLinkForm.selectedContentItemId
+  } else {
+    body.createNewKey = layerLinkForm.createNewKey
+    body.sourceText = layerLinkForm.sourceText
+  }
+
+  currentLayerLink.value = await $fetch(`${apiBase}/api/plugin-links/link-layer`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body,
+  })
+}
+
+async function loadLayerLink() {
+  if (!layerLinkForm.projectId || !layerLinkForm.layerId.trim()) return
+  try {
+    currentLayerLink.value = await $fetch(`${apiBase}/api/plugin-links/layer?projectId=${layerLinkForm.projectId}&designFileId=${encodeURIComponent(layerLinkForm.designFileId)}&layerId=${encodeURIComponent(layerLinkForm.layerId)}`, { headers: authHeaders() })
+  } catch {
+    currentLayerLink.value = null
+  }
+}
+
+async function simulateDuplicateLayer() {
+  if (!layerLinkForm.projectId || !layerLinkForm.layerId.trim()) return
+  await $fetch(`${apiBase}/api/plugin-links/duplicate-layer`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: layerLinkForm.projectId,
+      designFileId: layerLinkForm.designFileId,
+      sourceLayerId: layerLinkForm.layerId,
+      newLayerId: `${layerLinkForm.layerId}-copy`,
+    },
+  })
+}
+
 async function createExternalReviewLink() {
   if (!externalReviewForm.contentItemId || !externalReviewForm.expiresUtc) return
   const res: any = await $fetch(`${apiBase}/api/external-review/links`, {
@@ -349,6 +405,7 @@ async function loadData() {
       activityFilter.projectId = projects.value[0].id
       pluginAuth.workspaceId = projects.value[0].workspaceId
       pluginAuth.selectedWorkspaceId = projects.value[0].workspaceId
+      layerLinkForm.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
@@ -1016,6 +1073,50 @@ onMounted(loadData)
     <ul>
       <li v-for="p in pluginProjects" :key="`plugin-${p.id}`">{{ p.name }}</li>
     </ul>
+  </section>
+
+  <section class="card">
+    <h2>Figma layer linking (Story 5.2)</h2>
+
+    <label for="layer-link-project">Project</label>
+    <select id="layer-link-project" v-model="layerLinkForm.projectId">
+      <option value="">Select project</option>
+      <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+    </select>
+
+    <label for="layer-link-file">Design file id</label>
+    <input id="layer-link-file" v-model="layerLinkForm.designFileId" />
+
+    <label for="layer-link-id">Layer id</label>
+    <input id="layer-link-id" v-model="layerLinkForm.layerId" @blur="loadLayerLink" />
+
+    <label for="layer-duplicate-rule">Duplicate rule</label>
+    <select id="layer-duplicate-rule" v-model="layerLinkForm.duplicateRule">
+      <option value="preserve">Preserve link on duplicate</option>
+      <option value="clear">Clear link on duplicate</option>
+    </select>
+
+    <h3>Search existing content item</h3>
+    <input v-model="layerLinkSearch" @input="searchLayerLinkItems" placeholder="Search key/source" aria-label="Search content for layer link" />
+    <select v-model="layerLinkForm.selectedContentItemId">
+      <option value="">Create new instead</option>
+      <option v-for="item in layerSearchResults" :key="`layer-item-${item.id}`" :value="item.id">{{ item.key }}</option>
+    </select>
+
+    <h3>Create new content item (if none selected)</h3>
+    <label for="layer-new-key">New key</label>
+    <input id="layer-new-key" v-model="layerLinkForm.createNewKey" placeholder="home.hero.title" />
+
+    <label for="layer-source-text">Source text</label>
+    <textarea id="layer-source-text" v-model="layerLinkForm.sourceText" />
+
+    <button type="button" @click="linkLayerToExistingOrNew">Link selected layer</button>
+    <button type="button" @click="simulateDuplicateLayer">Simulate duplicate behavior</button>
+
+    <div v-if="currentLayerLink">
+      <p>Current layer link loaded.</p>
+      <pre>{{ JSON.stringify(currentLayerLink, null, 2) }}</pre>
+    </div>
   </section>
 
   <section class="card">

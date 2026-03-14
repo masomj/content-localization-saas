@@ -215,3 +215,14 @@ public sealed class PluginSession
     public DateTime ExpiresUtc { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class DesignLayerLink
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public string DesignFileId { get; set; } = string.Empty;
+    public string LayerId { get; set; } = string.Empty;
+    public Guid ContentItemId { get; set; }
+    public string DuplicateLinkRule { get; set; } = "preserve"; // preserve|clear
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
