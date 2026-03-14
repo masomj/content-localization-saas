@@ -73,6 +73,25 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
             existing.Status = request.Status.Trim();
         }
 
+        if (string.Equals(existing.Status, "approved", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(existing.Status, "done", StringComparison.OrdinalIgnoreCase))
+        {
+            existing.IsOutdated = false;
+
+            var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == existing.ContentItemId, cancellationToken);
+            if (item is not null && !string.IsNullOrWhiteSpace(existing.TranslationText))
+            {
+                db.TranslationMemoryEntries.Add(new TranslationMemoryEntry
+                {
+                    ProjectId = item.ProjectId,
+                    SourceText = item.Source,
+                    LanguageCode = existing.LanguageCode,
+                    TranslationText = existing.TranslationText,
+                    IsApproved = true
+                });
+            }
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         return Ok(existing);
     }

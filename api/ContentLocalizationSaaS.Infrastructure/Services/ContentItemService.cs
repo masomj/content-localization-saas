@@ -71,6 +71,24 @@ internal sealed class ContentItemService(
         item.Source = source.Trim();
         item.Status = status.Trim();
 
+        if (!string.Equals(previousSource, item.Source, StringComparison.Ordinal))
+        {
+            var affectedTasks = await db.ContentItemLanguageTasks
+                .Where(x => x.ContentItemId == item.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var task in affectedTasks)
+            {
+                if (task.Status == "done" || task.Status == "approved")
+                {
+                    task.PreviousApprovedTranslation = task.TranslationText;
+                }
+
+                task.IsOutdated = true;
+                task.Status = "outdated";
+            }
+        }
+
         db.ContentItemRevisions.Add(new ContentItemRevision
         {
             ContentItemId = item.Id,

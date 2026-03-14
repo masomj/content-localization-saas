@@ -168,9 +168,11 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.LanguageCode).HasMaxLength(35).IsRequired();
             e.Property(x => x.AssigneeEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
             e.Property(x => x.TranslationText).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.Property(x => x.PreviousApprovedTranslation).HasMaxLength(4000).HasDefaultValue(string.Empty);
             e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue("todo");
             e.HasIndex(x => new { x.ContentItemId, x.LanguageCode }).IsUnique();
             e.HasIndex(x => x.DueUtc);
+            e.HasIndex(x => x.IsOutdated);
         });
 
         builder.Entity<TranslationMemoryEntry>(e =>

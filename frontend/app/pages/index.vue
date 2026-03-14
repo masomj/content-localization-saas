@@ -828,7 +828,9 @@ onMounted(loadData)
     <ul>
       <li v-for="task in languageTasks" :key="task.id">
         {{ task.languageCode }} · {{ task.status }} · {{ task.assigneeEmail || 'unassigned' }} · due={{ task.dueUtc || 'none' }}
+        <span v-if="task.isOutdated"> · OUTDATED</span>
         <span v-if="task.dueUtc && new Date(task.dueUtc) < new Date() && task.status !== 'done'"> · OVERDUE</span>
+        <p v-if="task.previousApprovedTranslation">Previous approved: {{ task.previousApprovedTranslation }}</p>
       </li>
     </ul>
   </section>

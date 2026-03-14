@@ -122,6 +122,8 @@ public sealed class ContentItemLanguageTask
     public required string LanguageCode { get; set; }
     public string AssigneeEmail { get; set; } = string.Empty;
     public string TranslationText { get; set; } = string.Empty;
+    public string PreviousApprovedTranslation { get; set; } = string.Empty;
+    public bool IsOutdated { get; set; }
     public DateTime? DueUtc { get; set; }
     public string Status { get; set; } = "todo";
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;

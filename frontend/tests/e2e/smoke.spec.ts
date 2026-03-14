@@ -93,3 +93,8 @@ test('translation memory suggestion controls render', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Save manual as memory candidate' })).toBeVisible()
   await expect(page.locator('#task-translation')).toBeVisible()
 })
+
+test('outdated translation indicators can render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Per-language tasks (Story 3.2)')).toBeVisible()
+})
