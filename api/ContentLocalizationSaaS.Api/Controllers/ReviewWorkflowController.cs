@@ -132,15 +132,22 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
                     approvedUtc = item.ApprovedUtc
                 };
 
-                db.WebhookDeliveryLogs.Add(new WebhookDeliveryLog
+                var sourcePayloadJson = System.Text.Json.JsonSerializer.Serialize(sourcePayload);
+                var sourceIdempotencyKey = WebhooksController.ComputeIdempotencyKey(sub.Id, sourcePayloadJson);
+                var existingSource = await db.WebhookDeliveryLogs.FirstOrDefaultAsync(x => x.IdempotencyKey == sourceIdempotencyKey, cancellationToken);
+                if (existingSource is null)
                 {
-                    SubscriptionId = sub.Id,
-                    EventType = "content.approved",
-                    PayloadJson = System.Text.Json.JsonSerializer.Serialize(sourcePayload),
-                    AttemptCount = 0,
-                    Status = "pending",
-                    NextAttemptUtc = DateTime.UtcNow
-                });
+                    db.WebhookDeliveryLogs.Add(new WebhookDeliveryLog
+                    {
+                        SubscriptionId = sub.Id,
+                        EventType = "content.approved",
+                        PayloadJson = sourcePayloadJson,
+                        IdempotencyKey = sourceIdempotencyKey,
+                        AttemptCount = 0,
+                        Status = "pending",
+                        NextAttemptUtc = DateTime.UtcNow
+                    });
+                }
 
                 foreach (var task in languageTasks)
                 {
@@ -155,15 +162,22 @@ public sealed class ReviewWorkflowController(AppDbContext db) : ControllerBase
                         approvedUtc = item.ApprovedUtc
                     };
 
-                    db.WebhookDeliveryLogs.Add(new WebhookDeliveryLog
+                    var payloadJson = System.Text.Json.JsonSerializer.Serialize(payload);
+                    var idempotencyKey = WebhooksController.ComputeIdempotencyKey(sub.Id, payloadJson);
+                    var existing = await db.WebhookDeliveryLogs.FirstOrDefaultAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);
+                    if (existing is null)
                     {
-                        SubscriptionId = sub.Id,
-                        EventType = "content.approved",
-                        PayloadJson = System.Text.Json.JsonSerializer.Serialize(payload),
-                        AttemptCount = 0,
-                        Status = "pending",
-                        NextAttemptUtc = DateTime.UtcNow
-                    });
+                        db.WebhookDeliveryLogs.Add(new WebhookDeliveryLog
+                        {
+                            SubscriptionId = sub.Id,
+                            EventType = "content.approved",
+                            PayloadJson = payloadJson,
+                            IdempotencyKey = idempotencyKey,
+                            AttemptCount = 0,
+                            Status = "pending",
+                            NextAttemptUtc = DateTime.UtcNow
+                        });
+                    }
                 }
             }
         }

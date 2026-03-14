@@ -162,4 +162,12 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payloadJson));
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
+
+    public static string ComputeIdempotencyKey(Guid subscriptionId, string payloadJson)
+    {
+        var raw = $"{subscriptionId:N}:{payloadJson}";
+        using var sha = SHA256.Create();
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(raw));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
 }

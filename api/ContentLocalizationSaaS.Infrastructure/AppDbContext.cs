@@ -40,6 +40,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDeliveryLog> WebhookDeliveryLogs => Set<WebhookDeliveryLog>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -326,9 +327,21 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasKey(x => x.Id);
             e.Property(x => x.EventType).HasMaxLength(64).IsRequired();
             e.Property(x => x.PayloadJson).HasMaxLength(8000).HasDefaultValue(string.Empty);
+            e.Property(x => x.IdempotencyKey).HasMaxLength(128).HasDefaultValue(string.Empty);
             e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue("pending");
             e.Property(x => x.LastError).HasMaxLength(500).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.SubscriptionId, x.Status, x.NextAttemptUtc });
+            e.HasIndex(x => x.IdempotencyKey).IsUnique();
+        });
+
+        builder.Entity<IdempotencyRecord>(e =>
+        {
+            e.ToTable("idempotency_records");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Operation).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Key).HasMaxLength(128).IsRequired();
+            e.Property(x => x.ResponseJson).HasMaxLength(8000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.Operation, x.Key }).IsUnique();
         });
 
         // Story 8.1: explicit FK constraints for core relations

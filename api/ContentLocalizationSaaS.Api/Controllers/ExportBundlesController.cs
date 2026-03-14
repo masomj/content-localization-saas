@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using ContentLocalizationSaaS.Api.Authorization;
+using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,17 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         [FromQuery] string? @namespace,
         CancellationToken cancellationToken)
     {
+        var requestId = Request.Headers["X-Request-Id"].ToString().Trim();
+        if (!string.IsNullOrWhiteSpace(requestId))
+        {
+            var existing = await db.IdempotencyRecords.FirstOrDefaultAsync(x => x.Operation == "export_bundle" && x.Key == requestId, cancellationToken);
+            if (existing is not null)
+            {
+                var parsed = JsonSerializer.Deserialize<object>(existing.ResponseJson);
+                return Ok(parsed);
+            }
+        }
+
         var auth = await ValidateTokenAsync(requiredScope: "exports:read", cancellationToken);
         if (auth.Result is not null) return auth.Result;
 
@@ -106,7 +118,20 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
         var signedBundleUrl = $"data:application/json;base64,{base64}";
 
-        return Ok(new { signedBundleUrl, payload = bundle });
+        var responseObj = new { signedBundleUrl, payload = bundle };
+
+        if (!string.IsNullOrWhiteSpace(requestId))
+        {
+            db.IdempotencyRecords.Add(new IdempotencyRecord
+            {
+                Operation = "export_bundle",
+                Key = requestId,
+                ResponseJson = JsonSerializer.Serialize(responseObj)
+            });
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return Ok(responseObj);
     }
 
     private async Task<(IActionResult? Result, string? TokenHash)> ValidateTokenAsync(string requiredScope, CancellationToken cancellationToken)

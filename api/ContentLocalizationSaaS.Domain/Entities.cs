@@ -253,12 +253,22 @@ public sealed class WebhookDeliveryLog
     public Guid SubscriptionId { get; set; }
     public string EventType { get; set; } = string.Empty;
     public string PayloadJson { get; set; } = string.Empty;
+    public string IdempotencyKey { get; set; } = string.Empty;
     public int AttemptCount { get; set; } = 0;
-    public string Status { get; set; } = "pending"; // pending|delivered|failed
+    public string Status { get; set; } = "pending"; // pending|delivered|failed|dead_letter
     public DateTime? NextAttemptUtc { get; set; }
     public string LastError { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? DeliveredUtc { get; set; }
+}
+
+public sealed class IdempotencyRecord
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Operation { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public string ResponseJson { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 
 public sealed class DesignLayerLink
