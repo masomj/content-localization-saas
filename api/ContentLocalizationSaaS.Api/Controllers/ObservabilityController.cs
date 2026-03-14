@@ -20,6 +20,7 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
         Response.Headers["X-Window-Hours"] = clampedWindowHours.ToString();
 
         var now = DateTime.UtcNow;
+        Response.Headers["X-Generated-At-Utc"] = now.ToString("O");
         var since24h = now.AddHours(-clampedWindowHours);
 
         var deadLetterWebhooks = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "dead_letter", cancellationToken);
@@ -63,6 +64,7 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
         Response.Headers.CacheControl = "no-store";
 
         var now = DateTime.UtcNow;
+        Response.Headers["X-Generated-At-Utc"] = now.ToString("O");
         var since24h = now.AddHours(-24);
 
         var pendingWebhooks = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "pending", cancellationToken);
