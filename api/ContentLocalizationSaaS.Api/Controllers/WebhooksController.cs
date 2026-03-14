@@ -14,7 +14,7 @@ public sealed record RequeueWebhookDeliveryRequest(Guid DeliveryId);
 
 [ApiController]
 [Route("api/webhooks")]
-public sealed class WebhooksController(AppDbContext db) : ControllerBase
+public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksController> logger) : ControllerBase
 {
     private const int MaxAttempts = 5;
 
@@ -95,6 +95,9 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> ProcessPending(CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
+        var actor = HttpContext.Request.Headers["X-Actor-Email"].ToString();
+        var correlationId = HttpContext.Items["X-Correlation-Id"]?.ToString() ?? HttpContext.TraceIdentifier;
+
         var pending = await db.WebhookDeliveryLogs
             .Where(x => x.Status == "pending" && (!x.NextAttemptUtc.HasValue || x.NextAttemptUtc <= now))
             .OrderBy(x => x.CreatedUtc)
@@ -157,6 +160,15 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
         var delivered = pending.Count(x => x.Status == "delivered");
         var retried = pending.Count(x => x.Status == "pending");
         var deadLettered = pending.Count(x => x.Status == "dead_letter");
+
+        logger.LogInformation(
+            "Webhook process-pending complete (processed={Processed}, delivered={Delivered}, retried={Retried}, deadLettered={DeadLettered}, actor={Actor}, correlationId={CorrelationId})",
+            pending.Count,
+            delivered,
+            retried,
+            deadLettered,
+            string.IsNullOrWhiteSpace(actor) ? "unknown" : actor,
+            correlationId);
 
         return Ok(new { processed = pending.Count, delivered, retried, deadLettered, maxAttempts = MaxAttempts });
     }
