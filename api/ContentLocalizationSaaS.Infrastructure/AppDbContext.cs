@@ -22,6 +22,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ContentItem> ContentItems => Set<ContentItem>();
     public DbSet<CopyComponent> CopyComponents => Set<CopyComponent>();
     public DbSet<UsageReference> UsageReferences => Set<UsageReference>();
+    public DbSet<SavedFilterPreset> SavedFilterPresets => Set<SavedFilterPreset>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -120,6 +121,17 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.ReferencePath).HasMaxLength(500).HasDefaultValue(string.Empty);
             e.HasIndex(x => x.ContentItemId);
             e.HasIndex(x => new { x.ProjectId, x.Screen, x.Component });
+        });
+
+        builder.Entity<SavedFilterPreset>(e =>
+        {
+            e.ToTable("saved_filter_presets");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Query).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.Tags).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
         });
     }
 }

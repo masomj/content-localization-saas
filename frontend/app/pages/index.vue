@@ -24,8 +24,12 @@ const contentItems = ref<any[]>([])
 const usageReferences = ref<any[]>([])
 const usageFilters = reactive({ projectId: '', screen: '', component: '' })
 const selectedContentItemId = ref('')
+const selectedContentItemIds = ref<string[]>([])
 const contentSearch = ref('')
 const contentError = ref('')
+const bulkStatus = ref('review')
+const savedFilterPresets = ref<any[]>([])
+const newPresetName = ref('')
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -115,6 +119,13 @@ async function loadUsageReferences() {
   usageReferences.value = await $fetch(`${apiBase}/api/usage-references${qs ? `?${qs}` : ''}`, { headers: authHeaders() })
 }
 
+async function loadSavedFilterPresets() {
+  const params = new URLSearchParams()
+  if (contentItemForm.projectId) params.set('projectId', contentItemForm.projectId)
+  const qs = params.toString()
+  savedFilterPresets.value = await $fetch(`${apiBase}/api/content-items/filter-presets${qs ? `?${qs}` : ''}`, { headers: authHeaders() })
+}
+
 async function loadData() {
   try {
     await loadPermissions()
@@ -137,6 +148,7 @@ async function loadData() {
     await loadContentItems()
     await loadCopyComponents()
     await loadUsageReferences()
+    await loadSavedFilterPresets()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -279,6 +291,53 @@ async function addUsageReference(contentItemId: string) {
 
   selectedContentItemId.value = contentItemId
   await loadUsageReferences()
+}
+
+function toggleContentItemSelection(id: string, checked: boolean) {
+  if (checked) {
+    if (!selectedContentItemIds.value.includes(id)) selectedContentItemIds.value.push(id)
+  } else {
+    selectedContentItemIds.value = selectedContentItemIds.value.filter(x => x !== id)
+  }
+}
+
+async function bulkUpdateSelectedStatus() {
+  if (selectedContentItemIds.value.length === 0) return
+
+  await $fetch(`${apiBase}/api/content-items/bulk/status`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      itemIds: selectedContentItemIds.value,
+      status: bulkStatus.value,
+    },
+  })
+
+  await loadContentItems()
+}
+
+async function saveCurrentFilterPreset() {
+  if (!contentItemForm.projectId || !newPresetName.value.trim()) return
+
+  await $fetch(`${apiBase}/api/content-items/filter-presets`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: contentItemForm.projectId,
+      name: newPresetName.value,
+      query: contentSearch.value,
+      tags: '',
+      status: '',
+    },
+  })
+
+  newPresetName.value = ''
+  await loadSavedFilterPresets()
+}
+
+function applyFilterPreset(preset: any) {
+  contentSearch.value = preset.query ?? ''
+  void loadContentItems()
 }
 
 async function saveProjectSettings() {
@@ -448,8 +507,24 @@ onMounted(loadData)
     <h3>Search content</h3>
     <input v-model="contentSearch" @input="loadContentItems" placeholder="Search tags/context/notes/key" aria-label="Search content" />
 
+    <h3>Saved filter presets</h3>
+    <label for="new-filter-preset">Preset name</label>
+    <input id="new-filter-preset" v-model="newPresetName" placeholder="My common search" />
+    <button type="button" @click="saveCurrentFilterPreset">Save current filter</button>
+    <ul>
+      <li v-for="preset in savedFilterPresets" :key="preset.id">
+        <button type="button" @click="applyFilterPreset(preset)">{{ preset.name }}</button>
+      </li>
+    </ul>
+
+    <h3>Bulk actions</h3>
+    <label for="bulk-status">Bulk status</label>
+    <input id="bulk-status" v-model="bulkStatus" />
+    <button type="button" @click="bulkUpdateSelectedStatus" :disabled="selectedContentItemIds.length === 0">Apply bulk status</button>
+
     <ul>
       <li v-for="item in contentItems" :key="item.id">
+        <input type="checkbox" :aria-label="`select ${item.key}`" @change="toggleContentItemSelection(item.id, ($event.target as HTMLInputElement).checked)" />
         <button type="button" @click="selectedContentItemId = item.id; loadUsageReferences()">{{ item.key }}</button>
         · {{ item.status }} · {{ item.tags }}
         <span v-if="item.copyComponentId"> · linked</span>

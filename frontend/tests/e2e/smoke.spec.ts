@@ -55,3 +55,10 @@ test('usage references panel render with filters', async ({ page }) => {
   await expect(page.locator('#usage-screen-filter')).toBeVisible()
   await expect(page.locator('#usage-component-filter')).toBeVisible()
 })
+
+test('bulk status and saved filter controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('#bulk-status')).toBeVisible()
+  await expect(page.locator('#new-filter-preset')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save current filter' })).toBeVisible()
+})
