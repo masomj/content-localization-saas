@@ -53,8 +53,11 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
         [FromQuery] string? status,
         [FromQuery] DateTime? sinceUtc,
         [FromQuery] DateTime? untilUtc,
-        CancellationToken cancellationToken)
+        [FromQuery] int limit = 200,
+        CancellationToken cancellationToken = default)
     {
+        var clampedLimit = Math.Clamp(limit, 1, 1000);
+
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
         var query = db.WebhookDeliveryLogs.Where(x => subIds.Contains(x.SubscriptionId));
 
@@ -74,11 +77,15 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
             query = query.Where(x => x.CreatedUtc <= untilUtc.Value);
         }
 
-        var logs = await query.OrderByDescending(x => x.CreatedUtc).ToListAsync(cancellationToken);
+        var total = await query.CountAsync(cancellationToken);
+        var logs = await query.OrderByDescending(x => x.CreatedUtc).Take(clampedLimit).ToListAsync(cancellationToken);
+
         return Ok(new
         {
             count = logs.Count,
-            filters = new { projectId, status, sinceUtc, untilUtc },
+            total,
+            truncated = total > logs.Count,
+            filters = new { projectId, status, sinceUtc, untilUtc, limit = clampedLimit },
             logs
         });
     }

@@ -42,16 +42,19 @@
 ```
 
 ## Webhook deliveries timeline example
-`GET /api/webhooks/deliveries?projectId=<guid>&status=dead_letter&sinceUtc=2026-03-14T00:00:00Z&untilUtc=2026-03-14T23:59:59Z`
+`GET /api/webhooks/deliveries?projectId=<guid>&status=dead_letter&sinceUtc=2026-03-14T00:00:00Z&untilUtc=2026-03-14T23:59:59Z&limit=100`
 
 ```json
 {
   "count": 1,
+  "total": 1,
+  "truncated": false,
   "filters": {
     "projectId": "5d6409d0-3af7-442f-86dd-9eb70d3ef96d",
     "status": "dead_letter",
     "sinceUtc": "2026-03-14T00:00:00Z",
-    "untilUtc": "2026-03-14T23:59:59Z"
+    "untilUtc": "2026-03-14T23:59:59Z",
+    "limit": 100
   },
   "logs": [
     {
