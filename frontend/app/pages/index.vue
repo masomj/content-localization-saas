@@ -50,6 +50,7 @@ const replyBody = ref('')
 const notificationsUserEmail = ref('member@example.com')
 const notifications = ref<any[]>([])
 const notificationPrefs = reactive({ inAppEnabled: true, emailEnabled: false, slackEnabled: false })
+const reviewForm = reactive({ contentItemId: '', reviewerEmail: 'reviewer@example.com', rejectionReason: '' })
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -631,6 +632,48 @@ async function resolveDiscussionThread(threadId: string) {
   }
 }
 
+async function submitForReview() {
+  if (!reviewForm.contentItemId || !reviewForm.reviewerEmail.trim()) return
+
+  await $fetch(`${apiBase}/api/review-workflow/submit`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'X-Actor-Email': 'editor@example.com' },
+    body: {
+      contentItemId: reviewForm.contentItemId,
+      reviewerEmail: reviewForm.reviewerEmail,
+    },
+  })
+
+  await loadContentItems()
+}
+
+async function approveContentItem() {
+  if (!reviewForm.contentItemId) return
+
+  await $fetch(`${apiBase}/api/review-workflow/approve`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'X-Actor-Email': 'reviewer@example.com', 'X-User-Role': 'Reviewer' },
+    body: { contentItemId: reviewForm.contentItemId },
+  })
+
+  await loadContentItems()
+}
+
+async function rejectContentItem() {
+  if (!reviewForm.contentItemId || !reviewForm.rejectionReason.trim()) return
+
+  await $fetch(`${apiBase}/api/review-workflow/reject`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'X-Actor-Email': 'reviewer@example.com', 'X-User-Role': 'Reviewer' },
+    body: {
+      contentItemId: reviewForm.contentItemId,
+      reason: reviewForm.rejectionReason,
+    },
+  })
+
+  await loadContentItems()
+}
+
 async function saveProjectSettings() {
   if (!projectSettingsForm.id) return
   if (!validateProjectSettings()) return
@@ -827,6 +870,26 @@ onMounted(loadData)
         <button type="button" @click="updateContentItem(item)">Save item edit</button>
       </li>
     </ul>
+  </section>
+
+  <section class="card">
+    <h2>Review workflow (Story 4.3)</h2>
+
+    <label for="review-content-item">Content item</label>
+    <select id="review-content-item" v-model="reviewForm.contentItemId">
+      <option value="">Select item</option>
+      <option v-for="item in contentItems" :key="item.id" :value="item.id">{{ item.key }} ({{ item.status }})</option>
+    </select>
+
+    <label for="reviewer-email">Reviewer email</label>
+    <input id="reviewer-email" v-model="reviewForm.reviewerEmail" />
+
+    <button type="button" @click="submitForReview">Submit for review</button>
+    <button type="button" @click="approveContentItem">Approve</button>
+
+    <label for="review-rejection-reason">Rejection reason</label>
+    <textarea id="review-rejection-reason" v-model="reviewForm.rejectionReason" />
+    <button type="button" @click="rejectContentItem">Reject to editor</button>
   </section>
 
   <section class="card">

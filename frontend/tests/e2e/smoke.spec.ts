@@ -113,3 +113,11 @@ test('mentions and notifications controls render', async ({ page }) => {
   await expect(page.locator('#notifications-user-email')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save notification preferences' })).toBeVisible()
 })
+
+test('review workflow controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Review workflow (Story 4.3)' })).toBeVisible()
+  await expect(page.locator('#review-content-item')).toBeVisible()
+  await expect(page.locator('#reviewer-email')).toBeVisible()
+  await expect(page.locator('#review-rejection-reason')).toBeVisible()
+})

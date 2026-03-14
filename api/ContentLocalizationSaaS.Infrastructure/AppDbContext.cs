@@ -103,6 +103,9 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Key).HasMaxLength(200).IsRequired();
             e.Property(x => x.Source).HasMaxLength(4000).IsRequired();
             e.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ReviewAssigneeEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.Property(x => x.ApprovedByEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.Property(x => x.RejectionReason).HasMaxLength(1000).HasDefaultValue(string.Empty);
             e.Property(x => x.Tags).HasMaxLength(1000).HasDefaultValue(string.Empty);
             e.Property(x => x.Context).HasMaxLength(1000).HasDefaultValue(string.Empty);
             e.Property(x => x.Notes).HasMaxLength(2000).HasDefaultValue(string.Empty);

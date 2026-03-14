@@ -64,6 +64,10 @@ public sealed class ContentItem
     public required string Key { get; set; }
     public required string Source { get; set; }
     public required string Status { get; set; }
+    public string ReviewAssigneeEmail { get; set; } = string.Empty;
+    public DateTime? ApprovedUtc { get; set; }
+    public string ApprovedByEmail { get; set; } = string.Empty;
+    public string RejectionReason { get; set; } = string.Empty;
     public string Tags { get; set; } = string.Empty; // pipe-delimited for MVP
     public string Context { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
