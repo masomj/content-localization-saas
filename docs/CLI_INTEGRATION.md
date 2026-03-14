@@ -32,4 +32,5 @@ This document defines the integration contract for automation clients using the 
 - Endpoint: `GET /api/cli/spec`
 - Auth: Viewer+
 - Cache policy: `Cache-Control: no-store`
+- Freshness header: `X-Generated-At-Utc`
 - Returns CLI version, command list, env vars, and exit-code map.

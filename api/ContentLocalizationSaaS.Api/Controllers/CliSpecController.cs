@@ -12,6 +12,7 @@ public sealed class CliSpecController : ControllerBase
     public IActionResult Spec()
     {
         Response.Headers.CacheControl = "no-store";
+        Response.Headers["X-Generated-At-Utc"] = DateTime.UtcNow.ToString("O");
 
         return Ok(new
         {
