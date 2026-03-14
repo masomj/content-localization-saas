@@ -10,7 +10,9 @@ public sealed class PermissionsController : ControllerBase
     [HttpGet("me")]
     public IActionResult GetMyPermissions()
     {
-        var role = AppRoleResolver.Resolve(HttpContext);
+        var role = AppRoleResolver.TryResolveFromClaims(User, out var claimsRole)
+            ? claimsRole
+            : AppRoleResolver.ResolveFromHeader(HttpContext);
         var matrix = RolePermissions.For(role);
         return Ok(new
         {
