@@ -77,10 +77,13 @@
 ```json
 {
   "count": 2,
+  "total": 5,
+  "truncated": true,
   "filters": {
     "operation": "export_bundle",
     "minHitCount": 2,
-    "sinceUtc": null
+    "sinceUtc": null,
+    "limit": 2
   },
   "rows": [
     {

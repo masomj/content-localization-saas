@@ -33,6 +33,8 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             query = query.Where(x => x.LastSeenUtc >= sinceUtc.Value);
         }
 
+        var total = await query.CountAsync(cancellationToken);
+
         var rows = await query
             .OrderByDescending(x => x.LastSeenUtc)
             .Take(clampedLimit)
@@ -49,7 +51,9 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         return Ok(new
         {
             count = rows.Count,
-            filters = new { operation, minHitCount = clampedMinHits, sinceUtc },
+            total,
+            truncated = total > rows.Count,
+            filters = new { operation, minHitCount = clampedMinHits, sinceUtc, limit = clampedLimit },
             rows
         });
     }
