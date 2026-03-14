@@ -15,6 +15,6 @@ public static class AppRoleResolver
     public static AppRole Resolve(HttpContext context)
     {
         var raw = context.Request.Headers[HeaderName].ToString();
-        return Enum.TryParse<AppRole>(raw, true, out var parsed) ? parsed : AppRole.Admin;
+        return Enum.TryParse<AppRole>(raw, true, out var parsed) ? parsed : AppRole.Viewer;
     }
 }

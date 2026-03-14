@@ -233,9 +233,10 @@ public sealed class ApiToken
     public string Scope { get; set; } = string.Empty;
     public bool IsRevoked { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresUtc { get; set; } = DateTime.UtcNow.AddDays(90);
+    public DateTime? LastUsedUtc { get; set; }
     public DateTime? RevokedUtc { get; set; }
 }
-
 public sealed class WebhookSubscription
 {
     public Guid Id { get; set; } = Guid.NewGuid();

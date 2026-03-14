@@ -36,11 +36,13 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
                 Response.Headers["X-RateLimit-Limit"] = MaxPerMinute.ToString();
                 Response.Headers["X-RateLimit-Remaining"] = "0";
                 Response.Headers["Retry-After"] = "60";
+                Response.Headers["X-RateLimit-Reset"] = DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeSeconds().ToString();
                 return StatusCode(StatusCodes.Status429TooManyRequests, new { error = "rate_limit_exceeded" });
             }
             queue.Enqueue(now);
             Response.Headers["X-RateLimit-Limit"] = MaxPerMinute.ToString();
             Response.Headers["X-RateLimit-Remaining"] = Math.Max(0, MaxPerMinute - queue.Count).ToString();
+            Response.Headers["X-RateLimit-Reset"] = DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeSeconds().ToString();
         }
 
         if (projectId == Guid.Empty) return BadRequest(new { error = "projectId_required" });
@@ -115,6 +117,10 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         var hash = IntegrationTokensController.Hash(raw.Trim());
         var token = await db.ApiTokens.FirstOrDefaultAsync(x => x.TokenHash == hash, cancellationToken);
         if (token is null || token.IsRevoked) return (StatusCode(StatusCodes.Status401Unauthorized, new { error = "invalid_token" }), null);
+        if (token.ExpiresUtc <= DateTime.UtcNow) return (StatusCode(StatusCodes.Status401Unauthorized, new { error = "token_expired" }), null);
+
+        token.LastUsedUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
 
         var scopes = (token.Scope ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

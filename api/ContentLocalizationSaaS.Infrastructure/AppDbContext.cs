@@ -308,6 +308,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.TokenHash).HasMaxLength(128).IsRequired();
             e.Property(x => x.Scope).HasMaxLength(128).HasDefaultValue(string.Empty);
             e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasIndex(x => new { x.IsRevoked, x.ExpiresUtc });
         });
 
         builder.Entity<WebhookSubscription>(e =>
