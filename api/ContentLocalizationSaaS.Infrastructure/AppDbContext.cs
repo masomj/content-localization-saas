@@ -24,6 +24,8 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<UsageReference> UsageReferences => Set<UsageReference>();
     public DbSet<SavedFilterPreset> SavedFilterPresets => Set<SavedFilterPreset>();
     public DbSet<ContentItemRevision> ContentItemRevisions => Set<ContentItemRevision>();
+    public DbSet<ProjectLanguage> ProjectLanguages => Set<ProjectLanguage>();
+    public DbSet<ContentItemLanguageTask> ContentItemLanguageTasks => Set<ContentItemLanguageTask>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -147,6 +149,26 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.DiffSummary).HasMaxLength(500).HasDefaultValue(string.Empty);
             e.Property(x => x.EventType).HasMaxLength(32).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ContentItemId, x.CreatedUtc });
+        });
+
+        builder.Entity<ProjectLanguage>(e =>
+        {
+            e.ToTable("project_languages");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Bcp47Code).HasMaxLength(35).IsRequired();
+            e.HasIndex(x => new { x.ProjectId, x.Bcp47Code }).IsUnique();
+            e.HasIndex(x => new { x.ProjectId, x.IsActive });
+        });
+
+        builder.Entity<ContentItemLanguageTask>(e =>
+        {
+            e.ToTable("content_item_language_tasks");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.LanguageCode).HasMaxLength(35).IsRequired();
+            e.Property(x => x.AssigneeEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue("todo");
+            e.HasIndex(x => new { x.ContentItemId, x.LanguageCode }).IsUnique();
+            e.HasIndex(x => x.DueUtc);
         });
     }
 }

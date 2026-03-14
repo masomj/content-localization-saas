@@ -104,3 +104,24 @@ public sealed class ContentItemRevision
     public string EventType { get; set; } = string.Empty; // edited / rollback
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class ProjectLanguage
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string Bcp47Code { get; set; }
+    public bool IsSource { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class ContentItemLanguageTask
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemId { get; set; }
+    public required string LanguageCode { get; set; }
+    public string AssigneeEmail { get; set; } = string.Empty;
+    public DateTime? DueUtc { get; set; }
+    public string Status { get; set; } = "todo";
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

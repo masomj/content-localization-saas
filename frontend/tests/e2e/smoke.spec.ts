@@ -69,3 +69,11 @@ test('content item history compare controls render', async ({ page }) => {
   await expect(page.locator('#compare-left-revision')).toBeVisible()
   await expect(page.locator('#compare-right-revision')).toBeVisible()
 })
+
+test('language management and per-language task controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Language management (Story 3.1)' })).toBeVisible()
+  await expect(page.locator('#language-code')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Per-language tasks (Story 3.2)' })).toBeVisible()
+  await expect(page.locator('#task-language')).toBeVisible()
+})

@@ -34,6 +34,10 @@ const contentError = ref('')
 const bulkStatus = ref('review')
 const savedFilterPresets = ref<any[]>([])
 const newPresetName = ref('')
+const projectLanguages = ref<any[]>([])
+const languageForm = reactive({ projectId: '', bcp47Code: '', isSource: false })
+const languageTaskForm = reactive({ contentItemId: '', languageCode: '', assigneeEmail: '', dueUtc: '', status: 'todo' })
+const languageTasks = ref<any[]>([])
 
 const errors = reactive<Record<string, string>>({
   workspaceName: '',
@@ -130,6 +134,20 @@ async function loadSavedFilterPresets() {
   savedFilterPresets.value = await $fetch(`${apiBase}/api/content-items/filter-presets${qs ? `?${qs}` : ''}`, { headers: authHeaders() })
 }
 
+async function loadProjectLanguages() {
+  if (!languageForm.projectId) {
+    projectLanguages.value = []
+    return
+  }
+  projectLanguages.value = await $fetch(`${apiBase}/api/project-languages?projectId=${languageForm.projectId}`, { headers: authHeaders() })
+}
+
+async function loadLanguageTasks() {
+  const params = new URLSearchParams()
+  if (languageTaskForm.contentItemId) params.set('contentItemId', languageTaskForm.contentItemId)
+  languageTasks.value = await $fetch(`${apiBase}/api/language-tasks?${params.toString()}`, { headers: authHeaders() })
+}
+
 async function loadData() {
   try {
     await loadPermissions()
@@ -142,6 +160,7 @@ async function loadData() {
       contentItemForm.projectId = projects.value[0].id
       copyComponentForm.projectId = projects.value[0].id
       usageFilters.projectId = projects.value[0].id
+      languageForm.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
@@ -153,6 +172,8 @@ async function loadData() {
     await loadCopyComponents()
     await loadUsageReferences()
     await loadSavedFilterPresets()
+    await loadProjectLanguages()
+    await loadLanguageTasks()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -379,6 +400,59 @@ function applyFilterPreset(preset: any) {
   void loadContentItems()
 }
 
+async function addProjectLanguage() {
+  if (!languageForm.projectId || !languageForm.bcp47Code.trim()) return
+  await $fetch(`${apiBase}/api/project-languages`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: languageForm.projectId,
+      bcp47Code: languageForm.bcp47Code,
+      isSource: languageForm.isSource,
+    },
+  })
+  languageForm.bcp47Code = ''
+  languageForm.isSource = false
+  await loadProjectLanguages()
+}
+
+async function toggleLanguageActive(id: string, isActive: boolean) {
+  await $fetch(`${apiBase}/api/project-languages/${id}/active`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: { isActive },
+  })
+  await loadProjectLanguages()
+}
+
+async function changeDefaultSourceLanguage(code: string) {
+  if (!languageForm.projectId) return
+  await $fetch(`${apiBase}/api/project-languages/source-language?projectId=${languageForm.projectId}`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: { bcp47Code: code },
+  })
+  await loadProjectLanguages()
+}
+
+async function upsertLanguageTask() {
+  if (!languageTaskForm.contentItemId || !languageTaskForm.languageCode.trim() || !languageTaskForm.status.trim()) return
+
+  await $fetch(`${apiBase}/api/language-tasks`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      contentItemId: languageTaskForm.contentItemId,
+      languageCode: languageTaskForm.languageCode,
+      assigneeEmail: languageTaskForm.assigneeEmail,
+      dueUtc: languageTaskForm.dueUtc || null,
+      status: languageTaskForm.status,
+    },
+  })
+
+  await loadLanguageTasks()
+}
+
 async function saveProjectSettings() {
   if (!projectSettingsForm.id) return
   if (!validateProjectSettings()) return
@@ -573,6 +647,68 @@ onMounted(loadData)
         </select>
         <button type="button" @click="addUsageReference(item.id)">Add usage ref</button>
         <button type="button" @click="updateContentItem(item)">Save item edit</button>
+      </li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Language management (Story 3.1)</h2>
+
+    <form @submit.prevent="addProjectLanguage" novalidate>
+      <label for="language-project">Project</label>
+      <select id="language-project" v-model="languageForm.projectId" @change="loadProjectLanguages">
+        <option value="">Select project</option>
+        <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+      </select>
+
+      <label for="language-code">BCP-47 code</label>
+      <input id="language-code" v-model="languageForm.bcp47Code" placeholder="fr-CA" />
+
+      <label>
+        <input type="checkbox" v-model="languageForm.isSource" /> Mark as source language
+      </label>
+
+      <button type="submit" :disabled="!canWrite">Add language</button>
+    </form>
+
+    <ul>
+      <li v-for="lang in projectLanguages" :key="lang.id">
+        {{ lang.bcp47Code }} · source={{ lang.isSource }} · active={{ lang.isActive }}
+        <button type="button" @click="toggleLanguageActive(lang.id, !lang.isActive)">{{ lang.isActive ? 'Deactivate' : 'Activate' }}</button>
+        <button type="button" @click="changeDefaultSourceLanguage(lang.bcp47Code)">Set as source</button>
+      </li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Per-language tasks (Story 3.2)</h2>
+
+    <form @submit.prevent="upsertLanguageTask" novalidate>
+      <label for="task-content-item">Content item</label>
+      <select id="task-content-item" v-model="languageTaskForm.contentItemId" @change="loadLanguageTasks">
+        <option value="">Select item</option>
+        <option v-for="item in contentItems" :key="item.id" :value="item.id">{{ item.key }}</option>
+      </select>
+
+      <label for="task-language">Language code</label>
+      <input id="task-language" v-model="languageTaskForm.languageCode" placeholder="fr-CA" />
+
+      <label for="task-assignee">Assignee email</label>
+      <input id="task-assignee" v-model="languageTaskForm.assigneeEmail" placeholder="translator@example.com" />
+
+      <label for="task-due">Due UTC</label>
+      <input id="task-due" v-model="languageTaskForm.dueUtc" placeholder="2026-03-20T12:00:00Z" />
+
+      <label for="task-status">Status</label>
+      <input id="task-status" v-model="languageTaskForm.status" placeholder="in_progress" />
+
+      <button type="submit" :disabled="!canWrite">Save language task</button>
+    </form>
+
+    <ul>
+      <li v-for="task in languageTasks" :key="task.id">
+        {{ task.languageCode }} · {{ task.status }} · {{ task.assigneeEmail || 'unassigned' }} · due={{ task.dueUtc || 'none' }}
+        <span v-if="task.dueUtc && new Date(task.dueUtc) < new Date() && task.status !== 'done'"> · OVERDUE</span>
       </li>
     </ul>
   </section>
