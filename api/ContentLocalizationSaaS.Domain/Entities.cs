@@ -60,6 +60,7 @@ public sealed class ContentItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ProjectId { get; set; }
+    public Guid? CopyComponentId { get; set; }
     public required string Key { get; set; }
     public required string Source { get; set; }
     public required string Status { get; set; }
@@ -67,4 +68,14 @@ public sealed class ContentItem
     public string Context { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class CopyComponent
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string Name { get; set; }
+    public required string Source { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 }

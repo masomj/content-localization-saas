@@ -40,3 +40,10 @@ test('content item schema form fields render', async ({ page }) => {
   await expect(page.locator('#content-source')).toBeVisible()
   await expect(page.locator('#content-status')).toBeVisible()
 })
+
+test('reusable copy components section renders', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Reusable copy components (Story 2.2)' })).toBeVisible()
+  await expect(page.locator('#copy-component-name')).toBeVisible()
+  await expect(page.locator('#copy-component-source')).toBeVisible()
+})

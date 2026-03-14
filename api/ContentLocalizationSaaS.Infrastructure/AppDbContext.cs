@@ -20,6 +20,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<WorkspaceMembership> WorkspaceMemberships => Set<WorkspaceMembership>();
     public DbSet<MembershipAuditLog> MembershipAuditLogs => Set<MembershipAuditLog>();
     public DbSet<ContentItem> ContentItems => Set<ContentItem>();
+    public DbSet<CopyComponent> CopyComponents => Set<CopyComponent>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -97,6 +98,16 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Notes).HasMaxLength(2000).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
             e.HasIndex(x => x.Tags);
+            e.HasIndex(x => x.CopyComponentId);
+        });
+
+        builder.Entity<CopyComponent>(e =>
+        {
+            e.ToTable("copy_components");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Source).HasMaxLength(4000).IsRequired();
+            e.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
         });
     }
 }

@@ -18,6 +18,8 @@ const workspaceForm = reactive({ name: '' })
 const projectForm = reactive({ workspaceId: '', name: '', sourceLanguage: '', description: '' })
 const projectSettingsForm = reactive({ id: '', name: '', sourceLanguage: '', description: '' })
 const contentItemForm = reactive({ projectId: '', key: '', source: '', status: 'draft', tags: '', context: '', notes: '' })
+const copyComponentForm = reactive({ projectId: '', name: '', source: '' })
+const copyComponents = ref<any[]>([])
 const contentItems = ref<any[]>([])
 const contentSearch = ref('')
 const contentError = ref('')
@@ -92,6 +94,13 @@ async function loadContentItems() {
   contentItems.value = await $fetch(`${apiBase}/api/content-items${qs ? `?${qs}` : ''}`, { headers: authHeaders() })
 }
 
+async function loadCopyComponents() {
+  const params = new URLSearchParams()
+  if (copyComponentForm.projectId) params.set('projectId', copyComponentForm.projectId)
+  const qs = params.toString()
+  copyComponents.value = await $fetch(`${apiBase}/api/copy-components${qs ? `?${qs}` : ''}`, { headers: authHeaders() })
+}
+
 async function loadData() {
   try {
     await loadPermissions()
@@ -102,6 +111,7 @@ async function loadData() {
     if (!projectSettingsForm.id && projects.value.length > 0) {
       selectProject(projects.value[0])
       contentItemForm.projectId = projects.value[0].id
+      copyComponentForm.projectId = projects.value[0].id
     }
 
     if (projectSettingsForm.id) {
@@ -110,6 +120,7 @@ async function loadData() {
     }
 
     await loadContentItems()
+    await loadCopyComponents()
   } catch {
     apiWarning.value = 'API is not reachable yet. Start the backend to persist data.'
   }
@@ -184,6 +195,54 @@ async function createContentItem() {
   } catch (e: any) {
     contentError.value = e?.data?.errors?.Key?.[0] ?? e?.data?.title ?? 'Could not create content item.'
   }
+}
+
+async function createCopyComponent() {
+  if (!copyComponentForm.projectId || !copyComponentForm.name.trim() || !copyComponentForm.source.trim()) return
+
+  await $fetch(`${apiBase}/api/copy-components`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: {
+      projectId: copyComponentForm.projectId,
+      name: copyComponentForm.name,
+      source: copyComponentForm.source,
+    },
+  })
+
+  copyComponentForm.name = ''
+  copyComponentForm.source = ''
+  await loadCopyComponents()
+}
+
+async function propagateCopyComponent(componentId: string, source: string) {
+  await $fetch(`${apiBase}/api/copy-components/${componentId}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: { source },
+  })
+
+  await loadCopyComponents()
+  await loadContentItems()
+}
+
+async function deleteCopyComponent(componentId: string) {
+  await $fetch(`${apiBase}/api/copy-components/${componentId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+
+  await loadCopyComponents()
+}
+
+async function linkContentItemToComponent(contentItemId: string, componentId: string) {
+  await $fetch(`${apiBase}/api/copy-components/${componentId}/link`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: { contentItemId },
+  })
+
+  await loadContentItems()
 }
 
 async function saveProjectSettings() {
@@ -356,6 +415,38 @@ onMounted(loadData)
     <ul>
       <li v-for="item in contentItems" :key="item.id">
         {{ item.key }} · {{ item.status }} · {{ item.tags }}
+        <span v-if="item.copyComponentId"> · linked</span>
+        <select v-if="copyComponents.length > 0" @change="linkContentItemToComponent(item.id, ($event.target as HTMLSelectElement).value)">
+          <option value="">Link to component</option>
+          <option v-for="cc in copyComponents" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
+        </select>
+      </li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Reusable copy components (Story 2.2)</h2>
+    <form @submit.prevent="createCopyComponent" novalidate>
+      <label for="copy-component-project">Project</label>
+      <select id="copy-component-project" v-model="copyComponentForm.projectId">
+        <option value="">Select project</option>
+        <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+      </select>
+
+      <label for="copy-component-name">Component name</label>
+      <input id="copy-component-name" v-model="copyComponentForm.name" placeholder="Primary CTA label" />
+
+      <label for="copy-component-source">Shared source</label>
+      <textarea id="copy-component-source" v-model="copyComponentForm.source" />
+
+      <button type="submit" :disabled="!canWrite">Create copy component</button>
+    </form>
+
+    <ul>
+      <li v-for="cc in copyComponents" :key="cc.id">
+        <strong>{{ cc.name }}</strong> · {{ cc.source }}
+        <button type="button" @click="propagateCopyComponent(cc.id, cc.source)" :disabled="!canWrite">Propagate update</button>
+        <button type="button" @click="deleteCopyComponent(cc.id)" :disabled="!canWrite">Delete</button>
       </li>
     </ul>
   </section>
