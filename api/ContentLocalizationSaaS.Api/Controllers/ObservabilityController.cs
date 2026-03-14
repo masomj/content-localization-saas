@@ -12,12 +12,13 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
 {
     [HttpGet("status")]
     [RequireAppRole(AppRole.Admin)]
-    public async Task<IActionResult> Status(CancellationToken cancellationToken)
+    public async Task<IActionResult> Status([FromQuery] int windowHours = 24, CancellationToken cancellationToken = default)
     {
         Response.Headers.CacheControl = "no-store";
 
+        var clampedWindowHours = Math.Clamp(windowHours, 1, 168);
         var now = DateTime.UtcNow;
-        var since24h = now.AddHours(-24);
+        var since24h = now.AddHours(-clampedWindowHours);
 
         var deadLetterWebhooks = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "dead_letter", cancellationToken);
         var failedWebhooks24h = await db.WebhookDeliveryLogs.CountAsync(x => x.Status == "dead_letter" && x.CreatedUtc >= since24h, cancellationToken);
@@ -42,6 +43,7 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
         return Ok(new
         {
             timestampUtc = now,
+            windowHours = clampedWindowHours,
             degraded,
             summary = new
             {

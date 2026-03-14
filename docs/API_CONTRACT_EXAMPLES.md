@@ -42,7 +42,7 @@
 ```
 
 ## Observability status example
-`GET /api/observability/status`
+`GET /api/observability/status?windowHours=24`
 
 > Response headers include `Cache-Control: no-store`.
 
@@ -51,6 +51,7 @@
 ```json
 {
   "timestampUtc": "2026-03-14T18:10:00Z",
+  "windowHours": 24,
   "degraded": false,
   "summary": {
     "deadLetterWebhooks": 0,
