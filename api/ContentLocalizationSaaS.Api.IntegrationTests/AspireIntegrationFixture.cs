@@ -19,11 +19,7 @@ public sealed class AspireIntegrationFixture : IAsyncLifetime
         await _app.StartAsync();
 
         var apiEndpoint = _app.GetEndpoint("api", "http");
-        var handler = new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-        };
-        ApiClient = new HttpClient(handler) { BaseAddress = apiEndpoint };
+        ApiClient = new HttpClient { BaseAddress = apiEndpoint };
 
         ConnectionString = await _app.GetConnectionStringAsync("contentdb")
             ?? throw new InvalidOperationException("contentdb connection string not found from Aspire app host.");
