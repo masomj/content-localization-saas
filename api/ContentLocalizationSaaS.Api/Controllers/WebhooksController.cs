@@ -141,11 +141,12 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
 
     [HttpGet("summary")]
     [RequireAppRole(AppRole.Admin)]
-    public async Task<IActionResult> Summary([FromQuery] Guid projectId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Summary([FromQuery] Guid projectId, [FromQuery] int windowHours = 24, CancellationToken cancellationToken = default)
     {
         Response.Headers.CacheControl = "no-store";
 
-        var since24h = DateTime.UtcNow.AddHours(-24);
+        var clampedWindowHours = Math.Clamp(windowHours, 1, 168);
+        var since24h = DateTime.UtcNow.AddHours(-clampedWindowHours);
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
 
         var query = db.WebhookDeliveryLogs.Where(x => subIds.Contains(x.SubscriptionId));
@@ -160,6 +161,7 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
         {
             generatedAtUtc = DateTime.UtcNow,
             projectId,
+            windowHours = clampedWindowHours,
             total,
             byStatus = new
             {
@@ -167,7 +169,7 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
                 delivered,
                 deadLetter
             },
-            created24h
+            createdInWindow = created24h
         });
     }
 

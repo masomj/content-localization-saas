@@ -85,18 +85,20 @@
 ```
 
 ## Webhook summary example
-`GET /api/webhooks/summary?projectId=<guid>`
+`GET /api/webhooks/summary?projectId=<guid>&windowHours=24`
 
 ```json
 {
+  "generatedAtUtc": "2026-03-14T18:40:00Z",
   "projectId": "5d6409d0-3af7-442f-86dd-9eb70d3ef96d",
+  "windowHours": 24,
   "total": 120,
   "byStatus": {
     "pending": 7,
     "delivered": 104,
     "deadLetter": 9
   },
-  "created24h": 16
+  "createdInWindow": 16
 }
 ```
 
