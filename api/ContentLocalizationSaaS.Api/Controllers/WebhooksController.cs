@@ -99,6 +99,7 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
 
         return Ok(new
         {
+            generatedAtUtc = DateTime.UtcNow,
             count = logs.Count,
             total,
             truncated = total > logs.Count,

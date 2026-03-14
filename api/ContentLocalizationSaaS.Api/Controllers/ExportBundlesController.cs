@@ -67,6 +67,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
 
         return Ok(new
         {
+            generatedAtUtc = DateTime.UtcNow,
             count = rows.Count,
             total,
             truncated = total > rows.Count,

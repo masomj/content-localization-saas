@@ -81,6 +81,7 @@
 
 ```json
 {
+  "generatedAtUtc": "2026-03-14T18:16:00Z",
   "count": 1,
   "total": 1,
   "truncated": false,
@@ -111,6 +112,7 @@
 
 ```json
 {
+  "generatedAtUtc": "2026-03-14T18:16:00Z",
   "count": 2,
   "total": 5,
   "truncated": true,
