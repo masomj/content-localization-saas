@@ -90,3 +90,17 @@ public sealed class UsageReference
     public string ReferencePath { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class ContentItemRevision
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemId { get; set; }
+    public required string ActorEmail { get; set; }
+    public string PreviousSource { get; set; } = string.Empty;
+    public string NewSource { get; set; } = string.Empty;
+    public string PreviousStatus { get; set; } = string.Empty;
+    public string NewStatus { get; set; } = string.Empty;
+    public string DiffSummary { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty; // edited / rollback
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

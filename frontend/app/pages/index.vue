@@ -25,6 +25,10 @@ const usageReferences = ref<any[]>([])
 const usageFilters = reactive({ projectId: '', screen: '', component: '' })
 const selectedContentItemId = ref('')
 const selectedContentItemIds = ref<string[]>([])
+const contentRevisions = ref<any[]>([])
+const revisionCompare = ref<any>(null)
+const compareLeftRevisionId = ref('')
+const compareRightRevisionId = ref('')
 const contentSearch = ref('')
 const contentError = ref('')
 const bulkStatus = ref('review')
@@ -293,6 +297,41 @@ async function addUsageReference(contentItemId: string) {
   await loadUsageReferences()
 }
 
+async function loadContentRevisions(contentItemId: string) {
+  selectedContentItemId.value = contentItemId
+  contentRevisions.value = await $fetch(`${apiBase}/api/content-items/${contentItemId}/revisions`, { headers: authHeaders() })
+}
+
+async function compareSelectedRevisions() {
+  if (!selectedContentItemId.value || !compareLeftRevisionId.value || !compareRightRevisionId.value) return
+  revisionCompare.value = await $fetch(
+    `${apiBase}/api/content-items/${selectedContentItemId.value}/revisions/compare?left=${compareLeftRevisionId.value}&right=${compareRightRevisionId.value}`,
+    { headers: authHeaders() }
+  )
+}
+
+async function rollbackRevision(revisionId: string) {
+  if (!selectedContentItemId.value) return
+  await $fetch(`${apiBase}/api/content-items/${selectedContentItemId.value}/revisions/${revisionId}/rollback`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'X-Actor-Email': 'admin@example.com' },
+  })
+
+  await loadContentItems()
+  await loadContentRevisions(selectedContentItemId.value)
+}
+
+async function updateContentItem(item: any) {
+  await $fetch(`${apiBase}/api/content-items/${item.id}`, {
+    method: 'PUT',
+    headers: { ...authHeaders(), 'X-Actor-Email': 'editor@example.com' },
+    body: { source: item.source, status: item.status },
+  })
+
+  await loadContentItems()
+  await loadContentRevisions(item.id)
+}
+
 function toggleContentItemSelection(id: string, checked: boolean) {
   if (checked) {
     if (!selectedContentItemIds.value.includes(id)) selectedContentItemIds.value.push(id)
@@ -525,7 +564,7 @@ onMounted(loadData)
     <ul>
       <li v-for="item in contentItems" :key="item.id">
         <input type="checkbox" :aria-label="`select ${item.key}`" @change="toggleContentItemSelection(item.id, ($event.target as HTMLInputElement).checked)" />
-        <button type="button" @click="selectedContentItemId = item.id; loadUsageReferences()">{{ item.key }}</button>
+        <button type="button" @click="selectedContentItemId = item.id; loadUsageReferences(); loadContentRevisions(item.id)">{{ item.key }}</button>
         · {{ item.status }} · {{ item.tags }}
         <span v-if="item.copyComponentId"> · linked</span>
         <select v-if="copyComponents.length > 0" @change="linkContentItemToComponent(item.id, ($event.target as HTMLSelectElement).value)">
@@ -533,8 +572,42 @@ onMounted(loadData)
           <option v-for="cc in copyComponents" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
         </select>
         <button type="button" @click="addUsageReference(item.id)">Add usage ref</button>
+        <button type="button" @click="updateContentItem(item)">Save item edit</button>
       </li>
     </ul>
+  </section>
+
+  <section class="card">
+    <h2>Content item history (Story 2.5)</h2>
+    <p>Select a content item to view revision history.</p>
+
+    <ul>
+      <li v-for="rev in contentRevisions" :key="rev.id">
+        {{ rev.createdUtc }} · {{ rev.actorEmail }} · {{ rev.eventType }} · {{ rev.diffSummary }}
+        <button type="button" @click="rollbackRevision(rev.id)" :disabled="!canAdmin">Rollback to this revision</button>
+      </li>
+    </ul>
+
+    <p v-if="contentRevisions.length === 0">No revisions yet for selected item.</p>
+
+    <label for="compare-left-revision">Compare left revision</label>
+    <select id="compare-left-revision" v-model="compareLeftRevisionId">
+      <option value="">Select left</option>
+      <option v-for="rev in contentRevisions" :key="`left-${rev.id}`" :value="rev.id">{{ rev.createdUtc }} · {{ rev.eventType }}</option>
+    </select>
+
+    <label for="compare-right-revision">Compare right revision</label>
+    <select id="compare-right-revision" v-model="compareRightRevisionId">
+      <option value="">Select right</option>
+      <option v-for="rev in contentRevisions" :key="`right-${rev.id}`" :value="rev.id">{{ rev.createdUtc }} · {{ rev.eventType }}</option>
+    </select>
+
+    <button type="button" @click="compareSelectedRevisions">Compare selected revisions</button>
+
+    <div v-if="revisionCompare">
+      <p>Source delta: {{ revisionCompare.delta.sourceDelta }}</p>
+      <p>Status delta: {{ revisionCompare.delta.statusDelta }}</p>
+    </div>
   </section>
 
   <section class="card">

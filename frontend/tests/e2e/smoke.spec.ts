@@ -62,3 +62,10 @@ test('bulk status and saved filter controls render', async ({ page }) => {
   await expect(page.locator('#new-filter-preset')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save current filter' })).toBeVisible()
 })
+
+test('content item history compare controls render', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Content item history (Story 2.5)' })).toBeVisible()
+  await expect(page.locator('#compare-left-revision')).toBeVisible()
+  await expect(page.locator('#compare-right-revision')).toBeVisible()
+})

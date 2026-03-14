@@ -23,6 +23,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<CopyComponent> CopyComponents => Set<CopyComponent>();
     public DbSet<UsageReference> UsageReferences => Set<UsageReference>();
     public DbSet<SavedFilterPreset> SavedFilterPresets => Set<SavedFilterPreset>();
+    public DbSet<ContentItemRevision> ContentItemRevisions => Set<ContentItemRevision>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -132,6 +133,20 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Tags).HasMaxLength(500).HasDefaultValue(string.Empty);
             e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+        });
+
+        builder.Entity<ContentItemRevision>(e =>
+        {
+            e.ToTable("content_item_revisions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ActorEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.PreviousSource).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.Property(x => x.NewSource).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.Property(x => x.PreviousStatus).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.Property(x => x.NewStatus).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.Property(x => x.DiffSummary).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.EventType).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ContentItemId, x.CreatedUtc });
         });
     }
 }
