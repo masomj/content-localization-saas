@@ -46,6 +46,8 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
             ? 1.0
             : Math.Round((double)deliveredWebhooks24h / totalTerminal24h, 4);
 
+        var degraded = deadLetterWebhooks > 0 || pendingOldestAgeMinutes > 30 || webhookSuccessRate24h < 0.99;
+
         var correlationId = HttpContext.Items[ObservabilityMiddleware.CorrelationHeader]?.ToString()
                             ?? HttpContext.Response.Headers[ObservabilityMiddleware.CorrelationHeader].ToString();
 
@@ -64,7 +66,14 @@ public sealed class ObservabilityController(AppDbContext db) : ControllerBase
                 deliveredWebhooks24h,
                 webhookAttempts24h,
                 pendingOldestAgeMinutes,
-                webhookSuccessRate24h
+                webhookSuccessRate24h,
+                degraded,
+                thresholds = new
+                {
+                    pendingOldestAgeMinutesWarn = 30,
+                    webhookSuccessRate24hWarnBelow = 0.99,
+                    deadLetterWebhooksWarnAbove = 0
+                }
             }
         });
     }
