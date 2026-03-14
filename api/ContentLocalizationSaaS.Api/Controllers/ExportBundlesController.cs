@@ -60,6 +60,9 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             })
             .ToListAsync(cancellationToken);
 
+        Response.Headers["X-Total-Count"] = total.ToString();
+        Response.Headers["X-Result-Limit"] = clampedLimit.ToString();
+
         return Ok(new
         {
             count = rows.Count,

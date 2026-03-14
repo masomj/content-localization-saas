@@ -92,6 +92,9 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
         var total = await query.CountAsync(cancellationToken);
         var logs = await query.OrderByDescending(x => x.CreatedUtc).Take(clampedLimit).ToListAsync(cancellationToken);
 
+        Response.Headers["X-Total-Count"] = total.ToString();
+        Response.Headers["X-Result-Limit"] = clampedLimit.ToString();
+
         return Ok(new
         {
             count = logs.Count,
