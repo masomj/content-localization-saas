@@ -64,6 +64,9 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
     {
         Response.Headers.CacheControl = "no-store";
 
+        if (projectId == Guid.Empty)
+            return BadRequest(new { error = "projectId_required" });
+
         var clampedLimit = Math.Clamp(limit, 1, 1000);
 
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
@@ -114,6 +117,9 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
     {
         Response.Headers.CacheControl = "no-store";
 
+        if (projectId == Guid.Empty)
+            return BadRequest(new { error = "projectId_required" });
+
         var clampedLimit = Math.Clamp(limit, 1, 1000);
         var subIds = await db.WebhookSubscriptions.Where(x => x.ProjectId == projectId).Select(x => x.Id).ToListAsync(cancellationToken);
         var query = db.WebhookDeliveryLogs
@@ -144,6 +150,9 @@ public sealed class WebhooksController(AppDbContext db, ILogger<WebhooksControll
     public async Task<IActionResult> Summary([FromQuery] Guid projectId, [FromQuery] int windowHours = 24, CancellationToken cancellationToken = default)
     {
         Response.Headers.CacheControl = "no-store";
+
+        if (projectId == Guid.Empty)
+            return BadRequest(new { error = "projectId_required" });
 
         var clampedWindowHours = Math.Clamp(windowHours, 1, 168);
         var since24h = DateTime.UtcNow.AddHours(-clampedWindowHours);
