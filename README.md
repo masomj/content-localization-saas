@@ -106,6 +106,25 @@ npm install
 npm run dev
 ```
 
+### OpenTelemetry (debugging API issues)
+
+- Service defaults already wire ASP.NET + HttpClient tracing/metrics/logging.
+- Exceptions are now captured in telemetry spans for easier debugging.
+- **Recommended local flow:** run via Aspire AppHost so telemetry is visible in the Aspire dashboard.
+
+```bash
+cd api
+dotnet run --project ContentLocalizationSaaS.AppHost
+```
+
+- If running API standalone, set an OTLP exporter endpoint before start:
+
+```bash
+# PowerShell example
+$env:OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
+dotnet run --project ContentLocalizationSaaS.Api
+```
+
 ## Current status
 
 This is an initial architecture scaffold with:
