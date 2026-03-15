@@ -5,6 +5,7 @@ using ContentLocalizationSaaS.Application;
 using ContentLocalizationSaaS.Infrastructure;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -72,6 +73,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup.Migrations");
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
     var pendingBefore = (await db.Database.GetPendingMigrationsAsync()).ToArray();
     if (pendingBefore.Length > 0)
@@ -85,7 +87,24 @@ if (app.Environment.IsDevelopment())
     {
         throw new InvalidOperationException($"Pending migrations remain after startup migration step: {string.Join(", ", pendingAfter)}");
     }
+
+    foreach (var appRole in Enum.GetNames<AppRole>())
+    {
+        if (await roleManager.RoleExistsAsync(appRole))
+        {
+            continue;
+        }
+
+        var createRoleResult = await roleManager.CreateAsync(new IdentityRole(appRole));
+        if (!createRoleResult.Succeeded)
+        {
+            throw new InvalidOperationException($"Failed to create role '{appRole}': {string.Join(", ", createRoleResult.Errors.Select(e => e.Description))}");
+        }
+
+        logger.LogInformation("Created missing identity role: {Role}", appRole);
+    }
 }
+
 
 
 app.MapDefaultEndpoints();
