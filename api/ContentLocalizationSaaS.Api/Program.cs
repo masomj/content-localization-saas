@@ -5,6 +5,7 @@ using ContentLocalizationSaaS.Application;
 using ContentLocalizationSaaS.Infrastructure;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -67,7 +68,25 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup.Migrations");
+
+    var pendingBefore = (await db.Database.GetPendingMigrationsAsync()).ToArray();
+    if (pendingBefore.Length > 0)
+    {
+        logger.LogInformation("Applying {Count} pending migrations: {Migrations}", pendingBefore.Length, string.Join(", ", pendingBefore));
+        await db.Database.MigrateAsync();
+    }
+
+    var pendingAfter = (await db.Database.GetPendingMigrationsAsync()).ToArray();
+    if (pendingAfter.Length > 0)
+    {
+        throw new InvalidOperationException($"Pending migrations remain after startup migration step: {string.Join(", ", pendingAfter)}");
+    }
 }
+
 
 app.MapDefaultEndpoints();
 app.UseObservabilityMiddleware();
