@@ -135,7 +135,8 @@ async function handleSubmit() {
   max-width: 400px;
   margin: 0 auto;
   padding: var(--spacing-6) var(--spacing-8);
-  background: var(--color-white);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
 }
@@ -143,14 +144,14 @@ async function handleSubmit() {
 .auth-title {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   margin: 0 0 var(--spacing-2);
   text-align: center;
 }
 
 .auth-subtitle {
   font-size: var(--font-size-base);
-  color: var(--color-gray-500);
+  color: var(--color-text-secondary);
   margin: 0 0 var(--spacing-8);
   text-align: center;
 }
@@ -208,12 +209,12 @@ async function handleSubmit() {
 .form-group input {
   padding: var(--spacing-3) var(--spacing-4);
   font-size: var(--font-size-base);
-  border: 1px solid var(--color-gray-300);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   font-family: inherit;
-  color: var(--color-gray-900);
-  background: var(--color-white);
+  color: var(--color-text-primary);
+  background: var(--color-background);
 }
 
 .form-group input:focus {

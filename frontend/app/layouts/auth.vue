@@ -24,7 +24,7 @@ definePageMeta({
 .auth-page {
   position: relative;
   min-height: 100vh;
-  background: var(--color-gray-50);
+  background: var(--color-background);
 }
 
 .auth-header {
@@ -58,7 +58,7 @@ definePageMeta({
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--spacing-16) + var(--spacing-4)) var(--spacing-4) var(--spacing-8);
+  padding: var(--spacing-8) var(--spacing-4);
 }
 
 @media (max-width: 480px) {
@@ -69,7 +69,7 @@ definePageMeta({
   }
 
   .auth-main {
-    padding-top: calc(var(--spacing-12) + var(--spacing-4));
+    padding: var(--spacing-8) var(--spacing-4);
   }
 }
 </style>
