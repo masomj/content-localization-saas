@@ -26,8 +26,8 @@ const errorId = computed(() => props.id || 'form-error')
   align-items: center;
   gap: var(--spacing-2);
   padding: var(--spacing-3) var(--spacing-4);
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-bg, #fef2f2);
+  border: 1px solid var(--color-error-border, #fecaca);
   border-radius: var(--radius-lg);
   color: var(--color-error);
   font-size: var(--font-size-sm);
@@ -35,7 +35,7 @@ const errorId = computed(() => props.id || 'form-error')
 
 .ui-form-error-icon {
   flex-shrink: 0;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: var(--spacing-5);
+  height: var(--spacing-5);
 }
 </style>

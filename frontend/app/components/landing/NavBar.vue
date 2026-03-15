@@ -55,32 +55,32 @@ function closeMenu() {
   z-index: 100;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .navbar-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0.875rem 1.5rem;
+  padding: var(--spacing-3) var(--spacing-6);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 2rem;
+  gap: var(--spacing-8);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-2);
   text-decoration: none;
-  color: #111827;
-  font-weight: 700;
-  font-size: 1.25rem;
+  color: var(--color-gray-900);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xl);
 }
 
 .brand-icon {
-  font-size: 1.5rem;
-  color: #4f46e5;
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary-600);
 }
 
 .brand-text {
@@ -91,8 +91,13 @@ function closeMenu() {
   display: none;
   background: none;
   border: none;
-  padding: 0.5rem;
+  padding: var(--spacing-2);
   cursor: pointer;
+}
+
+.menu-toggle:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
 .menu-icon {
@@ -105,9 +110,9 @@ function closeMenu() {
 .menu-icon span {
   display: block;
   height: 2px;
-  background: #111827;
+  background: var(--color-gray-900);
   border-radius: 2px;
-  transition: all 0.3s ease;
+  transition: all var(--transition-slow);
 }
 
 .menu-icon.open span:nth-child(1) {
@@ -124,7 +129,7 @@ function closeMenu() {
 
 .nav-links {
   display: flex;
-  gap: 2rem;
+  gap: var(--spacing-8);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -132,19 +137,25 @@ function closeMenu() {
 
 .nav-links a {
   text-decoration: none;
-  color: #4b5563;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  transition: color 0.2s;
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast);
 }
 
 .nav-links a:hover {
-  color: #111827;
+  color: var(--color-gray-900);
+}
+
+.nav-links a:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .nav-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--spacing-3);
   align-items: center;
 }
 
@@ -152,33 +163,38 @@ function closeMenu() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 1rem;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  border-radius: 0.5rem;
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-lg);
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
 .btn-ghost {
   background: transparent;
-  color: #374151;
+  color: var(--color-gray-700);
   border: 1px solid transparent;
 }
 
 .btn-ghost:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 
 .btn-primary {
-  background: #4f46e5;
-  color: white;
-  border: 1px solid #4f46e5;
+  background: var(--color-primary-600);
+  color: var(--color-white);
+  border: 1px solid var(--color-primary-600);
 }
 
 .btn-primary:hover {
-  background: #4338ca;
-  border-color: #4338ca;
+  background: var(--color-primary-700);
+  border-color: var(--color-primary-700);
 }
 
 @media (max-width: 768px) {
@@ -194,9 +210,9 @@ function closeMenu() {
     left: 0;
     right: 0;
     flex-direction: column;
-    background: white;
-    padding: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--color-white);
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--color-gray-200);
     gap: 0;
   }
 
@@ -205,8 +221,8 @@ function closeMenu() {
   }
 
   .nav-links li {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #f3f4f6;
+    padding: var(--spacing-3) 0;
+    border-bottom: 1px solid var(--color-gray-100);
   }
 
   .nav-links li:last-child {
@@ -216,13 +232,13 @@ function closeMenu() {
   .nav-actions {
     display: none;
     position: absolute;
-    top: calc(100% + 150px);
+    top: calc(100% + 200px);
     left: 0;
     right: 0;
     flex-direction: column;
-    background: white;
-    padding: 1rem;
-    gap: 0.5rem;
+    background: var(--color-white);
+    padding: var(--spacing-4);
+    gap: var(--spacing-2);
   }
 
   .nav-actions.open {
@@ -231,6 +247,10 @@ function closeMenu() {
 
   .nav-actions .btn {
     width: 100%;
+  }
+
+  .navbar-container {
+    flex-wrap: wrap;
   }
 }
 </style>

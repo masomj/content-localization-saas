@@ -75,6 +75,11 @@ function handleClick(event: MouseEvent) {
   cursor: not-allowed;
 }
 
+.ui-button:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
 .ui-button--sm {
   padding: var(--spacing-2) var(--spacing-3);
   font-size: var(--font-size-sm);

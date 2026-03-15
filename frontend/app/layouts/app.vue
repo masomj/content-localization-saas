@@ -157,11 +157,17 @@ const breadcrumbs = computed(() => {
   cursor: pointer;
   color: var(--color-gray-500);
   border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
 }
 
 .layout-app__sidebar-toggle:hover {
   background: var(--color-gray-100);
   color: var(--color-gray-700);
+}
+
+.layout-app__sidebar-toggle:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
 .layout-app__sidebar-toggle svg {
@@ -175,6 +181,7 @@ const breadcrumbs = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-1);
+  overflow-y: auto;
 }
 
 .nav-link {
@@ -193,6 +200,11 @@ const breadcrumbs = computed(() => {
 .nav-link:hover {
   background: var(--color-gray-100);
   color: var(--color-gray-900);
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
 .nav-link.router-link-active {
@@ -234,6 +246,7 @@ const breadcrumbs = computed(() => {
 
 .layout-app__breadcrumbs {
   flex: 1;
+  min-width: 0;
 }
 
 .layout-app__user {
@@ -246,6 +259,9 @@ const breadcrumbs = computed(() => {
   font-size: var(--font-size-sm);
   color: var(--color-gray-700);
   font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .layout-app__logout {
@@ -266,6 +282,11 @@ const breadcrumbs = computed(() => {
   color: var(--color-gray-700);
 }
 
+.layout-app__logout:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
 .layout-app__logout svg {
   width: 1.25rem;
   height: 1.25rem;
@@ -274,5 +295,64 @@ const breadcrumbs = computed(() => {
 .layout-app__content {
   flex: 1;
   padding: var(--spacing-6);
+}
+
+@media (max-width: 1024px) {
+  .layout-app__sidebar {
+    width: 64px;
+    overflow: hidden;
+  }
+
+  .layout-app__sidebar:hover {
+    width: 260px;
+  }
+
+  .layout-app__main {
+    margin-left: 64px;
+  }
+
+  .nav-link--collapsed span {
+    display: none;
+  }
+
+  .layout-app__sidebar:hover .nav-link--collapsed span {
+    display: inline;
+  }
+
+  .layout-app__brand-text {
+    display: none;
+  }
+
+  .layout-app__sidebar:hover .layout-app__brand-text {
+    display: inline;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-app__sidebar {
+    transform: translateX(-100%);
+    width: 260px;
+    transition: transform var(--transition-normal);
+  }
+
+  .layout-app__sidebar--open {
+    transform: translateX(0);
+  }
+
+  .layout-app__main {
+    margin-left: 0;
+  }
+
+  .layout-app__content {
+    padding: var(--spacing-4);
+  }
+
+  .layout-app__header {
+    padding: 0 var(--spacing-4);
+  }
+
+  .layout-app__user-name {
+    display: none;
+  }
 }
 </style>

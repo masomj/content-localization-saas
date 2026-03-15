@@ -32,7 +32,7 @@ useSeoMeta({
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-family-sans);
 }
 
 .landing-page {
@@ -48,17 +48,25 @@ body {
 
 .skip-link {
   position: absolute;
-  left: 0.5rem;
+  left: var(--spacing-4);
   top: -100px;
-  background: #111827;
-  color: white;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
+  background: var(--color-gray-900);
+  color: var(--color-white);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
   z-index: 9999;
-  transition: top 0.2s;
+  transition: top var(--transition-fast);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
 }
 
 .skip-link:focus {
-  top: 0.5rem;
+  top: var(--spacing-4);
+}
+
+.skip-link:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 </style>

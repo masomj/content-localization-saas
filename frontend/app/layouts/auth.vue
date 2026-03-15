@@ -24,27 +24,27 @@ definePageMeta({
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .auth-header {
-  padding: 1.5rem;
+  padding: var(--spacing-6);
   text-align: center;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-2);
   text-decoration: none;
-  color: #111827;
-  font-weight: 700;
-  font-size: 1.25rem;
+  color: var(--color-gray-900);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xl);
 }
 
 .brand-icon {
-  font-size: 1.5rem;
-  color: #4f46e5;
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary-600);
 }
 
 .auth-main {
@@ -52,6 +52,12 @@ definePageMeta({
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: var(--spacing-4);
+}
+
+@media (max-width: 480px) {
+  .auth-header {
+    padding: var(--spacing-4);
+  }
 }
 </style>

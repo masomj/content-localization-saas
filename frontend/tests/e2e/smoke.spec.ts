@@ -46,6 +46,15 @@ test('/register has heading and basic form controls + submit', async ({ page }) 
   await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible()
 })
 
+test('form inputs have proper labels and ids', async ({ page }) => {
+  await page.goto('/login')
+  await page.waitForLoadState('networkidle')
+  const emailInput = page.getByLabel('Email')
+  await expect(emailInput).toHaveAttribute('id')
+  const emailLabel = page.locator('label[for="' + await emailInput.getAttribute('id') + '"]')
+  await expect(emailLabel).toBeVisible()
+})
+
 test.describe('App Shell Navigation', () => {
   test.skip('pages render with correct headings - requires SSR auth fix', async ({ page }) => {
     await page.goto('/login')
