@@ -123,6 +123,18 @@ textarea:focus-visible,
   outline-offset: 2px;
 }
 
+html[data-theme='dark'] {
+  --color-background: #0b1020;
+  --color-surface: #121a30;
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-border: #24324f;
+  --color-primary-50: #1c2540;
+  --color-primary-100: #232f54;
+  --color-primary-200: #2c3a66;
+}
+
 body {
   margin: 0;
   font-family: var(--font-family-sans);

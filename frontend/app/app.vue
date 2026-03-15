@@ -35,7 +35,8 @@
 body { 
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
   margin: 0; 
-  background: #ffffff;
+  background: var(--color-background);
+  color: var(--color-text-primary);
 }
 *, *::before, *::after {
   box-sizing: border-box;
