@@ -88,12 +88,14 @@ async function handleSubmit() {
 
       <div class="form-row">
         <div class="form-group">
-          <label for="firstName">First name</label>
+          <label for="firstName" class="label-with-hint">
+            <span>First name</span>
+            <span class="label-hint">e.g. Jane</span>
+          </label>
           <input
             id="firstName"
             v-model="firstName"
             type="text"
-            placeholder="Jane"
             autocomplete="given-name"
             :class="{ 'input-error': errors.firstName }"
             :disabled="isSubmitting"
@@ -103,12 +105,14 @@ async function handleSubmit() {
         </div>
 
         <div class="form-group">
-          <label for="lastName">Last name</label>
+          <label for="lastName" class="label-with-hint">
+            <span>Last name</span>
+            <span class="label-hint">e.g. Doe</span>
+          </label>
           <input
             id="lastName"
             v-model="lastName"
             type="text"
-            placeholder="Doe"
             autocomplete="family-name"
             :class="{ 'input-error': errors.lastName }"
             :disabled="isSubmitting"
@@ -119,12 +123,14 @@ async function handleSubmit() {
       </div>
 
       <div class="form-group">
-        <label for="email">Work email</label>
+        <label for="email" class="label-with-hint">
+          <span>Work email</span>
+          <span class="label-hint">you@company.com</span>
+        </label>
         <input
           id="email"
           v-model="email"
           type="text"
-          placeholder="you@company.com"
           autocomplete="email"
           :class="{ 'input-error': errors.email }"
           :disabled="isSubmitting"
@@ -134,12 +140,14 @@ async function handleSubmit() {
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
+        <label for="password" class="label-with-hint">
+          <span>Password</span>
+          <span class="label-hint">At least 8 characters</span>
+        </label>
         <input
           id="password"
           v-model="password"
           type="password"
-          placeholder="8+ characters"
           autocomplete="new-password"
           :class="{ 'input-error': errors.password }"
           :disabled="isSubmitting"
@@ -150,12 +158,14 @@ async function handleSubmit() {
       </div>
 
       <div class="form-group">
-        <label for="company">Company name</label>
+        <label for="company" class="label-with-hint">
+          <span>Company name</span>
+          <span class="label-hint">e.g. Acme Inc.</span>
+        </label>
         <input
           id="company"
           v-model="company"
           type="text"
-          placeholder="Acme Inc."
           autocomplete="organization"
           :disabled="isSubmitting"
         >
@@ -196,6 +206,7 @@ async function handleSubmit() {
 .auth-card {
   width: 100%;
   max-width: 440px;
+  margin: 0 auto;
   padding: var(--spacing-6) var(--spacing-8);
   background: var(--color-white);
   border-radius: var(--radius-xl);
@@ -245,11 +256,12 @@ async function handleSubmit() {
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-4);
 }
 
 .form-group {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2);
@@ -261,7 +273,21 @@ async function handleSubmit() {
   color: var(--color-gray-700);
 }
 
+.label-with-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label-hint {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-gray-500);
+}
+
 .form-group input {
+  width: 100%;
+  max-width: 100%;
   padding: var(--spacing-3) var(--spacing-4);
   font-size: var(--font-size-base);
   border: 1px solid var(--color-gray-300);
@@ -295,6 +321,7 @@ async function handleSubmit() {
   font-size: var(--font-size-xs);
   color: var(--color-error);
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .form-hint {

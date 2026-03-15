@@ -20,3 +20,22 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Visual Studio / Rider
+.vs/
+**/.vs/
+*.VC.db
+*.VC.VC.opendb
+*.opendb
+*.rsuser
+_ReSharper*/
+*.DotSettings.user
+
+# Test artifacts
+TestResults/
+**/TestResults/
+coverage/
+*.coverage
+*.coveragexml
+frontend/test-results/
+frontend/playwright-report/

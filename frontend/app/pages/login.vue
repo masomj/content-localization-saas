@@ -62,12 +62,14 @@ async function handleSubmit() {
       <UiFormError v-if="errors.general" :message="errors.general" />
 
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="email" class="label-with-hint">
+          <span>Email</span>
+          <span class="label-hint">you@company.com</span>
+        </label>
         <input
           id="email"
           v-model="email"
           type="text"
-          placeholder="you@company.com"
           autocomplete="email"
           :class="{ 'input-error': errors.email }"
           :disabled="isSubmitting"
@@ -77,12 +79,14 @@ async function handleSubmit() {
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
+        <label for="password" class="label-with-hint">
+          <span>Password</span>
+          <span class="label-hint">8+ characters</span>
+        </label>
         <input
           id="password"
           v-model="password"
           type="password"
-          placeholder="••••••••"
           autocomplete="current-password"
           :class="{ 'input-error': errors.password }"
           :disabled="isSubmitting"
@@ -129,6 +133,7 @@ async function handleSubmit() {
 .auth-card {
   width: 100%;
   max-width: 400px;
+  margin: 0 auto;
   padding: var(--spacing-6) var(--spacing-8);
   background: var(--color-white);
   border-radius: var(--radius-xl);
@@ -186,6 +191,18 @@ async function handleSubmit() {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-gray-700);
+}
+
+.label-with-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label-hint {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-gray-500);
 }
 
 .form-group input {

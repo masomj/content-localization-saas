@@ -47,12 +47,14 @@ async function handleSave() {
         
         <form class="settings-form" @submit.prevent="handleSave">
           <div class="form-group">
-            <label for="orgName">Organization Name</label>
+            <label for="orgName" class="label-with-hint">
+              <span>Organization Name</span>
+              <span class="label-hint">Your organization name</span>
+            </label>
             <UiInput
               id="orgName"
               v-model="orgName"
               type="text"
-              placeholder="Your organization name"
             />
           </div>
           
@@ -142,6 +144,18 @@ async function handleSave() {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-gray-700);
+}
+
+.label-with-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label-hint {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-gray-500);
 }
 
 .form-actions {

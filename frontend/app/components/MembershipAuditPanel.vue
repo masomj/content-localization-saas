@@ -43,14 +43,23 @@ onMounted(loadAudit)
       <label for="audit-target-email">Target email</label>
       <input id="audit-target-email" v-model="filters.targetEmail" />
 
-      <label for="audit-action">Action</label>
-      <input id="audit-action" v-model="filters.action" placeholder="invite_created" />
+      <label for="audit-action" class="label-with-hint">
+        <span>Action</span>
+        <span class="label-hint">invite_created</span>
+      </label>
+      <input id="audit-action" v-model="filters.action" />
 
-      <label for="audit-from">From (UTC)</label>
-      <input id="audit-from" v-model="filters.fromUtc" placeholder="2026-03-14T00:00:00Z" />
+      <label for="audit-from" class="label-with-hint">
+        <span>From (UTC)</span>
+        <span class="label-hint">2026-03-14T00:00:00Z</span>
+      </label>
+      <input id="audit-from" v-model="filters.fromUtc" />
 
-      <label for="audit-to">To (UTC)</label>
-      <input id="audit-to" v-model="filters.toUtc" placeholder="2026-03-15T00:00:00Z" />
+      <label for="audit-to" class="label-with-hint">
+        <span>To (UTC)</span>
+        <span class="label-hint">2026-03-15T00:00:00Z</span>
+      </label>
+      <input id="audit-to" v-model="filters.toUtc" />
 
       <button type="submit">Filter audit logs</button>
       <a :href="exportCsvLink()">Export CSV</a>
@@ -67,3 +76,17 @@ onMounted(loadAudit)
     <p v-if="rows.length === 0">No membership audit rows for current filters.</p>
   </section>
 </template>
+
+<style scoped>
+.label-with-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label-hint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-gray-500);
+}
+</style>

@@ -91,7 +91,7 @@ const breadcrumbs = computed(() => {
           </button>
         </div>
       </header>
-      <main class="layout-app__content">
+      <main id="main-content" class="layout-app__content" tabindex="-1">
         <slot />
       </main>
     </div>

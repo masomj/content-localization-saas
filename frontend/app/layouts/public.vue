@@ -10,7 +10,9 @@ withDefaults(defineProps<Props>(), {
 
 <template>
   <div class="layout-public" :class="{ 'layout-public--full': fullWidth }">
-    <slot />
+    <main id="main-content" class="layout-public__content" tabindex="-1">
+      <slot />
+    </main>
   </div>
 </template>
 

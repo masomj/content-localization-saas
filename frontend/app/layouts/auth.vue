@@ -13,7 +13,7 @@ definePageMeta({
       </NuxtLink>
     </header>
 
-    <main class="auth-main">
+    <main id="main-content" class="auth-main" tabindex="-1">
       <slot />
     </main>
   </div>
@@ -21,15 +21,18 @@ definePageMeta({
 
 <style scoped>
 .auth-page {
+  position: relative;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
   background: var(--color-gray-50);
 }
 
 .auth-header {
-  padding: var(--spacing-6);
+  position: absolute;
+  top: var(--spacing-6);
+  left: 50%;
+  transform: translateX(-50%);
   text-align: center;
+  z-index: 1;
 }
 
 .brand {
@@ -48,16 +51,20 @@ definePageMeta({
 }
 
 .auth-main {
-  flex: 1;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-4);
+  padding: calc(var(--spacing-16) + var(--spacing-4)) var(--spacing-4) var(--spacing-8);
 }
 
 @media (max-width: 480px) {
   .auth-header {
-    padding: var(--spacing-4);
+    top: var(--spacing-4);
+  }
+
+  .auth-main {
+    padding-top: calc(var(--spacing-12) + var(--spacing-4));
   }
 }
 </style>

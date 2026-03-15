@@ -47,12 +47,14 @@ async function handleSubmit() {
       <UiFormError v-if="error" :message="error" />
 
       <div class="form-group">
-        <label for="orgName">Organization name</label>
+        <label for="orgName" class="label-with-hint">
+          <span>Organization name</span>
+          <span class="label-hint">e.g. Acme Inc.</span>
+        </label>
         <input
           id="orgName"
           v-model="orgName"
           type="text"
-          placeholder="Acme Inc."
           autocomplete="organization"
           :class="{ 'input-error': error }"
           :disabled="isSubmitting"
@@ -123,6 +125,18 @@ async function handleSubmit() {
   font-size: 0.875rem;
   font-weight: 600;
   color: #374151;
+}
+
+.label-with-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label-hint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #6b7280;
 }
 
 .form-group input {

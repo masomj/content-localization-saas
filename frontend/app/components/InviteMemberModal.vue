@@ -74,7 +74,7 @@ function handleClose() {
             v-model="email"
             type="email"
             label="Email address"
-            placeholder="colleague@company.com"
+            hint="colleague@company.com"
             required
             :error="email.length > 0 && !isValidEmail ? 'Please enter a valid email address' : ''"
           />
