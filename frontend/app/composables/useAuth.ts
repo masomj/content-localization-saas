@@ -3,6 +3,10 @@ interface User {
   email: string
   name: string
   role?: string
+  workspace?: {
+    id: string
+    name: string
+  }
 }
 
 interface Organization {
@@ -15,17 +19,23 @@ interface AuthState {
   organization: Organization | null
   isAuthenticated: boolean
   isLoading: boolean
-  isFallbackMode: boolean
   isAdmin: boolean
 }
+
+const AUTH_STORAGE_KEY = 'locflow_auth_token'
+const USER_STORAGE_KEY = 'locflow_user'
+const ORG_STORAGE_KEY = 'locflow_organization'
+
+const API_BASE_URL = typeof window !== 'undefined' 
+  ? (window as any).__ENV__?.API_URL || '/api'
+  : '/api'
 
 const authState = reactive<AuthState>({
   user: null,
   organization: null,
   isAuthenticated: false,
   isLoading: true,
-  isFallbackMode: false,
-  isAdmin: true,
+  isAdmin: false,
 })
 
 function getStoredToken(): string | null {
@@ -86,24 +96,73 @@ function setStoredOrganization(org: Organization | null): void {
   }
 }
 
-function bootstrapSession(): void {
+async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getStoredToken()
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> || {}),
+  }
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }))
+    throw new Error(error.error || error.errors?.join(', ') || 'Request failed')
+  }
+
+  return response.json()
+}
+
+async function bootstrapSession(): Promise<void> {
   authState.isLoading = true
   try {
     const token = getStoredToken()
-    const user = getStoredUser()
-    const org = getStoredOrganization()
+    const storedUser = getStoredUser()
+    const storedOrg = getStoredOrganization()
 
-    if (token && user) {
-      authState.user = user
-      authState.organization = org
-      authState.isAuthenticated = true
-      authState.isFallbackMode = false
-      authState.isAdmin = user.role === 'Admin'
+    if (token && storedUser) {
+      try {
+        const currentUser = await fetchApi<User>('/auth/me')
+        
+        authState.user = currentUser
+        authState.organization = currentUser.workspace ? {
+          id: currentUser.workspace.id,
+          name: currentUser.workspace.name,
+        } : null
+        authState.isAuthenticated = true
+        authState.isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Admin'
+        
+        setStoredUser(currentUser)
+        if (currentUser.workspace) {
+          setStoredOrganization({
+            id: currentUser.workspace.id,
+            name: currentUser.workspace.name,
+          })
+        }
+      } catch {
+        setStoredToken(null)
+        setStoredUser(null)
+        setStoredOrganization(null)
+        authState.user = null
+        authState.organization = null
+        authState.isAuthenticated = false
+        authState.isAdmin = false
+      }
     } else {
-      authState.isFallbackMode = true
+      authState.isAuthenticated = false
+      authState.isAdmin = false
     }
   } catch {
-    authState.isFallbackMode = true
+    authState.isAuthenticated = false
+    authState.isAdmin = false
   } finally {
     authState.isLoading = false
   }
@@ -116,32 +175,41 @@ if (typeof window !== 'undefined') {
 export function useAuth() {
   const router = useRouter()
 
-  async function login(email: string, password: string): Promise<{ success: boolean; error?: string; isFallback?: boolean }> {
+  async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     authState.isLoading = true
     try {
       if (!email || !password) {
-        return { success: false, error: 'Email and password are required', isFallback: authState.isFallbackMode }
+        return { success: false, error: 'Email and password are required' }
       }
 
-      const token = `mock_token_${Date.now()}`
-      const isAdmin = email.includes('admin')
-      const user: User = {
-        id: '1',
-        email,
-        name: email.split('@')[0],
-        role: isAdmin ? 'Admin' : 'Viewer',
-      }
+      const response = await fetchApi<{
+        token: string
+        user: User
+        workspace?: { id: string; name: string }
+      }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      })
 
-      setStoredToken(token)
-      setStoredUser(user)
-      authState.user = user
+      setStoredToken(response.token)
+      setStoredUser(response.user)
+      
+      authState.user = response.user
       authState.isAuthenticated = true
-      authState.isFallbackMode = false
-      authState.isAdmin = isAdmin
+      authState.isAdmin = response.user.role === 'Admin'
 
-      return { success: true, isFallback: false }
+      if (response.workspace) {
+        const org = {
+          id: response.workspace.id,
+          name: response.workspace.name,
+        }
+        setStoredOrganization(org)
+        authState.organization = org
+      }
+
+      return { success: true }
     } catch (error) {
-      return { success: false, error: 'Invalid credentials', isFallback: authState.isFallbackMode }
+      return { success: false, error: error instanceof Error ? error.message : 'Invalid credentials' }
     } finally {
       authState.isLoading = false
     }
@@ -150,16 +218,21 @@ export function useAuth() {
   async function logout(): Promise<void> {
     authState.isLoading = true
     try {
+      try {
+        await fetchApi('/auth/logout', { method: 'POST' })
+      } catch {
+      }
+      
       setStoredToken(null)
       setStoredUser(null)
       setStoredOrganization(null)
       authState.user = null
       authState.organization = null
       authState.isAuthenticated = false
-      authState.isFallbackMode = true
-      router.push('/login')
+      authState.isAdmin = false
     } finally {
       authState.isLoading = false
+      router.push('/login')
     }
   }
 
@@ -169,33 +242,45 @@ export function useAuth() {
     firstName: string
     lastName: string
     company?: string
-  }): Promise<{ success: boolean; error?: string; isFallback?: boolean }> {
+  }): Promise<{ success: boolean; error?: string }> {
     authState.isLoading = true
     try {
       if (!data.email || !data.password || !data.firstName || !data.lastName) {
-        return { success: false, error: 'All required fields must be filled', isFallback: authState.isFallbackMode }
+        return { success: false, error: 'All required fields must be filled' }
       }
 
       if (data.password.length < 8) {
-        return { success: false, error: 'Password must be at least 8 characters', isFallback: authState.isFallbackMode }
+        return { success: false, error: 'Password must be at least 8 characters' }
       }
 
-      const token = `mock_token_${Date.now()}`
-      const user: User = {
-        id: '1',
-        email: data.email,
-        name: `${data.firstName} ${data.lastName}`,
-      }
+      const response = await fetchApi<{
+        token: string
+        user: User
+        workspace?: { id: string; name: string }
+      }>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
 
-      setStoredToken(token)
-      setStoredUser(user)
-      authState.user = user
+      setStoredToken(response.token)
+      setStoredUser(response.user)
+      
+      authState.user = response.user
       authState.isAuthenticated = true
-      authState.isFallbackMode = false
+      authState.isAdmin = response.user.role === 'Admin'
 
-      return { success: true, isFallback: false }
+      if (response.workspace) {
+        const org = {
+          id: response.workspace.id,
+          name: response.workspace.name,
+        }
+        setStoredOrganization(org)
+        authState.organization = org
+      }
+
+      return { success: true }
     } catch (error) {
-      return { success: false, error: 'Registration failed', isFallback: authState.isFallbackMode }
+      return { success: false, error: error instanceof Error ? error.message : 'Registration failed' }
     } finally {
       authState.isLoading = false
     }
@@ -224,6 +309,19 @@ export function useAuth() {
     }
   }
 
+  async function refreshUser(): Promise<void> {
+    if (!authState.isAuthenticated) return
+    
+    try {
+      const currentUser = await fetchApi<User>('/auth/me')
+      authState.user = currentUser
+      authState.isAdmin = currentUser.role === 'Admin'
+      setStoredUser(currentUser)
+    } catch {
+      await logout()
+    }
+  }
+
   function clearError(): void {
   }
 
@@ -233,12 +331,12 @@ export function useAuth() {
     hasOrganization: computed(() => !!authState.organization),
     isAuthenticated: computed(() => authState.isAuthenticated),
     isLoading: computed(() => authState.isLoading),
-    isFallbackMode: computed(() => authState.isFallbackMode),
     isAdmin: computed(() => authState.isAdmin),
     login,
     logout,
     register,
     createOrganization,
+    refreshUser,
     clearError,
   }
 }
