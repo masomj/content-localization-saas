@@ -6,8 +6,65 @@ Initial monorepo scaffold for a language-agnostic UX content + localization plat
 
 - **Backend:** ASP.NET Core 10, EF Core 10, PostgreSQL, ASP.NET Identity, FluentValidation
 - **Frontend:** Nuxt 4 (TypeScript)
-- **Testing:** xUnit (unit + integration), Playwright (frontend e2e planned)
+- **Testing:** xUnit (unit + integration), Playwright (frontend e2e), Vitest (unit)
 - **Local orchestration:** .NET Aspire (AppHost + ServiceDefaults)
+
+## Route Map
+
+### Public Routes
+| Path | Description |
+|------|-------------|
+| `/` | Landing page with features, benefits, pricing |
+| `/login` | User login form |
+| `/register` | User registration form |
+
+### Auth Routes (Authenticated, no org)
+| Path | Description |
+|------|-------------|
+| `/onboarding/organisation` | Organization creation (required before app access) |
+
+### App Routes (Authenticated + org required)
+| Path | Description |
+|------|-------------|
+| `/app` | Redirects to dashboard |
+| `/app/dashboard` | Main dashboard with user/org info |
+| `/app/projects` | Projects list |
+| `/app/content` | Content management |
+| `/app/review` | Translation review |
+| `/app/integrations` | Integration settings |
+| `/app/settings` | General settings |
+| `/app/settings/members` | Team members management |
+
+## User Journey
+
+```
+Landing (/): Features & CTA
+    |
+    v
+Register (/register) --> Login (/login)
+    |                       |
+    v                       v
+Onboarding (/onboarding/organisation)
+    |
+    v
+App Dashboard (/app/dashboard)
+    |
+    +-- Projects (/app/projects)
+    +-- Content (/app/content)
+    +-- Review (/app/review)
+    +-- Integrations (/app/integrations)
+    +-- Settings (/app/settings)
+          |
+          +-- Members (/app/settings/members)
+```
+
+## Middleware Flow
+
+1. **Public paths** (`/`, `/login`, `/register`): Allow access
+2. **Onboarding paths** (`/onboarding/*`): Allow access (for users without org)
+3. **App paths** (`/app/*`): Require authentication AND organization
+4. If not authenticated: Redirect to `/login`
+5. If authenticated but no org: Redirect to `/onboarding/organisation`
 
 ## Monorepo layout
 
