@@ -11,7 +11,7 @@ definePageMeta({
         <span class="brand-icon" aria-hidden="true">◈</span>
         <span class="brand-text">LocFlow</span>
       </NuxtLink>
-      <ThemeToggle />
+      <UiThemeToggle />
     </header>
 
     <main id="main-content" class="auth-main" tabindex="-1">

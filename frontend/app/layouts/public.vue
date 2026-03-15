@@ -11,7 +11,7 @@ withDefaults(defineProps<Props>(), {
 <template>
   <div class="layout-public" :class="{ 'layout-public--full': fullWidth }">
     <header class="layout-public__header">
-      <ThemeToggle />
+      <UiThemeToggle />
     </header>
     <main id="main-content" class="layout-public__content" tabindex="-1">
       <slot />
