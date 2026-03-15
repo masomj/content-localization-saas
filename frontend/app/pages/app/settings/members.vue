@@ -5,7 +5,7 @@ import MembersTable from '~/components/MembersTable.vue'
 
 definePageMeta({
   layout: 'app',
-  middleware: ['auth', 'admin'],
+  middleware: ['admin'],
 })
 
 useSeoMeta({
