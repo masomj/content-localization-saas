@@ -23,7 +23,7 @@ definePageMeta({
 <style scoped>
 .auth-page {
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-background);
 }
 
@@ -54,10 +54,9 @@ definePageMeta({
 }
 
 .auth-main {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
   padding: var(--spacing-8) var(--spacing-4);
 }
 
