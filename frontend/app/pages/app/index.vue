@@ -8,10 +8,14 @@ useSeoMeta({
 })
 
 const auth = useAuth()
+
+onMounted(() => {
+  navigateTo('/app/dashboard')
+})
 </script>
 
 <template>
   <div class="app-index">
-    <p>Loading...</p>
+    <p>Redirecting to dashboard...</p>
   </div>
 </template>
