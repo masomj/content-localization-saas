@@ -11,9 +11,21 @@ useSeoMeta({
   title: 'Projects - LocFlow',
 })
 
-const auth = useAuth()
 const isLoading = ref(false)
 const projects = ref<Array<{ id: string; name: string; status: string; progress: number; languages: number }>>([])
+
+function createProject() {
+  const name = typeof window !== 'undefined' ? window.prompt('Project name')?.trim() : ''
+  if (!name) return
+
+  projects.value.unshift({
+    id: `project_${Date.now()}`,
+    name,
+    status: 'Draft',
+    progress: 0,
+    languages: 0,
+  })
+}
 
 onMounted(async () => {
   isLoading.value = true
@@ -30,7 +42,7 @@ onMounted(async () => {
         <h1>Projects</h1>
         <p class="page-subtitle">Manage your translation projects</p>
       </div>
-      <UiButton>
+      <UiButton @click="createProject">
         <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
           <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
         </svg>
@@ -50,7 +62,7 @@ onMounted(async () => {
       description="Create your first project to start managing translations"
     >
       <template #action>
-        <UiButton>Create Project</UiButton>
+        <UiButton @click="createProject">Create Project</UiButton>
       </template>
     </AppEmptyState>
 

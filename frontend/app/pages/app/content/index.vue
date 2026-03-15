@@ -11,9 +11,20 @@ useSeoMeta({
   title: 'Content - LocFlow',
 })
 
-const auth = useAuth()
 const isLoading = ref(false)
 const contents = ref<Array<{ id: string; title: string; type: string; lastModified: string }>>([])
+
+function addContent() {
+  const title = typeof window !== 'undefined' ? window.prompt('Content title')?.trim() : ''
+  if (!title) return
+
+  contents.value.unshift({
+    id: `content_${Date.now()}`,
+    title,
+    type: 'Screen copy',
+    lastModified: new Date().toISOString(),
+  })
+}
 
 onMounted(async () => {
   isLoading.value = true
@@ -30,7 +41,7 @@ onMounted(async () => {
         <h1>Content</h1>
         <p class="page-subtitle">Manage your content for translation</p>
       </div>
-      <UiButton>
+      <UiButton @click="addContent">
         <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
           <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
         </svg>
@@ -50,7 +61,7 @@ onMounted(async () => {
       description="Add content to start translating"
     >
       <template #action>
-        <UiButton>Add Content</UiButton>
+        <UiButton @click="addContent">Add Content</UiButton>
       </template>
     </AppEmptyState>
 
