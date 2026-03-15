@@ -4,6 +4,8 @@ const sidebarCollapsed = ref(false)
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
+
+const auth = useAuth()
 </script>
 
 <template>
@@ -21,6 +23,14 @@ function toggleSidebar() {
         </button>
       </div>
       <nav class="layout-app__nav">
+        <NuxtLink to="/app/dashboard" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+          <span v-if="!sidebarCollapsed">Dashboard</span>
+        </NuxtLink>
+        <NuxtLink v-if="auth.isAdmin.value" to="/app/settings/members" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>
+          <span v-if="!sidebarCollapsed">Team Members</span>
+        </NuxtLink>
         <slot name="sidebar" />
       </nav>
     </aside>
@@ -105,6 +115,43 @@ function toggleSidebar() {
 .layout-app__nav {
   flex: 1;
   padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  color: var(--color-gray-600);
+  text-decoration: none;
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.nav-link:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
+}
+
+.nav-link.router-link-active {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+.nav-link svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.nav-link--collapsed {
+  justify-content: center;
+  padding: var(--spacing-3);
 }
 
 .layout-app__main {

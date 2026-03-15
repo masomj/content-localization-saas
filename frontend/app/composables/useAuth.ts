@@ -2,6 +2,7 @@ interface User {
   id: string
   email: string
   name: string
+  role?: string
 }
 
 interface Organization {
@@ -15,11 +16,8 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   isFallbackMode: boolean
+  isAdmin: boolean
 }
-
-const AUTH_STORAGE_KEY = 'locflow_auth_token'
-const USER_STORAGE_KEY = 'locflow_user'
-const ORG_STORAGE_KEY = 'locflow_organization'
 
 const authState = reactive<AuthState>({
   user: null,
@@ -27,6 +25,7 @@ const authState = reactive<AuthState>({
   isAuthenticated: false,
   isLoading: true,
   isFallbackMode: false,
+  isAdmin: true,
 })
 
 function getStoredToken(): string | null {
@@ -99,6 +98,7 @@ function bootstrapSession(): void {
       authState.organization = org
       authState.isAuthenticated = true
       authState.isFallbackMode = false
+      authState.isAdmin = user.role === 'Admin'
     } else {
       authState.isFallbackMode = true
     }
@@ -124,10 +124,12 @@ export function useAuth() {
       }
 
       const token = `mock_token_${Date.now()}`
+      const isAdmin = email.includes('admin')
       const user: User = {
         id: '1',
         email,
         name: email.split('@')[0],
+        role: isAdmin ? 'Admin' : 'Viewer',
       }
 
       setStoredToken(token)
@@ -135,6 +137,7 @@ export function useAuth() {
       authState.user = user
       authState.isAuthenticated = true
       authState.isFallbackMode = false
+      authState.isAdmin = isAdmin
 
       return { success: true, isFallback: false }
     } catch (error) {
@@ -231,6 +234,7 @@ export function useAuth() {
     isAuthenticated: computed(() => authState.isAuthenticated),
     isLoading: computed(() => authState.isLoading),
     isFallbackMode: computed(() => authState.isFallbackMode),
+    isAdmin: computed(() => authState.isAdmin),
     login,
     logout,
     register,
