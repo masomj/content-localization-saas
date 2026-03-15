@@ -23,7 +23,7 @@
 <style scoped>
 .cta {
   padding: 5rem 1.5rem;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, var(--color-primary-600) 0%, #7c3aed 100%);
 }
 
 .cta-container {
@@ -72,12 +72,12 @@
 
 .btn-primary {
   background: white;
-  color: #4f46e5;
+  color: var(--color-primary-600);
   border: 1px solid white;
 }
 
 .btn-primary:hover {
-  background: #f9fafb;
+  background: var(--color-surface);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }

@@ -97,14 +97,14 @@ async function handleSubmit() {
 .auth-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
   margin: 0 0 0.5rem;
   text-align: center;
 }
 
 .auth-subtitle {
   font-size: 0.9375rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0 0 2rem;
   text-align: center;
 }
@@ -124,7 +124,7 @@ async function handleSubmit() {
 .form-group label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .label-with-hint {
@@ -136,20 +136,20 @@ async function handleSubmit() {
 .label-hint {
   font-size: 0.75rem;
   font-weight: 400;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .form-group input {
   padding: 0.75rem 1rem;
   font-size: 1rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 0.5rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #4f46e5;
+  border-color: var(--color-primary-600);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
@@ -162,13 +162,13 @@ async function handleSubmit() {
 }
 
 .form-group input:disabled {
-  background: #f9fafb;
+  background: var(--color-surface);
   cursor: not-allowed;
 }
 
 .field-hint {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -193,12 +193,12 @@ async function handleSubmit() {
 }
 
 .btn-primary {
-  background: #4f46e5;
+  background: var(--color-primary-600);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #4338ca;
+  background: var(--color-primary-700);
 }
 
 .btn--loading {

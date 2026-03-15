@@ -61,7 +61,7 @@ const features = [
 <style scoped>
 .features {
   padding: 5rem 1.5rem;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 
 .features-container {
@@ -78,14 +78,14 @@ const features = [
 .features-title {
   font-size: 2.5rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--color-text-primary);
   margin: 0 0 1rem;
   letter-spacing: -0.02em;
 }
 
 .features-subtitle {
   font-size: 1.125rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
   line-height: 1.6;
 }
@@ -98,16 +98,16 @@ const features = [
 
 .feature-card {
   padding: 2rem;
-  background: #f9fafb;
+  background: var(--color-surface);
   border-radius: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   transition: all 0.3s ease;
 }
 
 .feature-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.1);
-  border-color: #d1d5db;
+  border-color: var(--color-gray-300);
 }
 
 .feature-icon {
@@ -117,8 +117,8 @@ const features = [
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: var(--color-primary-100);
+  color: var(--color-primary-600);
   border-radius: 0.75rem;
   margin-bottom: 1.25rem;
 }
@@ -126,13 +126,13 @@ const features = [
 .feature-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
   margin: 0 0 0.75rem;
 }
 
 .feature-description {
   font-size: 0.9375rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   line-height: 1.6;
   margin: 0;
 }

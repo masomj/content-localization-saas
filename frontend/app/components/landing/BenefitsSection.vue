@@ -84,7 +84,7 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
 <style scoped>
 .benefits {
   padding: 5rem 1.5rem;
-  background: #f9fafb;
+  background: var(--color-surface);
 }
 
 .benefits-container {
@@ -101,14 +101,14 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
 .benefits-title {
   font-size: 2.5rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--color-text-primary);
   margin: 0 0 1rem;
   letter-spacing: -0.02em;
 }
 
 .benefits-subtitle {
   font-size: 1.125rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
   line-height: 1.6;
 }
@@ -125,13 +125,13 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
   padding: 2rem;
   background: white;
   border-radius: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
 }
 
 .metric-value {
   font-size: 3.5rem;
   font-weight: 800;
-  color: #4f46e5;
+  color: var(--color-primary-600);
   line-height: 1;
   margin-bottom: 0.75rem;
 }
@@ -139,28 +139,28 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
 .metric-label {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
   margin-bottom: 0.5rem;
 }
 
 .metric-description {
   font-size: 0.9375rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
 .trusted-by {
   text-align: center;
   padding: 3rem 0;
-  border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-gray-200);
   margin-bottom: 4rem;
 }
 
 .trusted-label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 1.5rem;
@@ -176,7 +176,7 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
 .trusted-company {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .testimonials {
@@ -190,13 +190,13 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
   padding: 2rem;
   background: white;
   border-radius: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
 }
 
 .testimonial-quote {
   font-size: 1.125rem;
   line-height: 1.7;
-  color: #374151;
+  color: var(--color-text-secondary);
   margin: 0 0 1.5rem;
   font-style: italic;
 }
@@ -210,12 +210,12 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
 .testimonial-author cite {
   font-style: normal;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
 }
 
 .testimonial-author span {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 @media (max-width: 1024px) {

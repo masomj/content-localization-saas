@@ -87,13 +87,13 @@ const user = computed(() => auth.user.value)
 .dashboard-title {
   font-size: 1.875rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
   margin: 0 0 0.5rem;
 }
 
 .dashboard-welcome {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -108,12 +108,12 @@ const user = computed(() => auth.user.value)
   background: white;
   border-radius: 0.75rem;
   padding: 1.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   transition: all 0.2s;
 }
 
 .dashboard-card:hover {
-  border-color: #4f46e5;
+  border-color: var(--color-primary-600);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
@@ -123,10 +123,10 @@ const user = computed(() => auth.user.value)
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eef2ff;
+  background: var(--color-primary-50);
   border-radius: 0.5rem;
   margin-bottom: 1rem;
-  color: #4f46e5;
+  color: var(--color-primary-600);
 }
 
 .card-icon svg {
@@ -137,13 +137,13 @@ const user = computed(() => auth.user.value)
 .card-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-primary);
   margin: 0 0 0.5rem;
 }
 
 .card-description {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -151,7 +151,7 @@ const user = computed(() => auth.user.value)
   display: flex;
   justify-content: flex-end;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 .logout-btn {
@@ -161,9 +161,9 @@ const user = computed(() => auth.user.value)
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-text-muted);
   background: transparent;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s;

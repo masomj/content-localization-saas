@@ -63,8 +63,8 @@ const footerLinks = {
 
 <style scoped>
 .footer {
-  background: #111827;
-  color: #d1d5db;
+  background: var(--color-text-primary);
+  color: var(--color-gray-300);
   padding: 4rem 1.5rem 2rem;
 }
 
@@ -78,7 +78,7 @@ const footerLinks = {
   grid-template-columns: 1fr 2fr;
   gap: 4rem;
   padding-bottom: 3rem;
-  border-bottom: 1px solid #374151;
+  border-bottom: 1px solid var(--color-text-secondary);
 }
 
 .footer-brand {
@@ -104,7 +104,7 @@ const footerLinks = {
 .brand-description {
   font-size: 0.9375rem;
   line-height: 1.6;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin: 0;
 }
 
@@ -134,7 +134,7 @@ const footerLinks = {
 }
 
 .footer-link {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   text-decoration: none;
   font-size: 0.9375rem;
   transition: color 0.2s;
@@ -153,7 +153,7 @@ const footerLinks = {
 
 .copyright {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -163,7 +163,7 @@ const footerLinks = {
 }
 
 .footer-social a {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   transition: color 0.2s;
 }
 
