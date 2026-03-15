@@ -6,6 +6,19 @@ async function waitForHydration(page: Page) {
   }).catch(() => {})
 }
 
+async function registerTestUser(page: Page, suffix: number = Date.now()) {
+  await page.goto('/register')
+  await page.waitForLoadState('networkidle')
+  
+  await page.getByLabel('First name').fill('Test')
+  await page.getByLabel('Last name').fill('User')
+  await page.getByLabel('Work email').fill(`test${suffix}@example.com`)
+  await page.getByLabel('Password').fill('password123')
+  
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await page.waitForURL('/app/dashboard', { timeout: 10000 })
+}
+
 test.describe('Login Form Validation', () => {
   test('shows validation errors for empty form submission', async ({ page }) => {
     await page.goto('/login')
@@ -47,12 +60,6 @@ test.describe('Login Form Validation', () => {
     await submitButton.click()
     
     await expect(submitButton).toBeDisabled({ timeout: 10000 })
-  })
-
-  test('shows fallback notice when in demo mode', async ({ page }) => {
-    await page.goto('/login')
-    await expect(page.locator('.fallback-notice')).toBeVisible()
-    await expect(page.locator('.fallback-notice')).toContainText('Demo mode')
   })
 })
 
@@ -116,12 +123,6 @@ test.describe('Register Form Validation', () => {
     
     await expect(submitButton).toBeDisabled({ timeout: 10000 })
   })
-
-  test('shows fallback notice when in demo mode', async ({ page }) => {
-    await page.goto('/register')
-    await expect(page.locator('.fallback-notice')).toBeVisible()
-    await expect(page.locator('.fallback-notice')).toContainText('Demo mode')
-  })
 })
 
 test.describe('Protected Route Redirect', () => {
@@ -158,5 +159,27 @@ test.describe('Login/Register Navigation', () => {
     await page.goto('/register')
     await page.getByRole('link', { name: 'Sign in' }).click()
     await expect(page).toHaveURL('/login')
+  })
+})
+
+test.describe('Authenticated User Flow', () => {
+  const testUserSuffix = Date.now()
+  
+  test('can register and access protected routes', async ({ page }) => {
+    await registerTestUser(page, testUserSuffix)
+    
+    await page.goto('/app/dashboard')
+    await expect(page).toHaveURL('/app/dashboard')
+  })
+
+  test('login works with registered credentials', async ({ page }) => {
+    await page.goto('/login')
+    await page.waitForLoadState('networkidle')
+    
+    await page.getByLabel('Email').fill(`test${testUserSuffix}@example.com`)
+    await page.getByLabel('Password').fill('password123')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    
+    await expect(page).toHaveURL('/app/dashboard', { timeout: 10000 })
   })
 })
