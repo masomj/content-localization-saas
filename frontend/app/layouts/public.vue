@@ -10,6 +10,9 @@ withDefaults(defineProps<Props>(), {
 
 <template>
   <div class="layout-public" :class="{ 'layout-public--full': fullWidth }">
+    <header class="layout-public__header">
+      <ThemeToggle />
+    </header>
     <main id="main-content" class="layout-public__content" tabindex="-1">
       <slot />
     </main>
@@ -22,6 +25,12 @@ withDefaults(defineProps<Props>(), {
   display: flex;
   flex-direction: column;
   background: var(--color-background);
+}
+
+.layout-public__header {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--spacing-4) var(--spacing-4) 0;
 }
 
 .layout-public--full .layout-public__content {

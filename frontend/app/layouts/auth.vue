@@ -11,6 +11,7 @@ definePageMeta({
         <span class="brand-icon" aria-hidden="true">◈</span>
         <span class="brand-text">LocFlow</span>
       </NuxtLink>
+      <ThemeToggle />
     </header>
 
     <main id="main-content" class="auth-main" tabindex="-1">
@@ -29,9 +30,11 @@ definePageMeta({
 .auth-header {
   position: absolute;
   top: var(--spacing-6);
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
+  left: var(--spacing-6);
+  right: var(--spacing-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   z-index: 1;
 }
 
@@ -61,6 +64,8 @@ definePageMeta({
 @media (max-width: 480px) {
   .auth-header {
     top: var(--spacing-4);
+    left: var(--spacing-4);
+    right: var(--spacing-4);
   }
 
   .auth-main {

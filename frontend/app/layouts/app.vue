@@ -83,6 +83,7 @@ const breadcrumbs = computed(() => {
       <header class="layout-app__header">
         <AppBreadcrumbs :items="breadcrumbs" class="layout-app__breadcrumbs" />
         <div class="layout-app__user">
+          <ThemeToggle />
           <span class="layout-app__user-name">{{ auth.user.value?.name }}</span>
           <button class="layout-app__logout" @click="auth.logout()" aria-label="Log out">
             <svg viewBox="0 0 20 20" fill="currentColor">
