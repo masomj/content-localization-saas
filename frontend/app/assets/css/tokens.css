@@ -124,12 +124,27 @@ textarea:focus-visible,
 }
 
 html[data-theme='dark'] {
-  --color-background: #0b1020;
-  --color-surface: #121a30;
-  --color-text-primary: #f3f4f6;
-  --color-text-secondary: #cbd5e1;
-  --color-text-muted: #94a3b8;
-  --color-border: #24324f;
+  /* Core neutrals remapped so existing --color-gray-* usage stays coherent in dark UI */
+  --color-gray-50: #0b1020;
+  --color-gray-100: #121a30;
+  --color-gray-200: #1b2842;
+  --color-gray-300: #24324f;
+  --color-gray-400: #5b6b8c;
+  --color-gray-500: #8ea0bf;
+  --color-gray-600: #b8c4da;
+  --color-gray-700: #d3dced;
+  --color-gray-800: #e6ebf5;
+  --color-gray-900: #f7f9fc;
+  --color-gray-950: #ffffff;
+
+  --color-background: var(--color-gray-50);
+  --color-surface: var(--color-gray-100);
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-700);
+  --color-text-muted: var(--color-gray-500);
+  --color-border: var(--color-gray-300);
+
+  /* Keep brand accents visible in dark mode */
   --color-primary-50: #1c2540;
   --color-primary-100: #232f54;
   --color-primary-200: #2c3a66;
