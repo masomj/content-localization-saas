@@ -103,7 +103,7 @@ const breadcrumbs = computed(() => {
 .layout-app {
   display: flex;
   min-height: 100vh;
-  background: var(--color-gray-50);
+  background: var(--color-background);
 }
 
 .layout-app--collapsed .layout-app__sidebar {
@@ -116,8 +116,8 @@ const breadcrumbs = computed(() => {
 
 .layout-app__sidebar {
   width: 260px;
-  background: var(--color-white);
-  border-right: 1px solid var(--color-gray-200);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   transition: width var(--transition-normal);
@@ -133,7 +133,7 @@ const breadcrumbs = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-4);
-  border-bottom: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .layout-app__brand {
@@ -141,7 +141,7 @@ const breadcrumbs = computed(() => {
   align-items: center;
   gap: var(--spacing-2);
   text-decoration: none;
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-lg);
 }
@@ -156,7 +156,7 @@ const breadcrumbs = computed(() => {
   border: none;
   padding: var(--spacing-2);
   cursor: pointer;
-  color: var(--color-gray-500);
+  color: var(--color-text-muted);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
 }
@@ -190,7 +190,7 @@ const breadcrumbs = computed(() => {
   align-items: center;
   gap: var(--spacing-3);
   padding: var(--spacing-3);
-  color: var(--color-gray-600);
+  color: var(--color-text-secondary);
   text-decoration: none;
   border-radius: var(--radius-lg);
   transition: all var(--transition-fast);
@@ -200,7 +200,7 @@ const breadcrumbs = computed(() => {
 
 .nav-link:hover {
   background: var(--color-gray-100);
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
 }
 
 .nav-link:focus-visible {
@@ -234,8 +234,8 @@ const breadcrumbs = computed(() => {
 
 .layout-app__header {
   height: 64px;
-  background: var(--color-white);
-  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -258,7 +258,7 @@ const breadcrumbs = computed(() => {
 
 .layout-app__user-name {
   font-size: var(--font-size-sm);
-  color: var(--color-gray-700);
+  color: var(--color-text-primary);
   font-weight: var(--font-weight-medium);
   white-space: nowrap;
   overflow: hidden;
@@ -270,7 +270,7 @@ const breadcrumbs = computed(() => {
   border: none;
   padding: var(--spacing-2);
   cursor: pointer;
-  color: var(--color-gray-500);
+  color: var(--color-text-muted);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
