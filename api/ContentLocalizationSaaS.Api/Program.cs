@@ -42,6 +42,26 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalDevCors", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "http://127.0.0.1:3000",
+                "https://127.0.0.1:3000",
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "http://127.0.0.1:5173",
+                "https://127.0.0.1:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -53,6 +73,12 @@ app.MapDefaultEndpoints();
 app.UseObservabilityMiddleware();
 app.UseApiExceptionMiddleware();
 app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("LocalDevCors");
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
