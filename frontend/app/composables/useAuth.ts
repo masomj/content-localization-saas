@@ -4,8 +4,14 @@ interface User {
   name: string
 }
 
+interface Organization {
+  id: string
+  name: string
+}
+
 interface AuthState {
   user: User | null
+  organization: Organization | null
   isAuthenticated: boolean
   isLoading: boolean
   isFallbackMode: boolean
@@ -13,9 +19,11 @@ interface AuthState {
 
 const AUTH_STORAGE_KEY = 'locflow_auth_token'
 const USER_STORAGE_KEY = 'locflow_user'
+const ORG_STORAGE_KEY = 'locflow_organization'
 
 const authState = reactive<AuthState>({
   user: null,
+  organization: null,
   isAuthenticated: false,
   isLoading: true,
   isFallbackMode: false,
@@ -57,14 +65,38 @@ function setStoredUser(user: User | null): void {
   }
 }
 
+function getStoredOrganization(): Organization | null {
+  if (typeof window === 'undefined') return null
+  const stored = localStorage.getItem(ORG_STORAGE_KEY)
+  if (stored) {
+    try {
+      return JSON.parse(stored)
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+function setStoredOrganization(org: Organization | null): void {
+  if (typeof window === 'undefined') return
+  if (org) {
+    localStorage.setItem(ORG_STORAGE_KEY, JSON.stringify(org))
+  } else {
+    localStorage.removeItem(ORG_STORAGE_KEY)
+  }
+}
+
 function bootstrapSession(): void {
   authState.isLoading = true
   try {
     const token = getStoredToken()
     const user = getStoredUser()
+    const org = getStoredOrganization()
 
     if (token && user) {
       authState.user = user
+      authState.organization = org
       authState.isAuthenticated = true
       authState.isFallbackMode = false
     } else {
@@ -117,7 +149,9 @@ export function useAuth() {
     try {
       setStoredToken(null)
       setStoredUser(null)
+      setStoredOrganization(null)
       authState.user = null
+      authState.organization = null
       authState.isAuthenticated = false
       authState.isFallbackMode = true
       router.push('/login')
@@ -164,17 +198,43 @@ export function useAuth() {
     }
   }
 
+  async function createOrganization(name: string): Promise<{ success: boolean; error?: string }> {
+    authState.isLoading = true
+    try {
+      if (!name.trim()) {
+        return { success: false, error: 'Organization name is required' }
+      }
+
+      const org: Organization = {
+        id: `org_${Date.now()}`,
+        name: name.trim(),
+      }
+
+      setStoredOrganization(org)
+      authState.organization = org
+
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: 'Failed to create organization' }
+    } finally {
+      authState.isLoading = false
+    }
+  }
+
   function clearError(): void {
   }
 
   return {
     user: computed(() => authState.user),
+    organization: computed(() => authState.organization),
+    hasOrganization: computed(() => !!authState.organization),
     isAuthenticated: computed(() => authState.isAuthenticated),
     isLoading: computed(() => authState.isLoading),
     isFallbackMode: computed(() => authState.isFallbackMode),
     login,
     logout,
     register,
+    createOrganization,
     clearError,
   }
 }

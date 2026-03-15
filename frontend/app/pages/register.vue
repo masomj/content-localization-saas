@@ -71,7 +71,7 @@ async function handleSubmit() {
   })
 
   if (result.success) {
-    router.push('/app')
+    router.push('/app/dashboard')
   } else {
     errors.value.general = result.error || 'Registration failed. Please try again.'
   }

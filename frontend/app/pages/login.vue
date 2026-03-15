@@ -46,7 +46,7 @@ async function handleSubmit() {
   const result = await auth.login(email.value, password.value)
 
   if (result.success) {
-    router.push('/app')
+    router.push('/app/dashboard')
   } else {
     errors.value.general = result.error || 'Login failed. Please try again.'
   }
