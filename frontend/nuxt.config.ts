@@ -2,6 +2,20 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   css: ['~/assets/css/tokens.css'],
+  runtimeConfig: {
+    public: {
+      apiBase: '/api',
+    },
+  },
+  nitro: {
+    devProxy: {
+      '/api': {
+        target: 'http://localhost:5135/api',
+        changeOrigin: true,
+        prependPath: true,
+      },
+    },
+  },
   app: {
     head: {
       htmlAttrs: { lang: 'en' },

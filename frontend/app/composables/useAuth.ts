@@ -26,9 +26,16 @@ const AUTH_STORAGE_KEY = 'locflow_auth_token'
 const USER_STORAGE_KEY = 'locflow_user'
 const ORG_STORAGE_KEY = 'locflow_organization'
 
-const API_BASE_URL = typeof window !== 'undefined' 
-  ? (window as any).__ENV__?.API_URL || '/api'
-  : '/api'
+function getApiBaseUrl(): string {
+  if (typeof window === 'undefined') {
+    return '/api'
+  }
+
+  const fromEnv = (window as any).__ENV__?.API_URL
+  const fromNuxtRuntime = (window as any).__NUXT__?.config?.public?.apiBase
+
+  return fromEnv || fromNuxtRuntime || '/api'
+}
 
 const authState = reactive<AuthState>({
   user: null,
@@ -108,14 +115,36 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const apiBaseUrl = getApiBaseUrl()
+  const response = await fetch(`${apiBaseUrl}${endpoint}`, {
     ...options,
     headers,
   })
 
+  const contentType = response.headers.get('content-type') || ''
+  const isJson = contentType.includes('application/json')
+
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }))
-    throw new Error(error.error || error.errors?.join(', ') || 'Request failed')
+    if (isJson) {
+      const error = await response.json().catch(() => ({ error: 'Request failed' }))
+      throw new Error(error.error || error.errors?.join(', ') || 'Request failed')
+    }
+
+    const text = await response.text().catch(() => '')
+    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+      throw new Error('API endpoint returned HTML instead of JSON. Check frontend API base/proxy configuration.')
+    }
+
+    throw new Error('Request failed')
+  }
+
+  if (!isJson) {
+    const text = await response.text().catch(() => '')
+    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+      throw new Error('API endpoint returned HTML instead of JSON. Check frontend API base/proxy configuration.')
+    }
+
+    throw new Error('Unexpected non-JSON API response')
   }
 
   return response.json()
