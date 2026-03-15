@@ -39,6 +39,8 @@
   --color-text-secondary: var(--color-gray-600);
   --color-text-muted: var(--color-gray-500);
   --color-border: var(--color-gray-200);
+  --color-skeleton-base: var(--color-gray-200);
+  --color-skeleton-highlight: var(--color-gray-100);
 
   --spacing-0: 0;
   --spacing-1: 0.25rem;
@@ -143,6 +145,8 @@ html[data-theme='dark'] {
   --color-text-secondary: var(--color-gray-700);
   --color-text-muted: var(--color-gray-500);
   --color-border: var(--color-gray-300);
+  --color-skeleton-base: var(--color-gray-300);
+  --color-skeleton-highlight: var(--color-gray-200);
 
   /* Keep brand accents visible in dark mode */
   --color-primary-50: #1c2540;
