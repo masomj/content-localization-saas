@@ -35,7 +35,7 @@ definePageMeta({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  z-index: 1;
+  z-index: 10;
 }
 
 .brand {
@@ -54,10 +54,14 @@ definePageMeta({
 }
 
 .auth-main {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--spacing-8) var(--spacing-4);
+  overflow: auto;
+  z-index: 0;
 }
 
 @media (max-width: 480px) {
