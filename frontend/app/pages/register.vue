@@ -1,131 +1,207 @@
 <script setup lang="ts">
+definePageMeta({
+  layout: 'auth',
+})
+
 useSeoMeta({
   title: 'Sign Up - LocFlow',
   description: 'Start your free trial. No credit card required. Join thousands of teams shipping localized content faster.',
 })
+
+const auth = useAuth()
+const router = useRouter()
+
+const firstName = ref('')
+const lastName = ref('')
+const email = ref('')
+const password = ref('')
+const company = ref('')
+const acceptTerms = ref(false)
+const errors = ref<{
+  firstName?: string
+  lastName?: string
+  email?: string
+  password?: string
+  general?: string
+}>({})
+const isSubmitting = ref(false)
+
+const isFallbackMode = computed(() => auth.isFallbackMode.value)
+
+function validateForm(): boolean {
+  errors.value = {}
+
+  if (!firstName.value.trim()) {
+    errors.value.firstName = 'First name is required'
+  }
+
+  if (!lastName.value.trim()) {
+    errors.value.lastName = 'Last name is required'
+  }
+
+  if (!email.value.trim()) {
+    errors.value.email = 'Work email is required'
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
+    errors.value.email = 'Please enter a valid email address'
+  }
+
+  if (!password.value) {
+    errors.value.password = 'Password is required'
+  } else if (password.value.length < 8) {
+    errors.value.password = 'Must be at least 8 characters'
+  }
+
+  return Object.keys(errors.value).length === 0
+}
+
+async function handleSubmit() {
+  if (!validateForm()) return
+
+  isSubmitting.value = true
+  errors.value.general = undefined
+
+  await new Promise(resolve => setTimeout(resolve, 300))
+
+  const result = await auth.register({
+    firstName: firstName.value,
+    lastName: lastName.value,
+    email: email.value,
+    password: password.value,
+    company: company.value || undefined,
+  })
+
+  if (result.success) {
+    router.push('/app')
+  } else {
+    errors.value.general = result.error || 'Registration failed. Please try again.'
+  }
+
+  isSubmitting.value = false
+}
 </script>
 
 <template>
-  <div class="auth-page">
-    <header class="auth-header">
-      <NuxtLink to="/" class="brand" aria-label="LocFlow Home">
-        <span class="brand-icon" aria-hidden="true">◈</span>
-        <span class="brand-text">LocFlow</span>
-      </NuxtLink>
-    </header>
+  <div class="auth-card">
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-subtitle">Start your 14-day free trial. No credit card required.</p>
 
-    <main class="auth-main">
-      <div class="auth-card">
-        <h1 class="auth-title">Create your account</h1>
-        <p class="auth-subtitle">Start your 14-day free trial. No credit card required.</p>
+    <div v-if="isFallbackMode" class="fallback-notice">
+      <svg class="fallback-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+      </svg>
+      <span>Demo mode: Authentication is simulated. Real auth endpoint not configured.</span>
+    </div>
 
-        <form class="auth-form" @submit.prevent>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="firstName">First name</label>
-              <input 
-                id="firstName" 
-                type="text" 
-                placeholder="Jane"
-                autocomplete="given-name"
-              >
-            </div>
+    <form class="auth-form" novalidate @submit.prevent="handleSubmit">
+      <UiFormError v-if="errors.general" :message="errors.general" />
 
-            <div class="form-group">
-              <label for="lastName">Last name</label>
-              <input 
-                id="lastName" 
-                type="text" 
-                placeholder="Doe"
-                autocomplete="family-name"
-              >
-            </div>
-          </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="firstName">First name</label>
+          <input
+            id="firstName"
+            v-model="firstName"
+            type="text"
+            placeholder="Jane"
+            autocomplete="given-name"
+            :class="{ 'input-error': errors.firstName }"
+            :disabled="isSubmitting"
+            @input="errors.firstName = undefined"
+          >
+          <p v-if="errors.firstName" class="field-error" role="alert">{{ errors.firstName }}</p>
+        </div>
 
-          <div class="form-group">
-            <label for="email">Work email</label>
-            <input 
-              id="email" 
-              type="email" 
-              placeholder="you@company.com"
-              autocomplete="email"
-            >
-          </div>
-
-          <div class="form-group">
-            <label for="password">Password</label>
-            <input 
-              id="password" 
-              type="password" 
-              placeholder="8+ characters"
-              autocomplete="new-password"
-            >
-            <p class="form-hint">Must be at least 8 characters</p>
-          </div>
-
-          <div class="form-group">
-            <label for="company">Company name</label>
-            <input 
-              id="company" 
-              type="text" 
-              placeholder="Acme Inc."
-              autocomplete="organization"
-            >
-          </div>
-
-          <button type="submit" class="btn btn-primary">Create account</button>
-
-          <p class="terms">
-            By signing up, you agree to our 
-            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
-          </p>
-        </form>
-
-        <p class="auth-footer">
-          Already have an account? 
-          <NuxtLink to="/login" class="link">Sign in</NuxtLink>
-        </p>
+        <div class="form-group">
+          <label for="lastName">Last name</label>
+          <input
+            id="lastName"
+            v-model="lastName"
+            type="text"
+            placeholder="Doe"
+            autocomplete="family-name"
+            :class="{ 'input-error': errors.lastName }"
+            :disabled="isSubmitting"
+            @input="errors.lastName = undefined"
+          >
+          <p v-if="errors.lastName" class="field-error" role="alert">{{ errors.lastName }}</p>
+        </div>
       </div>
-    </main>
+
+      <div class="form-group">
+        <label for="email">Work email</label>
+        <input
+          id="email"
+          v-model="email"
+          type="text"
+          placeholder="you@company.com"
+          autocomplete="email"
+          :class="{ 'input-error': errors.email }"
+          :disabled="isSubmitting"
+          @input="errors.email = undefined"
+        >
+        <p v-if="errors.email" class="field-error" role="alert">{{ errors.email }}</p>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          v-model="password"
+          type="password"
+          placeholder="8+ characters"
+          autocomplete="new-password"
+          :class="{ 'input-error': errors.password }"
+          :disabled="isSubmitting"
+          @input="errors.password = undefined"
+        >
+        <p v-if="errors.password" class="field-error" role="alert">{{ errors.password }}</p>
+        <p v-else class="form-hint">Must be at least 8 characters</p>
+      </div>
+
+      <div class="form-group">
+        <label for="company">Company name</label>
+        <input
+          id="company"
+          v-model="company"
+          type="text"
+          placeholder="Acme Inc."
+          autocomplete="organization"
+          :disabled="isSubmitting"
+        >
+      </div>
+
+      <button
+        type="submit"
+        class="btn btn-primary"
+        :class="{ 'btn--loading': isSubmitting }"
+        :disabled="isSubmitting"
+        :aria-busy="isSubmitting"
+      >
+        <span v-if="isSubmitting" class="btn-loader" aria-hidden="true">
+          <svg class="spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round">
+              <animate attributeName="stroke-dasharray" values="0 150;42 150;42 150;42 150" dur="1.5s" repeatCount="indefinite" />
+              <animate attributeName="stroke-dashoffset" values="0;-16;-59;-59" dur="1.5s" repeatCount="indefinite" />
+            </circle>
+          </svg>
+        </span>
+        <span :class="{ 'btn-content-hidden': isSubmitting }">Create account</span>
+      </button>
+
+      <p class="terms">
+        By signing up, you agree to our
+        <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      </p>
+    </form>
+
+    <p class="auth-footer">
+      Already have an account?
+      <NuxtLink to="/login" class="link">Sign in</NuxtLink>
+    </p>
   </div>
 </template>
 
 <style scoped>
-.auth-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f9fafb;
-}
-
-.auth-header {
-  padding: 1.5rem;
-  text-align: center;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  text-decoration: none;
-  color: #111827;
-  font-weight: 700;
-  font-size: 1.25rem;
-}
-
-.brand-icon {
-  font-size: 1.5rem;
-  color: #4f46e5;
-}
-
-.auth-main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
 .auth-card {
   width: 100%;
   max-width: 440px;
@@ -148,6 +224,26 @@ useSeoMeta({
   color: #6b7280;
   margin: 0 0 2rem;
   text-align: center;
+}
+
+.fallback-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.5rem;
+  background: #fefce8;
+  border: 1px solid #fde047;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  color: #854d0e;
+}
+
+.fallback-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
 }
 
 .auth-form {
@@ -188,6 +284,25 @@ useSeoMeta({
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
+.form-group input.input-error {
+  border-color: #ef4444;
+}
+
+.form-group input.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-group input:disabled {
+  background: #f9fafb;
+  cursor: not-allowed;
+}
+
+.field-error {
+  font-size: 0.8125rem;
+  color: #ef4444;
+  margin: 0;
+}
+
 .form-hint {
   font-size: 0.75rem;
   color: #6b7280;
@@ -206,6 +321,12 @@ useSeoMeta({
   transition: all 0.2s;
   cursor: pointer;
   border: none;
+  position: relative;
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .btn-primary {
@@ -213,8 +334,30 @@ useSeoMeta({
   color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: #4338ca;
+}
+
+.btn-loader {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-content-hidden {
+  visibility: hidden;
+}
+
+.spinner {
+  width: 1.25em;
+  height: 1.25em;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .terms {

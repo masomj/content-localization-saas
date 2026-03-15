@@ -2,7 +2,7 @@ import type { Middleware } from '.'
 
 export const publicRoutes: string[] = ['/', '/login', '/register']
 
-export const protectedRoutes: string[] = ['/dashboard', '/projects', '/settings', '/team']
+export const protectedRoutes: string[] = ['/app']
 
 export const routeGuardMiddleware: Middleware = (to) => {
   const auth = useAuth()

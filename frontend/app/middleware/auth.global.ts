@@ -1,10 +1,12 @@
 const publicPaths = ['/', '/login', '/register']
 
 export default defineNuxtRouteMiddleware((to) => {
-  if (publicPaths.includes(to.path)) {
+  const isPublicPath = publicPaths.includes(to.path)
+  
+  if (isPublicPath) {
     return
   }
-  
+
   const auth = useAuth()
   
   if (!auth.isAuthenticated.value) {
