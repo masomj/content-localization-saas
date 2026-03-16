@@ -3,19 +3,51 @@ import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
 
-definePageMeta({
-  layout: 'app',
-})
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Projects - LocFlow' })
 
-useSeoMeta({
-  title: 'Projects - LocFlow',
-})
-
+const auth = useAuth()
 const isLoading = ref(false)
 const projects = ref<Array<{ id: string; name: string; status: string; progress: number; languages: number }>>([])
 const showCreateProjectForm = ref(false)
 const newProjectName = ref('')
 const createProjectError = ref('')
+
+function getApiBaseUrl() {
+  if (typeof window === 'undefined') return '/api'
+  return (window as any).__NUXT__?.config?.public?.apiBase || '/api'
+}
+
+async function loadProjects() {
+  if (!auth.organization.value?.id) {
+    projects.value = []
+    return
+  }
+
+  isLoading.value = true
+  try {
+    const token = localStorage.getItem('locflow_auth_token')
+    const apiBase = getApiBaseUrl()
+    const res = await fetch(`${apiBase}/projects?workspaceId=${encodeURIComponent(auth.organization.value.id)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+
+    if (!res.ok) throw new Error('Failed to load projects')
+
+    const data = await res.json()
+    projects.value = (Array.isArray(data) ? data : []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      status: p.status ?? 'Draft',
+      progress: 0,
+      languages: 0,
+    }))
+  } catch {
+    projects.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
 
 function openCreateProjectForm() {
   showCreateProjectForm.value = true
@@ -28,30 +60,48 @@ function closeCreateProjectForm() {
   createProjectError.value = ''
 }
 
-function createProject() {
+async function createProject() {
   const name = newProjectName.value.trim()
   if (!name) {
     createProjectError.value = 'Project name is required'
     return
   }
 
-  projects.value.unshift({
-    id: `project_${Date.now()}`,
-    name,
-    status: 'Draft',
-    progress: 0,
-    languages: 0,
-  })
+  if (!auth.organization.value?.id) {
+    createProjectError.value = 'No workspace is available for this account'
+    return
+  }
 
-  closeCreateProjectForm()
+  try {
+    const token = localStorage.getItem('locflow_auth_token')
+    const apiBase = getApiBaseUrl()
+    const res = await fetch(`${apiBase}/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        workspaceId: auth.organization.value.id,
+        name,
+        sourceLanguage: 'en',
+        description: '',
+      }),
+    })
+
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(body.error || body.errors?.join(', ') || 'Failed to create project')
+    }
+
+    await loadProjects()
+    closeCreateProjectForm()
+  } catch (error: any) {
+    createProjectError.value = error?.message || 'Failed to create project'
+  }
 }
 
-onMounted(async () => {
-  isLoading.value = true
-  await new Promise(resolve => setTimeout(resolve, 500))
-  projects.value = []
-  isLoading.value = false
-})
+onMounted(loadProjects)
 </script>
 
 <template>
@@ -70,9 +120,7 @@ onMounted(async () => {
     </header>
 
     <div v-if="isLoading" class="projects-grid">
-      <div v-for="i in 3" :key="i" class="project-card">
-        <AppSkeleton lines="3" height="1.5rem" />
-      </div>
+      <div v-for="i in 3" :key="i" class="project-card"><AppSkeleton lines="3" height="1.5rem" /></div>
     </div>
 
     <AppEmptyState
@@ -111,121 +159,22 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.projects-page {
-  max-width: 1200px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-6);
-}
-
-.page-header h1 {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin: 0 0 var(--spacing-1) 0;
-}
-
-.page-subtitle {
-  color: var(--color-text-muted);
-  margin: 0;
-}
-
-.btn-icon {
-  width: 1.25em;
-  height: 1.25em;
-  margin-right: var(--spacing-2);
-}
-
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--spacing-4);
-}
-
-.project-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-4);
-}
-
-.project-form-overlay {
-  position: fixed;
-  inset: 0;
-  background: color-mix(in srgb, var(--color-black) 45%, transparent);
-  display: grid;
-  place-items: center;
-  z-index: var(--z-modal);
-}
-
-.project-form {
-  width: min(480px, 92vw);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
-}
-
-.project-form h2 {
-  margin: 0 0 var(--spacing-2);
-  color: var(--color-text-primary);
-}
-
-.label-with-hint {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  color: var(--color-text-primary);
-}
-
-.label-hint {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.project-form input {
-  padding: var(--spacing-3) var(--spacing-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-background);
-  color: var(--color-text-primary);
-}
-
-.field-error {
-  margin: 0;
-  color: var(--color-error);
-  font-size: var(--font-size-xs);
-}
-
-.project-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-2);
-}
-
-.btn-secondary,
-.btn-primary {
-  border-radius: var(--radius-md);
-  padding: var(--spacing-2) var(--spacing-3);
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-}
-
-.btn-secondary {
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-}
-
-.btn-primary {
-  background: var(--color-primary-600);
-  color: var(--color-white);
-  border-color: var(--color-primary-600);
-}
+.projects-page { max-width: 1200px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-6); }
+.page-header h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--spacing-1) 0; }
+.page-subtitle { color: var(--color-text-muted); margin: 0; }
+.btn-icon { width: 1.25em; height: 1.25em; margin-right: var(--spacing-2); }
+.projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--spacing-4); }
+.project-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--spacing-4); }
+.project-form-overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-black) 45%, transparent); display: grid; place-items: center; z-index: var(--z-modal); }
+.project-form { width: min(480px, 92vw); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--spacing-6); display: flex; flex-direction: column; gap: var(--spacing-3); }
+.project-form h2 { margin: 0 0 var(--spacing-2); color: var(--color-text-primary); }
+.label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
+.label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); }
+.project-form input { padding: var(--spacing-3) var(--spacing-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-background); color: var(--color-text-primary); }
+.field-error { margin: 0; color: var(--color-error); font-size: var(--font-size-xs); }
+.project-form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); }
+.btn-secondary,.btn-primary { border-radius: var(--radius-md); padding: var(--spacing-2) var(--spacing-3); border: 1px solid var(--color-border); cursor: pointer; }
+.btn-secondary { background: var(--color-surface); color: var(--color-text-secondary); }
+.btn-primary { background: var(--color-primary-600); color: var(--color-white); border-color: var(--color-primary-600); }
 </style>
