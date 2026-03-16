@@ -338,6 +338,26 @@ export function useAuth() {
     }
   }
 
+  async function requestPasswordReset(email: string): Promise<{ success: boolean; error?: string; resetLink?: string }> {
+    authState.isLoading = true
+    try {
+      if (!email.trim()) {
+        return { success: false, error: 'Email is required' }
+      }
+
+      const response = await fetchApi<{ message: string; resetLink?: string }>('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      })
+
+      return { success: true, resetLink: response.resetLink }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to request reset' }
+    } finally {
+      authState.isLoading = false
+    }
+  }
+
   async function refreshUser(): Promise<void> {
     if (!authState.isAuthenticated) return
     
@@ -365,6 +385,7 @@ export function useAuth() {
     logout,
     register,
     createOrganization,
+    requestPasswordReset,
     refreshUser,
     clearError,
   }

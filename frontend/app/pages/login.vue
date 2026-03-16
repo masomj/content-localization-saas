@@ -111,7 +111,7 @@ async function handleSubmit() {
           <input v-model="rememberMe" type="checkbox" :disabled="isSubmitting">
           <span>Remember me</span>
         </label>
-        <a href="#" class="forgot-link">Forgot password?</a>
+        <NuxtLink to="/forgot-password" class="forgot-link">Forgot password?</NuxtLink>
       </div>
 
       <button

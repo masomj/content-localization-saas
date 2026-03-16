@@ -17,7 +17,9 @@ namespace ContentLocalizationSaaS.Api.Controllers;
 public sealed class AuthController(
     UserManager<IdentityUser> userManager,
     IConfiguration configuration,
-    AppDbContext dbContext) : ControllerBase
+    AppDbContext dbContext,
+    IWebHostEnvironment environment,
+    ILogger<AuthController> logger) : ControllerBase
 {
     private readonly JwtOptions _jwtOptions = configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>()?.Jwt 
         ?? throw new InvalidOperationException("JWT configuration is missing");
@@ -238,6 +240,62 @@ public sealed class AuthController(
         return Ok(new { token });
     }
 
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { error = "Email is required" });
+        }
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            return Ok(new { message = "If an account exists for this email, a reset link has been sent." });
+        }
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var encodedToken = Uri.EscapeDataString(token);
+        var resetLink = $"/reset-password?email={Uri.EscapeDataString(user.Email ?? request.Email)}&token={encodedToken}";
+
+        logger.LogInformation("Password reset requested for {Email}. Reset link: {ResetLink}", user.Email, resetLink);
+
+        if (environment.IsDevelopment())
+        {
+            return Ok(new
+            {
+                message = "Password reset generated. In production this is sent via email.",
+                resetLink,
+            });
+        }
+
+        return Ok(new { message = "If an account exists for this email, a reset link has been sent." });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return BadRequest(new { error = "Email, token, and newPassword are required" });
+        }
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            return BadRequest(new { error = "Invalid reset request" });
+        }
+
+        var decodedToken = Uri.UnescapeDataString(request.Token);
+        var result = await userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        return Ok(new { message = "Password has been reset successfully" });
+    }
+
     private string GenerateJwtToken(IdentityUser user, string role, string firstName, string lastName)
     {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SigningKey));
@@ -282,6 +340,18 @@ public sealed class LoginRequest
 {
     public string Email { get; set; } = "";
     public string Password { get; set; } = "";
+}
+
+public sealed class ForgotPasswordRequest
+{
+    public string Email { get; set; } = "";
+}
+
+public sealed class ResetPasswordRequest
+{
+    public string Email { get; set; } = "";
+    public string Token { get; set; } = "";
+    public string NewPassword { get; set; } = "";
 }
 
 public sealed class AuthResponse
