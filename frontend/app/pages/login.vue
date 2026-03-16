@@ -42,7 +42,7 @@ async function handleSubmit() {
 
   await new Promise(resolve => setTimeout(resolve, 300))
 
-  const result = await auth.login(email.value, password.value)
+  const result = await auth.login(email.value, password.value, rememberMe.value)
 
   if (result.success) {
     router.push('/app/dashboard')
@@ -292,6 +292,7 @@ async function handleSubmit() {
   width: var(--spacing-4);
   height: var(--spacing-4);
   cursor: pointer;
+  accent-color: var(--color-primary-600);
 }
 
 .checkbox-label input:disabled {
