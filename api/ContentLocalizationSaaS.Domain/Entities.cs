@@ -26,6 +26,18 @@ public sealed class ProjectAuditLog
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 
+public sealed class ProjectCollection
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public Guid? ParentId { get; set; }
+    public required string Name { get; set; }
+    public bool IsRoot { get; set; }
+    public int Depth { get; set; }
+    public int SortOrder { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
 public enum InviteStatus
 {
     Pending = 0,

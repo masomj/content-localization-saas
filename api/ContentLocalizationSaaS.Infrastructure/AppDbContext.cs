@@ -16,6 +16,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectAuditLog> ProjectAuditLogs => Set<ProjectAuditLog>();
+    public DbSet<ProjectCollection> ProjectCollections => Set<ProjectCollection>();
     public DbSet<WorkspaceInvite> WorkspaceInvites => Set<WorkspaceInvite>();
     public DbSet<WorkspaceMembership> WorkspaceMemberships => Set<WorkspaceMembership>();
     public DbSet<MembershipAuditLog> MembershipAuditLogs => Set<MembershipAuditLog>();
@@ -70,6 +71,17 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Action).HasMaxLength(64).IsRequired();
             e.Property(x => x.Details).HasMaxLength(4000).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.CreatedUtc });
+        });
+
+        builder.Entity<ProjectCollection>(e =>
+        {
+            e.ToTable("project_collections");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.IsRoot).HasDefaultValue(false);
+            e.HasIndex(x => new { x.ProjectId, x.ParentId, x.SortOrder });
+            e.HasIndex(x => new { x.ProjectId, x.ParentId, x.Name }).IsUnique();
+            e.HasIndex(x => new { x.ProjectId, x.IsRoot }).IsUnique().HasFilter("\"is_root\" = true");
         });
 
         builder.Entity<WorkspaceInvite>(e =>
@@ -358,6 +370,18 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .HasForeignKey(x => x.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Entity<ProjectCollection>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ProjectCollection>()
+            .HasOne<ProjectCollection>()
+            .WithMany()
+            .HasForeignKey(x => x.ParentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.Entity<WorkspaceInvite>()
             .HasOne<Workspace>()
             .WithMany()
@@ -486,6 +510,7 @@ public static class DependencyInjection
 
         services.AddScoped<IWorkspaceService, WorkspaceService>();
         services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IProjectCollectionService, ProjectCollectionService>();
         services.AddScoped<IContentItemService, ContentItemService>();
 
         return services;

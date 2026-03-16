@@ -47,6 +47,17 @@ internal sealed class ProjectService(
         };
 
         db.Projects.Add(project);
+
+        db.ProjectCollections.Add(new ProjectCollection
+        {
+            ProjectId = project.Id,
+            ParentId = null,
+            Name = "Collections",
+            IsRoot = true,
+            Depth = 0,
+            SortOrder = 0
+        });
+
         await db.SaveChangesAsync(cancellationToken);
         return project;
     }
