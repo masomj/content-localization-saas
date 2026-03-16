@@ -13,6 +13,7 @@ const router = useRouter()
 
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const rememberMe = ref(false)
 const errors = ref<{ email?: string; password?: string; general?: string }>({})
 const isSubmitting = ref(false)
@@ -83,15 +84,25 @@ async function handleSubmit() {
           <span>Password</span>
           <span class="label-hint">8+ characters</span>
         </label>
-        <input
-          id="password"
-          v-model="password"
-          type="password"
-          autocomplete="current-password"
-          :class="{ 'input-error': errors.password }"
-          :disabled="isSubmitting"
-          @input="errors.password = undefined"
-        >
+        <div class="password-field">
+          <input
+            id="password"
+            v-model="password"
+            :type="showPassword ? 'text' : 'password'"
+            autocomplete="current-password"
+            :class="{ 'input-error': errors.password }"
+            :disabled="isSubmitting"
+            @input="errors.password = undefined"
+          >
+          <button
+            type="button"
+            class="password-toggle"
+            :aria-label="showPassword ? 'Hide password' : 'Show password'"
+            @click="showPassword = !showPassword"
+          >
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
         <p v-if="errors.password" class="field-error" role="alert">{{ errors.password }}</p>
       </div>
 
@@ -215,6 +226,26 @@ async function handleSubmit() {
   font-family: inherit;
   color: var(--color-text-primary);
   background: var(--color-background);
+}
+
+.password-field {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+}
+
+.password-field input {
+  flex: 1;
+}
+
+.password-toggle {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
 }
 
 .form-group input:focus {

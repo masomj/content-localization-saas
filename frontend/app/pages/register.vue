@@ -15,6 +15,9 @@ const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 const company = ref('')
 const acceptTerms = ref(false)
 const errors = ref<{
@@ -22,6 +25,7 @@ const errors = ref<{
   lastName?: string
   email?: string
   password?: string
+  confirmPassword?: string
   general?: string
 }>({})
 const isSubmitting = ref(false)
@@ -47,6 +51,12 @@ function validateForm(): boolean {
     errors.value.password = 'Password is required'
   } else if (password.value.length < 8) {
     errors.value.password = 'Must be at least 8 characters'
+  }
+
+  if (!confirmPassword.value) {
+    errors.value.confirmPassword = 'Please confirm your password'
+  } else if (confirmPassword.value !== password.value) {
+    errors.value.confirmPassword = 'Passwords do not match'
   }
 
   return Object.keys(errors.value).length === 0
@@ -144,17 +154,44 @@ async function handleSubmit() {
           <span>Password</span>
           <span class="label-hint">At least 8 characters</span>
         </label>
-        <input
-          id="password"
-          v-model="password"
-          type="password"
-          autocomplete="new-password"
-          :class="{ 'input-error': errors.password }"
-          :disabled="isSubmitting"
-          @input="errors.password = undefined"
-        >
+        <div class="password-field">
+          <input
+            id="password"
+            v-model="password"
+            :type="showPassword ? 'text' : 'password'"
+            autocomplete="new-password"
+            :class="{ 'input-error': errors.password }"
+            :disabled="isSubmitting"
+            @input="errors.password = undefined"
+          >
+          <button type="button" class="password-toggle" @click="showPassword = !showPassword">
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
         <p v-if="errors.password" class="field-error" role="alert">{{ errors.password }}</p>
         <p v-else class="form-hint">Must be at least 8 characters</p>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword" class="label-with-hint">
+          <span>Confirm password</span>
+          <span class="label-hint">Re-enter your password</span>
+        </label>
+        <div class="password-field">
+          <input
+            id="confirmPassword"
+            v-model="confirmPassword"
+            :type="showConfirmPassword ? 'text' : 'password'"
+            autocomplete="new-password"
+            :class="{ 'input-error': errors.confirmPassword }"
+            :disabled="isSubmitting"
+            @input="errors.confirmPassword = undefined"
+          >
+          <button type="button" class="password-toggle" @click="showConfirmPassword = !showConfirmPassword">
+            {{ showConfirmPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+        <p v-if="errors.confirmPassword" class="field-error" role="alert">{{ errors.confirmPassword }}</p>
       </div>
 
       <div class="form-group">
@@ -297,6 +334,26 @@ async function handleSubmit() {
   font-family: inherit;
   color: var(--color-text-primary);
   background: var(--color-background);
+}
+
+.password-field {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.password-field input {
+  flex: 1;
+}
+
+.password-toggle {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
 }
 
 .form-group input:focus {
