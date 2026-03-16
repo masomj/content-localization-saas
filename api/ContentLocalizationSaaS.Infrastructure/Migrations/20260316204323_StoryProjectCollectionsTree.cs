@@ -51,7 +51,7 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                 table: "project_collections",
                 columns: new[] { "ProjectId", "IsRoot" },
                 unique: true,
-                filter: "\"is_root\" = true");
+                filter: "\"IsRoot\" = true");
 
             migrationBuilder.CreateIndex(
                 name: "IX_project_collections_ProjectId_ParentId_Name",
