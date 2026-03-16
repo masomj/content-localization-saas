@@ -63,7 +63,7 @@ const footerLinks = {
 
 <style scoped>
 .footer {
-  background: var(--color-text-primary);
+  background: #0f172a;
   color: var(--color-gray-300);
   padding: 4rem 1.5rem 2rem;
 }
@@ -90,7 +90,7 @@ const footerLinks = {
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
-  color: white;
+  color: var(--color-white);
   font-weight: 700;
   font-size: 1.25rem;
   margin-bottom: 1rem;
@@ -117,7 +117,7 @@ const footerLinks = {
 .footer-heading {
   font-size: 0.875rem;
   font-weight: 700;
-  color: white;
+  color: var(--color-white);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 1rem;
@@ -141,7 +141,7 @@ const footerLinks = {
 }
 
 .footer-link:hover {
-  color: white;
+  color: var(--color-white);
 }
 
 .footer-bottom {
@@ -168,7 +168,7 @@ const footerLinks = {
 }
 
 .footer-social a:hover {
-  color: white;
+  color: var(--color-white);
 }
 
 @media (max-width: 1024px) {
@@ -205,3 +205,4 @@ const footerLinks = {
   }
 }
 </style>
+

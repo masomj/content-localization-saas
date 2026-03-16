@@ -123,9 +123,9 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
 .metric-card {
   text-align: center;
   padding: 2rem;
-  background: white;
+  background: var(--color-background);
   border-radius: 1rem;
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--color-border);
 }
 
 .metric-value {
@@ -188,9 +188,9 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
 .testimonial {
   margin: 0;
   padding: 2rem;
-  background: white;
+  background: var(--color-background);
   border-radius: 1rem;
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--color-border);
 }
 
 .testimonial-quote {
@@ -255,3 +255,4 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
   }
 }
 </style>
+
