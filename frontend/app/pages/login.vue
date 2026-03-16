@@ -162,11 +162,11 @@ async function handleSubmit() {
   gap: var(--spacing-3);
   padding: var(--spacing-3) var(--spacing-4);
   margin-bottom: var(--spacing-6);
-  background: #fefce8;
-  border: 1px solid #fde047;
+  background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 60%, var(--color-border));
   border-radius: var(--radius-lg);
   font-size: var(--font-size-xs);
-  color: #854d0e;
+  color: var(--color-text-primary);
 }
 
 .fallback-icon {

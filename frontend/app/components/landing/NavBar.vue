@@ -53,9 +53,9 @@ function closeMenu() {
   left: 0;
   right: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .navbar-container {
@@ -73,7 +73,7 @@ function closeMenu() {
   align-items: center;
   gap: var(--spacing-2);
   text-decoration: none;
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-xl);
 }
@@ -110,7 +110,7 @@ function closeMenu() {
 .menu-icon span {
   display: block;
   height: 2px;
-  background: var(--color-gray-900);
+  background: var(--color-text-primary);
   border-radius: 2px;
   transition: all var(--transition-slow);
 }
@@ -205,14 +205,12 @@ function closeMenu() {
 
   .nav-links {
     display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    width: 100%;
+    order: 4;
     flex-direction: column;
-    background: var(--color-white);
-    padding: var(--spacing-4);
-    border-bottom: 1px solid var(--color-gray-200);
+    background: var(--color-surface);
+    padding: var(--spacing-2) var(--spacing-4);
+    border-top: 1px solid var(--color-border);
     gap: 0;
   }
 
@@ -222,7 +220,7 @@ function closeMenu() {
 
   .nav-links li {
     padding: var(--spacing-3) 0;
-    border-bottom: 1px solid var(--color-gray-100);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .nav-links li:last-child {
@@ -231,14 +229,13 @@ function closeMenu() {
 
   .nav-actions {
     display: none;
-    position: absolute;
-    top: calc(100% + 200px);
-    left: 0;
-    right: 0;
+    width: 100%;
+    order: 5;
     flex-direction: column;
-    background: var(--color-white);
-    padding: var(--spacing-4);
+    background: var(--color-surface);
+    padding: var(--spacing-2) var(--spacing-4) var(--spacing-4);
     gap: var(--spacing-2);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .nav-actions.open {

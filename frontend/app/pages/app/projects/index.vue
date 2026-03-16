@@ -90,12 +90,12 @@ onMounted(async () => {
 .page-header h1 {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   margin: 0 0 var(--spacing-1) 0;
 }
 
 .page-subtitle {
-  color: var(--color-gray-500);
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -112,8 +112,8 @@ onMounted(async () => {
 }
 
 .project-card {
-  background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--spacing-4);
 }

@@ -1,9 +1,3 @@
-<script setup lang="ts">
-definePageMeta({
-  layout: 'auth',
-})
-</script>
-
 <template>
   <div class="auth-page">
     <header class="auth-header">
@@ -43,7 +37,7 @@ definePageMeta({
   align-items: center;
   gap: var(--spacing-2);
   text-decoration: none;
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-xl);
 }
@@ -54,14 +48,10 @@ definePageMeta({
 }
 
 .auth-main {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-8) var(--spacing-4);
-  overflow: auto;
-  z-index: 0;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--spacing-16) var(--spacing-4) var(--spacing-8);
 }
 
 @media (max-width: 480px) {
