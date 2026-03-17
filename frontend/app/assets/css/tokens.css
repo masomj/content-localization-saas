@@ -152,6 +152,9 @@ html[data-theme='dark'] {
   --color-border: var(--color-gray-300);
   --color-skeleton-base: var(--color-gray-300);
   --color-skeleton-highlight: var(--color-gray-200);
+  --color-error-bg: #3b1218;
+  --color-error-border: #7f1d1d;
+  --color-error: #fca5a5;
 
   /* Keep brand accents visible in dark mode */
   --color-primary-50: #1c2540;

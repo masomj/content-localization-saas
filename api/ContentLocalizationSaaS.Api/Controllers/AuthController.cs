@@ -118,7 +118,7 @@ public sealed class AuthController(
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null || !await userManager.CheckPasswordAsync(user, request.Password))
         {
-            return Unauthorized(new { error = "Invalid email or password" });
+            return Unauthorized(new { error = "No account found matching those sign-in details" });
         }
 
         var roles = await userManager.GetRolesAsync(user);
