@@ -7,6 +7,11 @@ export const protectedRoutes: string[] = ['/app']
 
 export const routeGuardMiddleware: Middleware = (to) => {
   const auth = useAuth()
+
+  // On SSR refresh, auth bootstrap state is client-driven; avoid false redirects server-side.
+  if (import.meta.server) {
+    return
+  }
   
   const isPublicRoute = publicRoutes.some(route => {
     if (route === '/') return to.path === '/'
