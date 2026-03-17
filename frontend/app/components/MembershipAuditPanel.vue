@@ -1,23 +1,17 @@
 <script setup lang="ts">
+import { adminClient } from '~/api/adminClient'
+import type { MembershipAuditRow } from '~/api/types'
+
 const props = defineProps<{ apiBase: string }>()
 
 const filters = reactive({ targetEmail: '', action: '', fromUtc: '', toUtc: '' })
-const rows = ref<any[]>([])
+const rows = ref<MembershipAuditRow[]>([])
 const error = ref('')
 
 async function loadAudit() {
   error.value = ''
   try {
-    const params = new URLSearchParams()
-    if (filters.targetEmail.trim()) params.set('targetEmail', filters.targetEmail.trim())
-    if (filters.action.trim()) params.set('action', filters.action.trim())
-    if (filters.fromUtc.trim()) params.set('fromUtc', filters.fromUtc.trim())
-    if (filters.toUtc.trim()) params.set('toUtc', filters.toUtc.trim())
-
-    const qs = params.toString()
-    rows.value = await $fetch(`${props.apiBase}/api/admin/membership-audit${qs ? `?${qs}` : ''}`, {
-      headers: { 'X-User-Role': 'Admin' },
-    })
+    rows.value = await adminClient.membershipAudit(filters)
   } catch {
     error.value = 'Could not load membership audit logs.'
   }

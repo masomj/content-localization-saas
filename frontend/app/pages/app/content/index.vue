@@ -3,6 +3,9 @@ import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
+import { contentClient } from '~/api/contentClient'
+import { projectsClient } from '~/api/projectsClient'
+import type { ContentItem, Project } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Content - LocFlow' })
@@ -11,29 +14,17 @@ const auth = useAuth()
 const isLoading = ref(false)
 const projects = ref<Array<{ id: string; name: string }>>([])
 const selectedProjectId = ref('')
-const contents = ref<Array<{ id: string; key: string; source: string; status: string }>>([])
+const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status'>>>([])
 
 const showAddContentForm = ref(false)
 const newContentKey = ref('')
 const newContentSource = ref('')
 const addContentError = ref('')
 
-function getApiBaseUrl() {
-  if (typeof window === 'undefined') return '/api'
-  return (window as any).__NUXT__?.config?.public?.apiBase || '/api'
-}
-
 async function loadProjects() {
   if (!auth.organization.value?.id) return
-  const token = localStorage.getItem('locflow_auth_token')
-  const apiBase = getApiBaseUrl()
-  const res = await fetch(`${apiBase}/projects?workspaceId=${encodeURIComponent(auth.organization.value.id)}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
-  if (!res.ok) return
-
-  const data = await res.json()
-  projects.value = (Array.isArray(data) ? data : []).map((p: any) => ({ id: p.id, name: p.name }))
+  const data = await projectsClient.list(auth.organization.value.id)
+  projects.value = (Array.isArray(data) ? data : []).map((p: Project) => ({ id: p.id, name: p.name }))
 
   if (!selectedProjectId.value && projects.value.length > 0) {
     selectedProjectId.value = projects.value[0]!.id
@@ -48,14 +39,8 @@ async function loadContent() {
 
   isLoading.value = true
   try {
-    const token = localStorage.getItem('locflow_auth_token')
-    const apiBase = getApiBaseUrl()
-    const res = await fetch(`${apiBase}/content-items?projectId=${encodeURIComponent(selectedProjectId.value)}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-    if (!res.ok) throw new Error('Failed to load content')
-    const data = await res.json()
-    contents.value = (Array.isArray(data) ? data : []).map((c: any) => ({
+    const data = await contentClient.list(selectedProjectId.value)
+    contents.value = (Array.isArray(data) ? data : []).map((c: ContentItem) => ({
       id: c.id,
       key: c.key,
       source: c.source,
@@ -95,27 +80,15 @@ async function addContent() {
   }
 
   try {
-    const token = localStorage.getItem('locflow_auth_token')
-    const apiBase = getApiBaseUrl()
-    const res = await fetch(`${apiBase}/content-items`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        projectId: selectedProjectId.value,
-        key,
-        source,
-        status: 'draft',
-        tags: [],
-        context: null,
-        notes: null,
-      }),
+    await contentClient.create({
+      projectId: selectedProjectId.value,
+      key,
+      source,
+      status: 'draft',
+      tags: [],
+      context: null,
+      notes: null,
     })
-
-    const body = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(body.error || body.errors?.join(', ') || 'Failed to add content')
 
     await loadContent()
     closeAddContentForm()

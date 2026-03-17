@@ -3,18 +3,18 @@ import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
+import { projectsClient } from '~/api/projectsClient'
+import type { Collection, Project } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Projects - LocFlow' })
 
-type Project = { id: string; name: string; status: string; progress: number; languages: number }
-type Collection = { id: string; projectId: string; parentId: string | null; name: string; isRoot: boolean; depth: number; sortOrder: number }
-
+type ProjectView = Project & { status: string; progress: number; languages: number }
 type TreeNode = Collection & { children: TreeNode[] }
 
 const auth = useAuth()
 const isLoading = ref(false)
-const projects = ref<Project[]>([])
+const projects = ref<ProjectView[]>([])
 const selectedProjectId = ref<string>('')
 const collections = ref<Collection[]>([])
 const isLoadingCollections = ref(false)
@@ -26,51 +26,6 @@ const draggingId = ref('')
 const showCreateProjectForm = ref(false)
 const newProjectName = ref('')
 const createProjectError = ref('')
-
-function getApiBaseUrl() {
-  if (typeof window === 'undefined') return '/api'
-  return (window as any).__NUXT__?.config?.public?.apiBase || '/api'
-}
-
-function decodeJwtExp(token: string | null): number {
-  if (!token) return 0
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1] || ''))
-    return Number(payload?.exp || 0)
-  } catch {
-    return 0
-  }
-}
-
-function getAuthToken() {
-  if (typeof window === 'undefined') return null
-
-  const localToken = localStorage.getItem('locflow_auth_token')
-  const sessionToken = sessionStorage.getItem('locflow_auth_token')
-
-  const localExp = decodeJwtExp(localToken)
-  const sessionExp = decodeJwtExp(sessionToken)
-  const now = Math.floor(Date.now() / 1000)
-
-  const localValid = localToken && localExp > now
-  const sessionValid = sessionToken && sessionExp > now
-
-  if (localValid && sessionValid) {
-    return localExp >= sessionExp ? localToken : sessionToken
-  }
-
-  if (sessionValid) return sessionToken
-  if (localValid) return localToken
-
-  return sessionToken || localToken
-}
-
-function authHeaders() {
-  const token = getAuthToken()
-  return token
-    ? { Authorization: `Bearer ${token}`, 'X-Debug-Auth-Present': '1' }
-    : { 'X-Debug-Auth-Present': '0' }
-}
 
 const collectionTree = computed<TreeNode[]>(() => {
   const byParent = new Map<string | null, Collection[]>()
@@ -100,15 +55,8 @@ async function loadProjects() {
 
   isLoading.value = true
   try {
-    const apiBase = getApiBaseUrl()
-    const res = await fetch(`${apiBase}/projects?workspaceId=${encodeURIComponent(auth.organization.value.id)}`, {
-      headers: authHeaders(),
-    })
-
-    if (!res.ok) throw new Error('Failed to load projects')
-
-    const data = await res.json()
-    projects.value = (Array.isArray(data) ? data : []).map((p: any) => ({
+    const data = await projectsClient.list(auth.organization.value.id)
+    projects.value = (Array.isArray(data) ? data : []).map((p: Project) => ({
       id: p.id,
       name: p.name,
       status: p.status ?? 'Draft',
@@ -133,12 +81,7 @@ async function loadCollections(projectId: string) {
   collectionError.value = ''
 
   try {
-    const apiBase = getApiBaseUrl()
-    const res = await fetch(`${apiBase}/projects/${projectId}/collections`, { headers: authHeaders() })
-    if (!res.ok) throw new Error('Failed to load collections')
-
-    const data = await res.json()
-    collections.value = Array.isArray(data) ? data : []
+    collections.value = await projectsClient.listCollections(projectId)
     newCollectionParentId.value = rootCollection.value?.id || ''
   } catch (error: any) {
     collectionError.value = error?.message || 'Failed to load collections'
@@ -153,15 +96,10 @@ async function createCollection() {
   if (!name || !selectedProjectId.value) return
 
   try {
-    const apiBase = getApiBaseUrl()
-    const res = await fetch(`${apiBase}/projects/${selectedProjectId.value}/collections`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name, parentId: newCollectionParentId.value || null }),
+    await projectsClient.createCollection(selectedProjectId.value, {
+      name,
+      parentId: newCollectionParentId.value || null,
     })
-    const body = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(body.error || body.errors?.name?.[0] || 'Failed to create collection')
-
     newCollectionName.value = ''
     await loadCollections(selectedProjectId.value)
   } catch (error: any) {
@@ -175,14 +113,7 @@ async function renameCollection(item: Collection) {
   if (!nextName || nextName === item.name) return
 
   try {
-    const apiBase = getApiBaseUrl()
-    const res = await fetch(`${apiBase}/projects/${selectedProjectId.value}/collections/${item.id}/rename`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name: nextName }),
-    })
-    const body = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(body.error || body.errors?.name?.[0] || 'Rename failed')
+    await projectsClient.renameCollection(selectedProjectId.value, item.id, nextName)
     await loadCollections(selectedProjectId.value)
   } catch (error: any) {
     collectionError.value = error?.message || 'Rename failed'
@@ -191,17 +122,8 @@ async function renameCollection(item: Collection) {
 
 async function moveCollection(collectionId: string, newParentId: string | null, newIndex: number) {
   if (!selectedProjectId.value) return
-
-  const apiBase = getApiBaseUrl()
-  const res = await fetch(`${apiBase}/projects/${selectedProjectId.value}/collections/${collectionId}/move`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ newParentId, newIndex }),
-  })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body.error || body.errors?.newParentId?.[0] || 'Move failed')
-
-  collections.value = Array.isArray(body) ? body : collections.value
+  const result = await projectsClient.moveCollection(selectedProjectId.value, collectionId, { newParentId, newIndex })
+  collections.value = Array.isArray(result) ? result : collections.value
 }
 
 function onDragStart(item: Collection) {
@@ -243,29 +165,16 @@ async function createProject() {
   }
 
   try {
-    const apiBase = getApiBaseUrl()
-    const res = await fetch(`${apiBase}/projects`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders(),
-      },
-      body: JSON.stringify({
-        workspaceId: auth.organization.value.id,
-        name,
-        sourceLanguage: 'en',
-        description: '',
-      }),
+    const project = await projectsClient.create({
+      workspaceId: auth.organization.value.id,
+      name,
+      sourceLanguage: 'en',
+      description: '',
     })
 
-    const body = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      throw new Error(body.error || body.errors?.join(', ') || 'Failed to create project')
-    }
-
     await loadProjects()
-    selectedProjectId.value = body.id
-    await loadCollections(body.id)
+    selectedProjectId.value = project.id
+    await loadCollections(project.id)
     closeCreateProjectForm()
   } catch (error: any) {
     createProjectError.value = error?.message || 'Failed to create project'

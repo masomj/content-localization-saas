@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { authClient } from '~/api/authClient'
+
 definePageMeta({ layout: 'auth' })
 useSeoMeta({ title: 'Reset password - LocFlow' })
 
 const route = useRoute()
-const auth = useAuth()
 
 const email = ref(String(route.query.email || ''))
 const token = ref(String(route.query.token || ''))
@@ -33,14 +34,7 @@ async function handleSubmit() {
 
   isSubmitting.value = true
   try {
-    const apiBase = (window as any).__NUXT__?.config?.public?.apiBase || '/api'
-    const res = await fetch(`${apiBase}/auth/reset-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.value, token: token.value, newPassword: newPassword.value }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || data.errors?.join(', ') || 'Reset failed')
+    await authClient.resetPassword(email.value, token.value, newPassword.value)
     success.value = 'Password reset successful. You can now sign in.'
   } catch (e: any) {
     error.value = e?.message || 'Reset failed.'
