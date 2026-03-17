@@ -1,3 +1,4 @@
+import { getAuthToken } from '~/api/client'
 import type { Middleware } from '.'
 
 export const publicRoutes: string[] = ['/', '/login', '/register']
@@ -14,8 +15,17 @@ export const routeGuardMiddleware: Middleware = (to) => {
   
   const isProtectedRoute = protectedRoutes.some(route => to.path.startsWith(route))
   
-  if (isProtectedRoute && !auth.isAuthenticated.value) {
-    return navigateTo('/login')
+  if (isProtectedRoute) {
+    const hasToken = typeof window !== 'undefined' && !!getAuthToken()
+
+    if (auth.isLoading.value) {
+      if (hasToken) return
+      return navigateTo('/login')
+    }
+
+    if (!auth.isAuthenticated.value) {
+      return navigateTo('/login')
+    }
   }
   
   if (isPublicRoute && auth.isAuthenticated.value && to.path === '/') {
