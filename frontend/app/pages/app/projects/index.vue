@@ -32,23 +32,44 @@ function getApiBaseUrl() {
   return (window as any).__NUXT__?.config?.public?.apiBase || '/api'
 }
 
+function decodeJwtExp(token: string | null): number {
+  if (!token) return 0
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1] || ''))
+    return Number(payload?.exp || 0)
+  } catch {
+    return 0
+  }
+}
+
 function getAuthToken() {
   if (typeof window === 'undefined') return null
 
-  const rememberMe = localStorage.getItem('locflow_remember_me') === 'true'
   const localToken = localStorage.getItem('locflow_auth_token')
   const sessionToken = sessionStorage.getItem('locflow_auth_token')
 
-  if (rememberMe) {
-    return localToken || sessionToken
+  const localExp = decodeJwtExp(localToken)
+  const sessionExp = decodeJwtExp(sessionToken)
+  const now = Math.floor(Date.now() / 1000)
+
+  const localValid = localToken && localExp > now
+  const sessionValid = sessionToken && sessionExp > now
+
+  if (localValid && sessionValid) {
+    return localExp >= sessionExp ? localToken : sessionToken
   }
+
+  if (sessionValid) return sessionToken
+  if (localValid) return localToken
 
   return sessionToken || localToken
 }
 
 function authHeaders() {
   const token = getAuthToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  return token
+    ? { Authorization: `Bearer ${token}`, 'X-Debug-Auth-Present': '1' }
+    : { 'X-Debug-Auth-Present': '0' }
 }
 
 const collectionTree = computed<TreeNode[]>(() => {
