@@ -38,6 +38,8 @@ public sealed class AuthController(
             return BadRequest(new { error = "A user with this email already exists" });
         }
 
+        var isFirstUser = !await dbContext.Users.AnyAsync(cancellationToken);
+
         var user = new IdentityUser
         {
             Email = request.Email,
@@ -51,7 +53,6 @@ public sealed class AuthController(
             return BadRequest(new { errors });
         }
 
-        var isFirstUser = !await dbContext.Users.AnyAsync(cancellationToken);
         var role = isFirstUser ? AppRole.Admin : AppRole.Viewer;
 
         await userManager.AddToRoleAsync(user, role.ToString());
@@ -122,6 +123,25 @@ public sealed class AuthController(
 
         var roles = await userManager.GetRolesAsync(user);
         var role = roles.FirstOrDefault() ?? AppRole.Viewer.ToString();
+
+        var anyAdmins = await userManager.GetUsersInRoleAsync(AppRole.Admin.ToString());
+        if (anyAdmins.Count == 0)
+        {
+            if (!roles.Contains(AppRole.Admin.ToString()))
+            {
+                await userManager.AddToRoleAsync(user, AppRole.Admin.ToString());
+            }
+
+            var existingClaims = await userManager.GetClaimsAsync(user);
+            foreach (var existing in existingClaims.Where(c => c.Type == "app_role"))
+            {
+                await userManager.RemoveClaimAsync(user, existing);
+            }
+            await userManager.AddClaimAsync(user, new Claim("app_role", AppRole.Admin.ToString()));
+
+            roles = await userManager.GetRolesAsync(user);
+            role = roles.FirstOrDefault() ?? AppRole.Admin.ToString();
+        }
 
         var claims = await userManager.GetClaimsAsync(user);
         var appRoleClaim = claims.FirstOrDefault(c => c.Type == "app_role")?.Value ?? role;
