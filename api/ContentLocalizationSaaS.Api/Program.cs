@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,10 +67,20 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+var isDevelopment = app.Environment.IsDevelopment();
+var allowsDebugUserDeletion = DebugEndpointEnvironmentPolicy.AllowsDebugUserDeletion(app.Environment.EnvironmentName);
+
+if (isDevelopment || allowsDebugUserDeletion)
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "ContentLocalizationSaaS API";
+    });
+}
 
+if (isDevelopment)
+{
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup.Migrations");
@@ -105,14 +116,12 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-
-
 app.MapDefaultEndpoints();
 app.UseObservabilityMiddleware();
 app.UseApiExceptionMiddleware();
 app.UseHttpsRedirection();
 
-if (app.Environment.IsDevelopment())
+if (isDevelopment)
 {
     app.UseCors("LocalDevCors");
 }
@@ -121,8 +130,82 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+if (!DebugEndpointEnvironmentPolicy.IsProduction(app.Environment.EnvironmentName))
+{
+    app.MapDelete("/debug/users", async (
+            IHostEnvironment environment,
+            UserManager<IdentityUser> userManager,
+            [AsParameters] DeleteDebugUserRequest request,
+            CancellationToken cancellationToken) =>
+        {
+            if (!DebugEndpointEnvironmentPolicy.AllowsDebugUserDeletion(environment.EnvironmentName))
+            {
+                return Results.Json(new
+                {
+                    deleted = false,
+                    reason = DebugEndpointEnvironmentPolicy.GetDebugUserDeletionDeniedReason(environment.EnvironmentName),
+                    environment = environment.EnvironmentName
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Email) && string.IsNullOrWhiteSpace(request.Id))
+            {
+                return Results.BadRequest(new
+                {
+                    deleted = false,
+                    reason = "email_or_id_required"
+                });
+            }
+
+            IdentityUser? user = null;
+            if (!string.IsNullOrWhiteSpace(request.Email))
+            {
+                user = await userManager.FindByEmailAsync(request.Email.Trim());
+            }
+
+            if (user is null && !string.IsNullOrWhiteSpace(request.Id))
+            {
+                user = await userManager.FindByIdAsync(request.Id.Trim());
+            }
+
+            if (user is null)
+            {
+                return Results.NotFound(new
+                {
+                    deleted = false,
+                    reason = "user_not_found",
+                    requestedEmail = request.Email,
+                    requestedId = request.Id
+                });
+            }
+
+            var deleteResult = await userManager.DeleteAsync(user);
+            if (!deleteResult.Succeeded)
+            {
+                return Results.Json(new
+                {
+                    deleted = false,
+                    reason = "delete_failed",
+                    errors = deleteResult.Errors.Select(e => e.Description)
+                }, statusCode: StatusCodes.Status500InternalServerError);
+            }
+
+            return Results.Ok(new
+            {
+                deleted = true,
+                userId = user.Id,
+                email = user.Email,
+                reason = "deleted"
+            });
+        })
+        .WithTags("Debug")
+        .WithOpenApi();
+}
+
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok", service = "content-localization-api" }));
 
 app.Run();
+
+public sealed record DeleteDebugUserRequest(string? Email, string? Id);
 
 public partial class Program { }
