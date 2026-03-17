@@ -61,7 +61,7 @@ const ariaDescribedBy = computed(() => {
 .ui-select-label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-gray-700);
+  color: var(--color-text-secondary);
 }
 
 .ui-select-required {
@@ -78,17 +78,23 @@ const ariaDescribedBy = computed(() => {
   padding: var(--spacing-3) var(--spacing-4);
   font-family: inherit;
   font-size: var(--font-size-base);
-  color: var(--color-gray-900);
-  background: var(--color-white);
-  border: 1px solid var(--color-gray-300);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   appearance: none;
+  color-scheme: light dark;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right var(--spacing-3) center;
   background-repeat: no-repeat;
   background-size: 1.25em;
   padding-right: 2.5rem;
+}
+
+.ui-select option {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .ui-select:focus {
