@@ -14,7 +14,6 @@ const router = useRouter()
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
-const rememberMe = ref(false)
 const errors = ref<{ email?: string; password?: string; general?: string }>({})
 const isSubmitting = ref(false)
 
@@ -42,7 +41,7 @@ async function handleSubmit() {
 
   await new Promise(resolve => setTimeout(resolve, 300))
 
-  const result = await auth.login(email.value, password.value, rememberMe.value)
+  const result = await auth.login(email.value, password.value)
 
   if (result.success) {
     router.push('/app/dashboard')
@@ -107,10 +106,6 @@ async function handleSubmit() {
       </div>
 
       <div class="form-options">
-        <label class="checkbox-label">
-          <input v-model="rememberMe" type="checkbox" :disabled="isSubmitting">
-          <span>Remember me</span>
-        </label>
         <NuxtLink to="/forgot-password" class="forgot-link">Forgot password?</NuxtLink>
       </div>
 
@@ -275,28 +270,8 @@ async function handleSubmit() {
 
 .form-options {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  font-size: var(--font-size-sm);
-  color: var(--color-gray-600);
-  cursor: pointer;
-}
-
-.checkbox-label input {
-  width: var(--spacing-4);
-  height: var(--spacing-4);
-  cursor: pointer;
-  accent-color: var(--color-primary-600);
-}
-
-.checkbox-label input:disabled {
-  cursor: not-allowed;
 }
 
 .forgot-link {
