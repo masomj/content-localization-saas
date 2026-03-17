@@ -17,7 +17,7 @@ public static class AppRoleResolver
     public static AppRole ResolveFromHeader(HttpContext context)
     {
         var raw = context.Request.Headers[HeaderName].ToString();
-        return Enum.TryParse<AppRole>(raw, true, out var parsed) ? parsed : AppRole.Viewer;
+        return TryParseRole(raw, out var parsed) ? parsed : AppRole.Viewer;
     }
 
     public static bool TryResolveFromClaims(ClaimsPrincipal principal, out AppRole role)
@@ -29,8 +29,35 @@ public static class AppRoleResolver
                   ?? principal.FindFirst(ClaimTypes.Role)?.Value
                   ?? principal.FindFirst("role")?.Value;
 
+        return TryParseRole(raw, out role);
+    }
+
+    public static bool HasAtLeastRole(AppRole current, AppRole required)
+    {
+        if (current == AppRole.Admin) return true;
+        return Rank(current) >= Rank(required);
+    }
+
+    private static int Rank(AppRole role) => role switch
+    {
+        AppRole.Admin => 300,
+        AppRole.Editor => 200,
+        AppRole.Reviewer => 100,
+        AppRole.Viewer => 0,
+        _ => 0
+    };
+
+    private static bool TryParseRole(string? raw, out AppRole role)
+    {
+        role = AppRole.Viewer;
         if (string.IsNullOrWhiteSpace(raw)) return false;
-        if (!Enum.TryParse<AppRole>(raw, true, out role)) return false;
-        return true;
+
+        if (string.Equals(raw, "Reader", StringComparison.OrdinalIgnoreCase))
+        {
+            role = AppRole.Viewer;
+            return true;
+        }
+
+        return Enum.TryParse(raw, true, out role);
     }
 }

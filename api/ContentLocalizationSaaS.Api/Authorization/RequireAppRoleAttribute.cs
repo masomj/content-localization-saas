@@ -27,7 +27,7 @@ public sealed class RequireAppRoleAttribute(AppRole minimumRole) : Attribute, IA
             current = AppRole.Viewer;
         }
 
-        if (current < minimumRole)
+        if (!AppRoleResolver.HasAtLeastRole(current, minimumRole))
         {
             context.Result = new ObjectResult(new ProblemDetails
             {
