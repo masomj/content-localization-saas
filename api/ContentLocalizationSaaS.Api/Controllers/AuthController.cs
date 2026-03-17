@@ -53,7 +53,7 @@ public sealed class AuthController(
             return BadRequest(new { errors });
         }
 
-        var role = isFirstUser ? AppRole.Admin : AppRole.Viewer;
+        var role = isFirstUser ? AppRole.Admin : AppRole.Editor;
 
         await userManager.AddToRoleAsync(user, role.ToString());
         
