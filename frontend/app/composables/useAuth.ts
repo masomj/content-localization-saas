@@ -1,5 +1,5 @@
 import { authClient } from '~/api/authClient'
-import { getAuthToken, setAuthToken } from '~/api/client'
+import { getAuthToken, setAuthToken, attemptTokenRefresh } from '~/api/client'
 import type { User, Workspace } from '~/api/types'
 
 interface AuthState {
@@ -124,13 +124,19 @@ export function useAuth() {
     }
   }
 
+  let _logoutInProgress = false
+
   async function logout(): Promise<void> {
+    // Guard against concurrent logout calls (e.g., multiple 401s firing at once)
+    if (_logoutInProgress) return
+    _logoutInProgress = true
     authState.isLoading = true
     try {
       try { await authClient.logout() } catch {}
       clearSessionState()
     } finally {
       authState.isLoading = false
+      _logoutInProgress = false
       router.push('/login')
     }
   }
@@ -199,7 +205,20 @@ export function useAuth() {
     try {
       const currentUser = await authClient.me()
       applyAuthenticatedUser(currentUser)
-    } catch {
+    } catch (error: any) {
+      // On 401, attempt a token refresh before giving up
+      if (error?.status === 401) {
+        const newToken = await attemptTokenRefresh()
+        if (newToken) {
+          try {
+            const currentUser = await authClient.me()
+            applyAuthenticatedUser(currentUser)
+            return
+          } catch {
+            // Refresh succeeded but /me still failed — logout
+          }
+        }
+      }
       await logout()
     }
   }

@@ -32,4 +32,7 @@ export const authClient = {
       body: JSON.stringify({ email, token, newPassword }),
     })
   },
+  refresh() {
+    return apiRequest<{ token: string }>('/auth/refresh', { method: 'POST' })
+  },
 }
