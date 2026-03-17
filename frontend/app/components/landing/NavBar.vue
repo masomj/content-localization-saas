@@ -39,6 +39,7 @@ function closeMenu() {
       </ul>
 
       <div class="nav-actions" :class="{ open: isMenuOpen }">
+        <UiThemeToggle class="nav-theme-toggle" />
         <NuxtLink to="/login" class="btn btn-ghost">Log in</NuxtLink>
         <NuxtLink to="/register" class="btn btn-primary">Get Started</NuxtLink>
       </div>
@@ -159,6 +160,10 @@ function closeMenu() {
   align-items: center;
 }
 
+.nav-theme-toggle {
+  margin-right: var(--spacing-1);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -209,7 +214,7 @@ function closeMenu() {
     order: 4;
     flex-direction: column;
     background: var(--color-surface);
-    padding: var(--spacing-2) var(--spacing-4);
+    padding: var(--spacing-2) var(--spacing-4) 0;
     border-top: 1px solid var(--color-border);
     gap: 0;
   }
@@ -233,7 +238,7 @@ function closeMenu() {
     order: 5;
     flex-direction: column;
     background: var(--color-surface);
-    padding: var(--spacing-2) var(--spacing-4) var(--spacing-4);
+    padding: 0 var(--spacing-4) var(--spacing-4);
     gap: var(--spacing-2);
     border-bottom: 1px solid var(--color-border);
   }
@@ -242,7 +247,8 @@ function closeMenu() {
     display: flex;
   }
 
-  .nav-actions .btn {
+  .nav-actions .btn,
+  .nav-actions .nav-theme-toggle {
     width: 100%;
   }
 

@@ -25,6 +25,7 @@ interface AuthState {
 const AUTH_STORAGE_KEY = 'locflow_auth_token'
 const USER_STORAGE_KEY = 'locflow_user'
 const ORG_STORAGE_KEY = 'locflow_organization'
+const REMEMBER_ME_KEY = 'locflow_remember_me'
 
 function getApiBaseUrl(): string {
   if (typeof window === 'undefined') {
@@ -45,17 +46,27 @@ const authState = reactive<AuthState>({
   isAdmin: false,
 })
 
-function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(AUTH_STORAGE_KEY)
+function shouldPersistSession(): boolean {
+  if (typeof window === 'undefined') return true
+  return localStorage.getItem(REMEMBER_ME_KEY) === 'true'
 }
 
-function setStoredToken(token: string | null): void {
+function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY)
+}
+
+function setStoredToken(token: string | null, rememberMe = true): void {
   if (typeof window === 'undefined') return
+  const target = rememberMe ? localStorage : sessionStorage
+  const other = rememberMe ? sessionStorage : localStorage
+
   if (token) {
-    localStorage.setItem(AUTH_STORAGE_KEY, token)
+    target.setItem(AUTH_STORAGE_KEY, token)
+    other.removeItem(AUTH_STORAGE_KEY)
   } else {
     localStorage.removeItem(AUTH_STORAGE_KEY)
+    sessionStorage.removeItem(AUTH_STORAGE_KEY)
   }
 }
 
@@ -204,7 +215,7 @@ if (typeof window !== 'undefined') {
 export function useAuth() {
   const router = useRouter()
 
-  async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  async function login(email: string, password: string, rememberMe = true): Promise<{ success: boolean; error?: string }> {
     authState.isLoading = true
     try {
       if (!email || !password) {
@@ -220,8 +231,9 @@ export function useAuth() {
         body: JSON.stringify({ email, password }),
       })
 
-      setStoredToken(response.token)
-      setStoredUser(response.user)
+      if (typeof window !== 'undefined') { localStorage.setItem(REMEMBER_ME_KEY, rememberMe ? 'true' : 'false') }
+      setStoredToken(response.token, rememberMe)
+      setStoredUser(response.user, rememberMe)
       
       authState.user = response.user
       authState.isAuthenticated = true
@@ -232,7 +244,7 @@ export function useAuth() {
           id: response.workspace.id,
           name: response.workspace.name,
         }
-        setStoredOrganization(org)
+        setStoredOrganization(org, rememberMe)
         authState.organization = org
       }
 
@@ -255,6 +267,9 @@ export function useAuth() {
       setStoredToken(null)
       setStoredUser(null)
       setStoredOrganization(null)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(REMEMBER_ME_KEY)
+      }
       authState.user = null
       authState.organization = null
       authState.isAuthenticated = false
@@ -291,8 +306,9 @@ export function useAuth() {
         body: JSON.stringify(data),
       })
 
-      setStoredToken(response.token)
-      setStoredUser(response.user)
+      if (typeof window !== 'undefined') { localStorage.setItem(REMEMBER_ME_KEY, rememberMe ? 'true' : 'false') }
+      setStoredToken(response.token, rememberMe)
+      setStoredUser(response.user, rememberMe)
       
       authState.user = response.user
       authState.isAuthenticated = true
@@ -303,7 +319,7 @@ export function useAuth() {
           id: response.workspace.id,
           name: response.workspace.name,
         }
-        setStoredOrganization(org)
+        setStoredOrganization(org, rememberMe)
         authState.organization = org
       }
 
@@ -327,7 +343,7 @@ export function useAuth() {
         name: name.trim(),
       }
 
-      setStoredOrganization(org)
+      setStoredOrganization(org, rememberMe)
       authState.organization = org
 
       return { success: true }
@@ -390,3 +406,5 @@ export function useAuth() {
     clearError,
   }
 }
+
+

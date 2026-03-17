@@ -48,16 +48,22 @@ const options = [
 }
 
 .theme-toggle__select {
-  border: none;
+  border: 0;
   background: transparent;
   color: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
+  padding-right: var(--spacing-4);
 }
 
 .theme-toggle__select:focus {
   outline: none;
+}
+
+.theme-toggle__select option {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .sr-only {

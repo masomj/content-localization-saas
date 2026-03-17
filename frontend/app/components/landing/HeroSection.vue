@@ -123,7 +123,7 @@
 
 .btn-primary {
   background: var(--color-primary-600);
-  color: white;
+  color: var(--color-white);
   border: 1px solid var(--color-primary-600);
 }
 
@@ -160,7 +160,7 @@
 .dashboard-preview {
   width: 100%;
   max-width: 520px;
-  background: white;
+  background: var(--color-background);
   border-radius: 1rem;
   box-shadow: 
     0 25px 50px -12px rgba(0, 0, 0, 0.15),
@@ -173,7 +173,7 @@
   display: flex;
   gap: 6px;
   padding: 0.75rem 1rem;
-  background: var(--color-gray-100);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-gray-200);
 }
 
@@ -248,7 +248,7 @@
   height: 60px;
   background: var(--color-surface);
   border-radius: 6px;
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--color-border);
 }
 
 @media (max-width: 1024px) {
@@ -300,3 +300,4 @@
   }
 }
 </style>
+

@@ -2,6 +2,7 @@
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
+import UiSelect from '~/components/ui/Select.vue'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Projects - LocFlow' })
@@ -286,13 +287,13 @@ watch(selectedProjectId, (id) => id && loadCollections(id))
           </label>
           <input id="collectionName" v-model="newCollectionName" type="text" autocomplete="off">
 
-          <label class="label-with-hint" for="collectionParent">
-            <span>Parent folder</span>
-            <span class="label-hint">Nested folders are supported to a maximum depth of 3</span>
-          </label>
-          <select id="collectionParent" v-model="newCollectionParentId">
-            <option v-for="option in selectableParents" :key="option.id" :value="option.id">{{ option.name }}</option>
-          </select>
+          <UiSelect
+            id="collectionParent"
+            v-model="newCollectionParentId"
+            label="Parent folder"
+            :options="selectableParents.map(option => ({ value: option.id, label: option.name }))"
+          />
+          <p class="label-hint">Nested folders are supported to a maximum depth of 3</p>
           <UiButton @click="createCollection">Add folder</UiButton>
         </div>
 
@@ -323,8 +324,8 @@ watch(selectedProjectId, (id) => id && loadCollections(id))
         <input id="projectName" v-model="newProjectName" type="text" autocomplete="off">
         <p v-if="createProjectError" class="field-error">{{ createProjectError }}</p>
         <div class="project-form-actions">
-          <button type="button" class="btn-secondary" @click="closeCreateProjectForm">Cancel</button>
-          <button type="submit" class="btn-primary">Create project</button>
+          <UiButton type="button" variant="secondary" @click="closeCreateProjectForm">Cancel</UiButton>
+          <UiButton type="submit">Create project</UiButton>
         </div>
       </form>
     </div>
@@ -344,7 +345,14 @@ watch(selectedProjectId, (id) => id && loadCollections(id))
 .collection-form { display: grid; gap: var(--spacing-2); margin-bottom: var(--spacing-4); }
 .label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
 .label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); }
-.collection-form input, .collection-form select, .project-form input { padding: var(--spacing-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-background); color: var(--color-text-primary); }
+.collection-form input,
+.project-form input {
+  padding: var(--spacing-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
 .tree-root, .tree-root ul { list-style: none; margin: 0; padding-left: var(--spacing-4); }
 .tree-node { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-2) var(--spacing-3); margin-bottom: var(--spacing-2); }
 .root-node { font-weight: 600; background: var(--color-primary-50); }
@@ -354,7 +362,4 @@ watch(selectedProjectId, (id) => id && loadCollections(id))
 .project-form-overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-black) 45%, transparent); display: grid; place-items: center; z-index: var(--z-modal); }
 .project-form { width: min(480px, 92vw); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--spacing-6); display: flex; flex-direction: column; gap: var(--spacing-3); }
 .project-form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); }
-.btn-secondary,.btn-primary { border-radius: var(--radius-md); padding: var(--spacing-2) var(--spacing-3); border: 1px solid var(--color-border); cursor: pointer; }
-.btn-secondary { background: var(--color-surface); color: var(--color-text-secondary); }
-.btn-primary { background: var(--color-primary-600); color: var(--color-white); border-color: var(--color-primary-600); }
 </style>

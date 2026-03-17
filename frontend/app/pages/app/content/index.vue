@@ -2,6 +2,7 @@
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
+import UiSelect from '~/components/ui/Select.vue'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Content - LocFlow' })
@@ -149,14 +150,16 @@ watch(selectedProjectId, async () => {
     </header>
 
     <div class="project-picker">
-      <label for="projectSelect" class="label-with-hint">
-        <span>Project</span>
-        <span class="label-hint">Select a project to view/manage content</span>
-      </label>
-      <select id="projectSelect" v-model="selectedProjectId">
-        <option value="" disabled>Select project</option>
-        <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
-      </select>
+      <UiSelect
+        id="projectSelect"
+        v-model="selectedProjectId"
+        label="Project"
+        :options="[
+          { value: '', label: 'Select project' },
+          ...projects.map(project => ({ value: project.id, label: project.name }))
+        ]"
+      />
+      <p class="label-hint">Select a project to view/manage content</p>
     </div>
 
     <AppEmptyState
@@ -208,8 +211,8 @@ watch(selectedProjectId, async () => {
         <p v-if="addContentError" class="field-error">{{ addContentError }}</p>
 
         <div class="content-form-actions">
-          <button type="button" class="btn-secondary" @click="closeAddContentForm">Cancel</button>
-          <button type="submit" class="btn-primary">Add content</button>
+          <UiButton type="button" variant="secondary" @click="closeAddContentForm">Cancel</UiButton>
+          <UiButton type="submit">Add content</UiButton>
         </div>
       </form>
     </div>
@@ -222,8 +225,7 @@ watch(selectedProjectId, async () => {
 .page-header h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--spacing-1) 0; }
 .page-subtitle { color: var(--color-text-muted); margin: 0; }
 .btn-icon { width: 1.25em; height: 1.25em; margin-right: var(--spacing-2); }
-.project-picker { margin-bottom: var(--spacing-5); display: flex; flex-direction: column; gap: var(--spacing-2); }
-.project-picker select { max-width: 420px; padding: var(--spacing-3) var(--spacing-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); color: var(--color-text-primary); }
+.project-picker { margin-bottom: var(--spacing-5); display: flex; flex-direction: column; gap: var(--spacing-2); max-width: 420px; }
 .label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
 .label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); }
 .content-list { display: flex; flex-direction: column; gap: var(--spacing-3); }
@@ -236,7 +238,4 @@ watch(selectedProjectId, async () => {
 .content-form input,.content-form textarea { padding: var(--spacing-3) var(--spacing-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-background); color: var(--color-text-primary); }
 .field-error { margin: 0; color: var(--color-error); font-size: var(--font-size-xs); }
 .content-form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); }
-.btn-secondary,.btn-primary { border-radius: var(--radius-md); padding: var(--spacing-2) var(--spacing-3); border: 1px solid var(--color-border); cursor: pointer; }
-.btn-secondary { background: var(--color-surface); color: var(--color-text-secondary); }
-.btn-primary { background: var(--color-primary-600); color: var(--color-white); border-color: var(--color-primary-600); }
 </style>

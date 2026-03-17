@@ -11,10 +11,6 @@ useSeoMeta({
 
 <template>
   <div class="landing-page">
-    <header class="landing-page__toolbar">
-      <UiThemeToggle />
-    </header>
-
     <LandingNavBar />
 
     <main id="main-content" tabindex="-1">
@@ -43,13 +39,6 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-}
-
-.landing-page__toolbar {
-  position: absolute;
-  top: var(--spacing-4);
-  right: var(--spacing-4);
-  z-index: 20;
 }
 
 .landing-page main {

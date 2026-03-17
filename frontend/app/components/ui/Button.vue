@@ -68,6 +68,7 @@ function handleClick(event: MouseEvent) {
   transition: all var(--transition-fast);
   position: relative;
   white-space: nowrap;
+  line-height: 1;
 }
 
 .ui-button:disabled {
