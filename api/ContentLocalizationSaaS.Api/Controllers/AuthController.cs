@@ -144,7 +144,7 @@ public sealed class AuthController(
         }
 
         var claims = await userManager.GetClaimsAsync(user);
-        var appRoleClaim = claims.FirstOrDefault(c => c.Type == "app_role")?.Value ?? role;
+        var appRoleClaim = role;
         var firstName = claims.FirstOrDefault(c => c.Type == "first_name")?.Value ?? "";
         var lastName = claims.FirstOrDefault(c => c.Type == "last_name")?.Value ?? "";
 
@@ -197,7 +197,7 @@ public sealed class AuthController(
         var role = roles.FirstOrDefault() ?? AppRole.Viewer.ToString();
 
         var claims = await userManager.GetClaimsAsync(user);
-        var appRoleClaim = claims.FirstOrDefault(c => c.Type == "app_role")?.Value ?? role;
+        var appRoleClaim = role;
         var firstName = claims.FirstOrDefault(c => c.Type == "first_name")?.Value ?? "";
         var lastName = claims.FirstOrDefault(c => c.Type == "last_name")?.Value ?? "";
 
@@ -251,7 +251,7 @@ public sealed class AuthController(
         var role = roles.FirstOrDefault() ?? AppRole.Viewer.ToString();
 
         var claims = await userManager.GetClaimsAsync(user);
-        var appRoleClaim = claims.FirstOrDefault(c => c.Type == "app_role")?.Value ?? role;
+        var appRoleClaim = role;
         var firstName = claims.FirstOrDefault(c => c.Type == "first_name")?.Value ?? "";
         var lastName = claims.FirstOrDefault(c => c.Type == "last_name")?.Value ?? "";
 
@@ -395,3 +395,4 @@ public sealed class WorkspaceInfo
     public Guid Id { get; set; }
     public string Name { get; set; } = "";
 }
+
