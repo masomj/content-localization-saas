@@ -286,7 +286,7 @@ export function useAuth() {
     firstName: string
     lastName: string
     company?: string
-  }): Promise<{ success: boolean; error?: string }> {
+  }, rememberMe = true): Promise<{ success: boolean; error?: string }> {
     authState.isLoading = true
     try {
       if (!data.email || !data.password || !data.firstName || !data.lastName) {
@@ -332,6 +332,7 @@ export function useAuth() {
   }
 
   async function createOrganization(name: string): Promise<{ success: boolean; error?: string }> {
+    const rememberMe = shouldPersistSession()
     authState.isLoading = true
     try {
       if (!name.trim()) {
