@@ -243,7 +243,7 @@ export function useAuth() {
 
       if (typeof window !== 'undefined') { localStorage.setItem(REMEMBER_ME_KEY, rememberMe ? 'true' : 'false') }
       setStoredToken(response.token, rememberMe)
-      setStoredUser(response.user, rememberMe)
+      setStoredUser(response.user)
       
       authState.user = response.user
       authState.isAuthenticated = true
@@ -254,7 +254,7 @@ export function useAuth() {
           id: response.workspace.id,
           name: response.workspace.name,
         }
-        setStoredOrganization(org, rememberMe)
+        setStoredOrganization(org)
         authState.organization = org
       }
 
@@ -316,9 +316,10 @@ export function useAuth() {
         body: JSON.stringify(data),
       })
 
+      const rememberMe = shouldPersistSession()
       if (typeof window !== 'undefined') { localStorage.setItem(REMEMBER_ME_KEY, rememberMe ? 'true' : 'false') }
       setStoredToken(response.token, rememberMe)
-      setStoredUser(response.user, rememberMe)
+      setStoredUser(response.user)
       
       authState.user = response.user
       authState.isAuthenticated = true
@@ -329,7 +330,7 @@ export function useAuth() {
           id: response.workspace.id,
           name: response.workspace.name,
         }
-        setStoredOrganization(org, rememberMe)
+        setStoredOrganization(org)
         authState.organization = org
       }
 
@@ -354,7 +355,7 @@ export function useAuth() {
         name: name.trim(),
       }
 
-      setStoredOrganization(org, rememberMe)
+      setStoredOrganization(org)
       authState.organization = org
 
       return { success: true }
