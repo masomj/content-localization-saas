@@ -32,8 +32,13 @@ function getApiBaseUrl() {
   return (window as any).__NUXT__?.config?.public?.apiBase || '/api'
 }
 
+function getAuthToken() {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('locflow_auth_token') || sessionStorage.getItem('locflow_auth_token')
+}
+
 function authHeaders() {
-  const token = localStorage.getItem('locflow_auth_token')
+  const token = getAuthToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
