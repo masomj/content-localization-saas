@@ -1,7 +1,9 @@
 <template>
   <div>
     <a href="#main-content" class="skip-link">Skip to main content</a>
-    <NuxtPage />
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </div>
 </template>
 
@@ -24,7 +26,7 @@
   width: auto;
   height: auto;
   padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
-  background: var(--color-primary-700, #4338ca);
+  background: var(--color-primary-700, var(--color-primary-700));
   color: var(--color-white, #fff);
   border-radius: var(--radius-md, 0.375rem);
   text-decoration: none;
