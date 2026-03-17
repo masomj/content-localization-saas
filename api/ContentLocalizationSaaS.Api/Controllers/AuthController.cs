@@ -124,6 +124,13 @@ public sealed class AuthController(
         var roles = await userManager.GetRolesAsync(user);
         var role = roles.FirstOrDefault() ?? AppRole.Viewer.ToString();
 
+        if (role == AppRole.Viewer.ToString())
+        {
+            await userManager.AddToRoleAsync(user, AppRole.Editor.ToString());
+            roles = await userManager.GetRolesAsync(user);
+            role = roles.FirstOrDefault() ?? AppRole.Editor.ToString();
+        }
+
         var anyAdmins = await userManager.GetUsersInRoleAsync(AppRole.Admin.ToString());
         if (anyAdmins.Count == 0)
         {
@@ -144,6 +151,13 @@ public sealed class AuthController(
         }
 
         var claims = await userManager.GetClaimsAsync(user);
+        foreach (var existing in claims.Where(c => c.Type == "app_role"))
+        {
+            await userManager.RemoveClaimAsync(user, existing);
+        }
+        await userManager.AddClaimAsync(user, new Claim("app_role", role));
+
+        claims = await userManager.GetClaimsAsync(user);
         var appRoleClaim = role;
         var firstName = claims.FirstOrDefault(c => c.Type == "first_name")?.Value ?? "";
         var lastName = claims.FirstOrDefault(c => c.Type == "last_name")?.Value ?? "";
@@ -395,4 +409,6 @@ public sealed class WorkspaceInfo
     public Guid Id { get; set; }
     public string Name { get; set; } = "";
 }
+
+
 
