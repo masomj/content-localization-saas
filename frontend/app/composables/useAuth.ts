@@ -133,12 +133,22 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
   })
 
   const contentType = response.headers.get('content-type') || ''
-  const isJson = contentType.includes('application/json')
+  const isJson = contentType.includes('json')
 
   if (!response.ok) {
     if (isJson) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }))
-      throw new Error(error.error || error.errors?.join(', ') || 'Request failed')
+      const error = await response.json().catch(() => ({ error: 'Request failed' })) as any
+      const problemErrors = error?.errors && typeof error.errors === 'object' && !Array.isArray(error.errors)
+        ? Object.values(error.errors).flat().join(', ')
+        : undefined
+      throw new Error(
+        error?.error ||
+        (Array.isArray(error?.errors) ? error.errors.join(', ') : undefined) ||
+        problemErrors ||
+        error?.detail ||
+        error?.title ||
+        'Request failed'
+      )
     }
 
     const text = await response.text().catch(() => '')
