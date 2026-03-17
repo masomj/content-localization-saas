@@ -34,7 +34,16 @@ function getApiBaseUrl() {
 
 function getAuthToken() {
   if (typeof window === 'undefined') return null
-  return localStorage.getItem('locflow_auth_token') || sessionStorage.getItem('locflow_auth_token')
+
+  const rememberMe = localStorage.getItem('locflow_remember_me') === 'true'
+  const localToken = localStorage.getItem('locflow_auth_token')
+  const sessionToken = sessionStorage.getItem('locflow_auth_token')
+
+  if (rememberMe) {
+    return localToken || sessionToken
+  }
+
+  return sessionToken || localToken
 }
 
 function authHeaders() {
