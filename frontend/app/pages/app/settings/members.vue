@@ -156,12 +156,12 @@ function handleInvited() {
 .members-page__header h1 {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   margin: 0 0 var(--spacing-1) 0;
 }
 
 .members-page__subtitle {
-  color: var(--color-gray-500);
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -178,14 +178,14 @@ function handleInvited() {
 }
 
 .feedback--success {
-  background: var(--color-green-50);
-  color: var(--color-green-700);
-  border: 1px solid var(--color-green-200);
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  color: var(--color-text-primary);
+  border: 1px solid color-mix(in srgb, var(--color-success) 50%, var(--color-border));
 }
 
 .feedback--error {
-  background: var(--color-red-50);
-  color: var(--color-red-700);
-  border: 1px solid var(--color-red-200);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid var(--color-error-border);
 }
 </style>

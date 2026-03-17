@@ -167,7 +167,7 @@ function formatDate(dateStr: string): string {
 <style scoped>
 .members-table-wrapper {
   overflow-x: auto;
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
 
@@ -180,15 +180,15 @@ function formatDate(dateStr: string): string {
 .members-table th {
   text-align: left;
   padding: var(--spacing-3) var(--spacing-4);
-  background: var(--color-gray-50);
+  background: var(--color-surface);
   font-weight: var(--font-weight-medium);
-  color: var(--color-gray-700);
-  border-bottom: 1px solid var(--color-gray-200);
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .members-table td {
   padding: var(--spacing-3) var(--spacing-4);
-  border-bottom: 1px solid var(--color-gray-100);
+  border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
 }
 
@@ -197,11 +197,11 @@ function formatDate(dateStr: string): string {
 }
 
 .members-table tr:hover {
-  background: var(--color-gray-50);
+  background: var(--color-surface);
 }
 
 .row-expanded {
-  background: var(--color-gray-50);
+  background: var(--color-surface);
 }
 
 .loading-cell,
@@ -255,13 +255,13 @@ function formatDate(dateStr: string): string {
 }
 
 .status-active {
-  background: var(--color-green-100);
-  color: var(--color-green-700);
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  color: var(--color-text-primary);
 }
 
 .status-inactive {
-  background: var(--color-gray-100);
-  color: var(--color-gray-600);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
 }
 
 .cell-date {
@@ -281,10 +281,11 @@ function formatDate(dateStr: string): string {
 
 .role-select {
   padding: var(--spacing-1) var(--spacing-2);
-  border: 1px solid var(--color-gray-300);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  background: var(--color-white);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .icon-btn {
@@ -302,11 +303,11 @@ function formatDate(dateStr: string): string {
 }
 
 .icon-btn.success {
-  color: var(--color-green-600);
+  color: var(--color-success);
 }
 
 .icon-btn.success:hover {
-  color: var(--color-green-700);
+  color: color-mix(in srgb, var(--color-success) 75%, var(--color-text-primary));
 }
 
 .icon-btn svg {
