@@ -1,4 +1,3 @@
-using System.Text;
 using ContentLocalizationSaaS.Api.Authorization;
 using ContentLocalizationSaaS.Api.Middleware;
 using ContentLocalizationSaaS.Application;
@@ -7,7 +6,6 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,16 +29,14 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = authOptions.Jwt.Issuer,
-            ValidAudience = authOptions.Jwt.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.Jwt.SigningKey))
-        };
+        options.RequireHttpsMetadata = authOptions.Oidc.RequireHttpsMetadata;
+        options.Authority = authOptions.Oidc.Issuer;
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters.ValidateIssuer = true;
+        options.TokenValidationParameters.ValidIssuer = authOptions.Oidc.Issuer;
+        options.TokenValidationParameters.ValidateAudience = true;
+        options.TokenValidationParameters.ValidAudience = authOptions.Oidc.Audience;
+        options.TokenValidationParameters.ValidateLifetime = true;
     });
 
 builder.Services.AddAuthorization();
