@@ -1,3 +1,10 @@
+// Resolve the backend URL from Aspire service-discovery env vars, falling
+// back to the default standalone dev port.
+const apiTarget =
+  process.env.services__api__https__0 ||
+  process.env.services__api__http__0 ||
+  'http://localhost:5135'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
@@ -5,14 +12,16 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: '/api',
+      keycloakUrl: process.env.NUXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080',
+      keycloakRealm: process.env.NUXT_PUBLIC_KEYCLOAK_REALM || 'locflow',
+      keycloakClientId: process.env.NUXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'locflow-web',
     },
   },
   nitro: {
     devProxy: {
       '/api': {
-        target: 'http://localhost:5135/api',
+        target: `${apiTarget}/api`,
         changeOrigin: true,
-        prependPath: true,
       },
     },
   },

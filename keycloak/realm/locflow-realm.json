@@ -1,0 +1,37 @@
+{
+  "realm": "locflow",
+  "enabled": true,
+  "displayName": "LocFlow",
+  "loginTheme": "locflow",
+  "registrationAllowed": true,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "roles": {
+    "realm": [
+      { "name": "Admin" },
+      { "name": "Editor" },
+      { "name": "Reviewer" },
+      { "name": "Viewer" },
+      { "name": "Reader" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "locflow-web",
+      "name": "LocFlow Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email"]
+    }
+  ]
+}

@@ -1,13 +1,60 @@
 const AUTH_STORAGE_KEY = 'locflow_auth_token'
-
-/** Buffer in seconds before actual JWT expiry to trigger proactive refresh */
+const REFRESH_STORAGE_KEY = 'locflow_refresh_token'
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60
+
+function parseCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const cookies = document.cookie.split('; ')
+  for (const c of cookies) {
+    const [key, ...rest] = c.split('=')
+    if (key === name) return decodeURIComponent(rest.join('='))
+  }
+  return null
+}
+
+function writeCookie(name: string, value: string | null, persistent = true): void {
+  if (typeof document === 'undefined') return
+  if (value === null) {
+    document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
+    return
+  }
+  let cookie = `${name}=${encodeURIComponent(value)}; path=/; SameSite=Lax`
+  if (persistent) {
+    const expires = new Date(Date.now() + 30 * 864e5).toUTCString()
+    cookie += `; expires=${expires}`
+  }
+  if (typeof location !== 'undefined' && location.protocol === 'https:') cookie += '; Secure'
+  document.cookie = cookie
+}
+
+function readStorage(key: string): string | null {
+  if (typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') return parseCookie(key)
+  const local = localStorage.getItem(key)
+  const session = sessionStorage.getItem(key)
+  if (!local && !session) return parseCookie(key)
+  return local ?? session
+}
+
+function writeStorage(key: string, value: string | null, rememberMe = true): void {
+  if (typeof localStorage !== 'undefined' && typeof sessionStorage !== 'undefined') {
+    if (value === null) {
+      localStorage.removeItem(key)
+      sessionStorage.removeItem(key)
+    } else if (rememberMe) {
+      localStorage.setItem(key, value)
+      sessionStorage.removeItem(key)
+    } else {
+      sessionStorage.setItem(key, value)
+      localStorage.removeItem(key)
+    }
+  }
+  writeCookie(key, value, rememberMe)
+}
 
 export class ApiError extends Error {
   status: number
   detail?: string
   errors?: unknown
-
   constructor(message: string, status: number, detail?: string, errors?: unknown) {
     super(message)
     this.name = 'ApiError'
@@ -17,33 +64,15 @@ export class ApiError extends Error {
   }
 }
 
-function getApiBaseUrl(): string {
-  if (typeof window === 'undefined') return '/api'
-
-  const fromEnv = (window as any).__ENV__?.API_URL
-  const fromNuxtRuntime = (window as any).__NUXT__?.config?.public?.apiBase
-  return fromEnv || fromNuxtRuntime || '/api'
-}
+function getApiBaseUrl(): string { return '/api' }
 
 export function decodeJwtExp(token: string | null): number {
   if (!token) return 0
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1] || ''))
-    return Number(payload?.exp || 0)
-  } catch {
-    return 0
-  }
+  try { return Number(JSON.parse(atob(token.split('.')[1] || '')).exp || 0) } catch { return 0 }
 }
 
-function isNotExpired(exp: number): boolean {
-  const now = Math.floor(Date.now() / 1000)
-  return exp > now
-}
+function isNotExpired(exp: number): boolean { return exp > Math.floor(Date.now() / 1000) }
 
-/**
- * Returns true if the token will expire within the buffer period.
- * Used to trigger proactive refresh before actual expiry.
- */
 export function isTokenExpiringSoon(token: string | null): boolean {
   const exp = decodeJwtExp(token)
   if (exp === 0) return false
@@ -52,176 +81,115 @@ export function isTokenExpiringSoon(token: string | null): boolean {
 }
 
 export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null
+  const local = typeof localStorage !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY) : null
+  const session = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(AUTH_STORAGE_KEY) : null
+  const cookie = parseCookie(AUTH_STORAGE_KEY)
 
-  const localToken = localStorage.getItem(AUTH_STORAGE_KEY)
-  const sessionToken = sessionStorage.getItem(AUTH_STORAGE_KEY)
-
-  if (!localToken && !sessionToken) return null
-
-  const localExp = decodeJwtExp(localToken)
-  const sessionExp = decodeJwtExp(sessionToken)
-
-  const localValid = localToken && isNotExpired(localExp)
-  const sessionValid = sessionToken && isNotExpired(sessionExp)
-
-  if (localValid && sessionValid) {
-    if (localExp === sessionExp) return localToken
-    return localExp > sessionExp ? localToken : sessionToken
+  const candidates = [local, session, cookie].filter(Boolean) as string[]
+  let best: string | null = null
+  let bestExp = -1
+  for (const token of candidates) {
+    const exp = decodeJwtExp(token)
+    if (!isNotExpired(exp)) continue
+    if (exp > bestExp) {
+      best = token
+      bestExp = exp
+    }
   }
-
-  if (localValid) return localToken
-  if (sessionValid) return sessionToken
-
-  // Both tokens are expired — return null instead of a stale token
-  return null
+  return best
 }
 
-/**
- * Returns a raw stored token even if expired, for use during token refresh.
- * The refresh endpoint accepts an expired-but-valid-signature JWT.
- */
 export function getStoredTokenForRefresh(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY)
+  return readStorage(AUTH_STORAGE_KEY)
 }
 
 export function setAuthToken(token: string | null, rememberMe = true): void {
-  if (typeof window === 'undefined') return
-
-  const target = rememberMe ? localStorage : sessionStorage
-  const other = rememberMe ? sessionStorage : localStorage
-
-  if (token) {
-    target.setItem(AUTH_STORAGE_KEY, token)
-    other.removeItem(AUTH_STORAGE_KEY)
-    return
-  }
-
-  localStorage.removeItem(AUTH_STORAGE_KEY)
-  sessionStorage.removeItem(AUTH_STORAGE_KEY)
+  writeStorage(AUTH_STORAGE_KEY, token, rememberMe)
 }
+
+export function getRefreshToken(): string | null { return readStorage(REFRESH_STORAGE_KEY) }
+export function setRefreshToken(token: string | null, rememberMe = true): void { writeStorage(REFRESH_STORAGE_KEY, token, rememberMe) }
 
 function readErrorMessage(payload: any): string {
   const problemErrors = payload?.errors && typeof payload.errors === 'object' && !Array.isArray(payload.errors)
     ? Object.values(payload.errors).flat().join(', ')
     : undefined
-
-  return payload?.error
-    || (Array.isArray(payload?.errors) ? payload.errors.join(', ') : undefined)
-    || problemErrors
-    || payload?.detail
-    || payload?.title
-    || 'Request failed'
+  return payload?.error || (Array.isArray(payload?.errors) ? payload.errors.join(', ') : undefined) || problemErrors || payload?.detail || payload?.title || 'Request failed'
 }
 
-// --- Token refresh mutex ---
-// Prevents concurrent refresh attempts from racing each other.
 let _refreshPromise: Promise<string | null> | null = null
 
-/**
- * Attempts to refresh the JWT using the backend refresh endpoint.
- * Uses a mutex so concurrent callers share the same in-flight request.
- * Returns the new token on success, or null on failure.
- */
 export async function attemptTokenRefresh(): Promise<string | null> {
   if (_refreshPromise) return _refreshPromise
-
   _refreshPromise = (async () => {
     try {
+      const refreshToken = getRefreshToken()
+      if (refreshToken) {
+        const cfg = useRuntimeConfig().public
+        const endpoint = `${cfg.keycloakUrl}/realms/${cfg.keycloakRealm}/protocol/openid-connect/token`
+        const body = new URLSearchParams({ grant_type: 'refresh_token', client_id: cfg.keycloakClientId, refresh_token: refreshToken })
+        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
+        if (!response.ok) return null
+        const data = await response.json()
+        const token = data?.access_token
+        if (!token || typeof token !== 'string') return null
+        setAuthToken(token, true)
+        if (data?.refresh_token && typeof data.refresh_token === 'string') setRefreshToken(data.refresh_token, true)
+        return token
+      }
+
       const staleToken = getStoredTokenForRefresh()
       if (!staleToken) return null
-
       const response = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${staleToken}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staleToken}` },
       })
-
       if (!response.ok) return null
-
       const data = await response.json()
-      const newToken = data?.token
-      if (!newToken || typeof newToken !== 'string') return null
-
-      // Persist with same storage preference
-      const rememberMe = typeof window !== 'undefined' && localStorage.getItem(AUTH_STORAGE_KEY) !== null
-      setAuthToken(newToken, rememberMe)
-      return newToken
+      const token = data?.token || data?.access_token
+      if (!token || typeof token !== 'string') return null
+      setAuthToken(token, true)
+      return token
     } catch {
       return null
     } finally {
       _refreshPromise = null
     }
   })()
-
   return _refreshPromise
 }
 
-/** Auth endpoints that should never trigger automatic token refresh */
 const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/forgot-password', '/auth/reset-password']
-
-function isAuthPath(path: string): boolean {
-  return AUTH_PATHS.some(p => path === p || path.endsWith(p))
-}
+const isAuthPath = (path: string) => AUTH_PATHS.some(p => path === p || path.endsWith(p))
 
 async function executeRequest<T>(path: string, options: RequestInit, headers: Record<string, string>): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...options,
-    headers,
-  })
-
-  const contentType = response.headers.get('content-type') || ''
+  const response = await fetch(`${getApiBaseUrl()}${path}`, { ...options, headers })
+  const contentType = response.headers?.get?.('content-type') || ''
   const isJsonLike = contentType.includes('json') || contentType.includes('problem+json')
-
   if (!response.ok) {
     if (isJsonLike) {
       const payload = await response.json().catch(() => null)
       throw new ApiError(readErrorMessage(payload), response.status, payload?.detail, payload?.errors)
     }
-
-    const text = await response.text().catch(() => '')
-    const message = text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')
-      ? 'API endpoint returned HTML instead of JSON. Check frontend API base/proxy configuration.'
-      : `Request failed (${response.status})`
-
-    throw new ApiError(message, response.status)
+    throw new ApiError(`Request failed (${response.status})`, response.status)
   }
-
   if (response.status === 204) return undefined as T
-
-  if (!isJsonLike) {
-    const text = await response.text().catch(() => '')
-    if (!text) return undefined as T
-    throw new ApiError('Unexpected non-JSON API response', response.status)
-  }
-
-  return response.json() as Promise<T>
+  if (isJsonLike || typeof (response as any).json === 'function') return response.json() as Promise<T>
+  return undefined as T
 }
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-    ...(options.headers as Record<string, string> || {}),
-  }
-
+  const headers: Record<string, string> = { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers as Record<string, string> || {}) }
   const token = getAuthToken()
   if (token && !headers.Authorization) {
-    // Proactively refresh if the token is about to expire
     if (!isAuthPath(path) && isTokenExpiringSoon(token)) {
       const refreshed = await attemptTokenRefresh()
       headers.Authorization = `Bearer ${refreshed || token}`
-    } else {
-      headers.Authorization = `Bearer ${token}`
-    }
+    } else headers.Authorization = `Bearer ${token}`
   }
-
   try {
     return await executeRequest<T>(path, options, headers)
   } catch (error) {
-    // On 401 for non-auth paths, attempt one token refresh and retry
     if (error instanceof ApiError && error.status === 401 && !isAuthPath(path)) {
       const newToken = await attemptTokenRefresh()
       if (newToken) {

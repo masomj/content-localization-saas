@@ -1,19 +1,27 @@
-const publicPaths = ['/', '/login', '/register']
+import { waitForAuthReady } from '~/composables/useAuth'
 
-export default defineNuxtRouteMiddleware((to) => {
+const publicPaths = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/auth/callback']
+
+export default defineNuxtRouteMiddleware(async (to) => {
   const isPublicPath = publicPaths.includes(to.path)
-  
-  if (isPublicPath) {
-    return
-  }
+  if (isPublicPath) return
 
   const isOnboardingPath = to.path.startsWith('/onboarding')
-  if (isOnboardingPath) {
+  if (isOnboardingPath) return
+
+  if (import.meta.server) {
+    const cookieHeader = useRequestHeaders(['cookie']).cookie || ''
+    const hasToken = cookieHeader.split('; ').some(c => {
+      const [key, ...rest] = c.split('=')
+      return key === 'locflow_auth_token' && rest.join('=').length > 0
+    })
+    if (!hasToken) return navigateTo('/login')
     return
   }
 
+  await waitForAuthReady()
   const auth = useAuth()
-  
+
   if (!auth.isAuthenticated.value) {
     return navigateTo('/login')
   }
