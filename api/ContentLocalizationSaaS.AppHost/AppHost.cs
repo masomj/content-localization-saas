@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder
@@ -8,12 +10,24 @@ var postgres = builder
 var contentDb = postgres.AddDatabase("contentdb", "content_localization");
 var keycloakDb = postgres.AddDatabase("keycloakdb", "keycloak");
 
-var keycloakAdminUser = builder.AddParameter("keycloak-admin-user", "admin");
-var keycloakAdminPassword = builder.AddParameter("keycloak-admin-password", secret: true);
+var keycloakAdminUser = builder.Configuration["Parameters:keycloak-admin-user"] ?? "admin";
+var keycloakAdminPassword = builder.Configuration["Parameters:keycloak-admin-password"];
+
+if (string.IsNullOrWhiteSpace(keycloakAdminPassword))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        keycloakAdminPassword = "locflow-dev-admin";
+    }
+    else
+    {
+        throw new InvalidOperationException("Missing required parameter: keycloak-admin-password");
+    }
+}
 
 var keycloak = builder
     .AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.1")
-    .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
+    .WithHttpEndpoint(targetPort: 8080, name: "http")
     .WithEnvironment("KEYCLOAK_ADMIN", keycloakAdminUser)
     .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", keycloakAdminPassword)
     .WithEnvironment("KC_DB", "postgres")
@@ -38,7 +52,7 @@ var api = builder
     .WaitFor(contentDb)
     .WaitFor(keycloak)
     .WithReference(contentDb)
-    .WithEnvironment("Auth__Oidc__Issuer", "http://localhost:8080/realms/locflow")
+    .WithEnvironment("Auth__Oidc__Issuer", $"{keycloak.GetEndpoint("http")}/realms/locflow")
     .WithEnvironment("Auth__Oidc__Audience", "locflow-web")
     .WithEnvironment("Auth__Oidc__RequireHttpsMetadata", "false");
 
@@ -46,7 +60,7 @@ var frontend = builder.AddJavaScriptApp("frontend", "..\\..\\frontend", "dev")
     .WithHttpEndpoint(port: 3000, env: "PORT")
     .WaitFor(api)
     .WithReference(api)
-    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_URL", "http://localhost:8080")
+    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
     .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_REALM", "locflow")
     .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_CLIENT_ID", "locflow-web");
 
