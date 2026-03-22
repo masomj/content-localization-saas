@@ -3,20 +3,33 @@
   <#if section = "header">
     LocFlow
   <#elseif section = "form">
-    <form id="kc-form-login" onsubmit="login.disabled = true; return true;" action="${url.loginAction}" method="post">
-      <div class="form-group">
-        <label for="username" class="control-label">Email</label>
-        <input tabindex="1" id="username" class="form-control" name="username" value="${(login.username!'')}" type="text" autofocus autocomplete="email"/>
+    <form id="kc-form-login" class="locflow-form" onsubmit="login.disabled = true; return true;" action="${url.loginAction}" method="post">
+      <div class="locflow-form-group">
+        <label for="username" class="locflow-label">Email</label>
+        <input tabindex="1" id="username" class="pf-c-form-control" name="username" value="${(login.username!'')}" type="text" autofocus autocomplete="email"/>
       </div>
 
-      <div class="form-group">
-        <label for="password" class="control-label">Password</label>
-        <input tabindex="2" id="password" class="form-control" name="password" type="password" autocomplete="current-password"/>
+      <div class="locflow-form-group">
+        <label for="password" class="locflow-label">Password</label>
+        <input tabindex="2" id="password" class="pf-c-form-control" name="password" type="password" autocomplete="current-password"/>
       </div>
 
-      <div class="form-group">
-        <input tabindex="4" class="btn btn-primary btn-block btn-lg" name="login" id="kc-login" type="submit" value="Sign in"/>
+      <#if realm.resetPasswordAllowed>
+        <div class="locflow-form-options">
+          <a href="${url.loginResetCredentialsUrl}">Forgot password?</a>
+        </div>
+      </#if>
+
+      <div class="locflow-form-group">
+        <input tabindex="4" class="pf-c-button pf-m-primary pf-m-block" name="login" id="kc-login" type="submit" value="Sign in"/>
       </div>
     </form>
+  <#elseif section = "info">
+    <#if realm.password && realm.registrationAllowed && !registrationDisabled??>
+      <div id="kc-registration" class="locflow-register-cta">
+        <span>New to LocFlow?</span>
+        <a tabindex="6" href="${url.registrationUrl}">Create an account</a>
+      </div>
+    </#if>
   </#if>
 </@layout.registrationLayout>
