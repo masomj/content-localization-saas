@@ -31,7 +31,7 @@ var keycloak = builder
     .WithEnvironment("KEYCLOAK_ADMIN", keycloakAdminUser)
     .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", keycloakAdminPassword)
     .WithEnvironment("KC_DB", "postgres")
-    .WithEnvironment("KC_DB_URL", keycloakDb)
+    .WithEnvironment("KC_DB_URL", "jdbc:postgresql://postgres.dev.internal:5432/keycloak")
     .WithEnvironment("KC_DB_USERNAME", "postgres")
     .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
     .WithEnvironment("KC_HEALTH_ENABLED", "true")
