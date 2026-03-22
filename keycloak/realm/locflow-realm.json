@@ -3,7 +3,12 @@
   "enabled": true,
   "displayName": "LocFlow",
   "loginTheme": "locflow",
+  "accountTheme": "keycloak.v3",
+  "adminTheme": "keycloak.v2",
+  "emailTheme": "keycloak",
   "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "editUsernameAllowed": false,
   "resetPasswordAllowed": true,
   "rememberMe": true,
   "roles": {
