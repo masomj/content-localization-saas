@@ -21,12 +21,16 @@ async function handleSubmit() {
     isSubmitting.value = false
   }
 }
+
+onMounted(() => {
+  handleSubmit()
+})
 </script>
 
 <template>
   <div class="auth-card">
-    <h1 class="auth-title">Welcome back</h1>
-    <p class="auth-subtitle">Sign in securely with your organization account</p>
+    <h1 class="auth-title">Redirecting to sign in…</h1>
+    <p class="auth-subtitle">Taking you to your organization login</p>
 
     <form class="auth-form" novalidate @submit.prevent="handleSubmit">
       <UiFormError v-if="error" :message="error" />
