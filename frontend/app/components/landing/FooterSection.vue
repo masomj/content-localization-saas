@@ -2,10 +2,27 @@
 const currentYear = new Date().getFullYear()
 
 const footerLinks = {
-  Product: ['Features', 'Pricing', 'Integrations', 'Changelog', 'Roadmap'],
-  Company: ['About', 'Blog', 'Careers', 'Press', 'Partners'],
-  Resources: ['Documentation', 'Help Center', 'API Reference', 'Community', 'Status'],
-  Legal: ['Privacy', 'Terms', 'Security', 'Cookies', 'GDPR']
+  Product: [
+    { label: 'Features', to: '/#main-content' },
+    { label: 'Integrations', to: '/app/integrations' },
+    { label: 'Projects', to: '/app/projects' },
+    { label: 'Dashboard', to: '/app/dashboard' },
+  ],
+  Company: [
+    { label: 'About', to: '/#main-content' },
+    { label: 'GitHub', href: 'https://github.com/masomj/content-localization-saas' },
+    { label: 'Documentation', href: 'https://github.com/masomj/content-localization-saas/tree/main/docs' },
+  ],
+  Resources: [
+    { label: 'API Examples', href: 'https://github.com/masomj/content-localization-saas/blob/main/docs/API_CONTRACT_EXAMPLES.md' },
+    { label: 'Architecture', href: 'https://github.com/masomj/content-localization-saas/blob/main/docs/ARCHITECTURE.md' },
+    { label: 'Release Checklist', href: 'https://github.com/masomj/content-localization-saas/blob/main/docs/RELEASE_CHECKLIST.md' },
+  ],
+  Legal: [
+    { label: 'Terms', to: '/register' },
+    { label: 'Security', href: 'https://github.com/masomj/content-localization-saas/blob/main/docs/AUTH_ARCHITECTURE.md' },
+    { label: 'Privacy', to: '/register' },
+  ],
 }
 </script>
 
@@ -27,8 +44,9 @@ const footerLinks = {
           <div v-for="(links, category) in footerLinks" :key="category" class="footer-column">
             <h3 class="footer-heading">{{ category }}</h3>
             <ul class="footer-list">
-              <li v-for="link in links" :key="link">
-                <a href="#" class="footer-link">{{ link }}</a>
+              <li v-for="link in links" :key="link.label">
+                <NuxtLink v-if="link.to" :to="link.to" class="footer-link">{{ link.label }}</NuxtLink>
+                <a v-else :href="link.href" class="footer-link" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>
               </li>
             </ul>
           </div>
