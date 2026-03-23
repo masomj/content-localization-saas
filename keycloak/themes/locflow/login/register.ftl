@@ -3,6 +3,9 @@
   <#if section = "header">
     Create your LocFlow account
   <#elseif section = "form">
+    <#if message?has_content>
+      <div class="locflow-alert locflow-alert-${message.type}">${kcSanitize(message.summary)?no_esc}</div>
+    </#if>
     <form id="kc-register-form" class="locflow-form" action="${url.registrationAction}" method="post">
       <div class="locflow-form-group">
         <label for="email" class="locflow-label">Email</label>
