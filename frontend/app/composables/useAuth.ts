@@ -1,10 +1,11 @@
 import { authClient } from '~/api/authClient'
 import { getAuthToken, setAuthToken, attemptTokenRefresh, ApiError, setRefreshToken } from '~/api/client'
-import type { User, Workspace } from '~/api/types'
+import type { User, Workspace, WorkspaceMembership } from '~/api/types'
 
 interface AuthState {
   user: User | null
   organization: Workspace | null
+  organizations: WorkspaceMembership[]
   isAuthenticated: boolean
   isLoading: boolean
   isAdmin: boolean
@@ -18,6 +19,7 @@ const OIDC_STATE_KEY = 'locflow_oidc_state'
 const authState = reactive<AuthState>({
   user: null,
   organization: null,
+  organizations: [],
   isAuthenticated: false,
   isLoading: true,
   isAdmin: false,
@@ -50,10 +52,20 @@ function setStoredOrganization(org: Workspace | null): void {
 }
 
 function applyAuthenticatedUser(user: User) {
+  const memberships = user.workspaces || []
+  const storedOrg = getStoredOrganization()
+  const selected = storedOrg
+    ? memberships.find(x => x.id === storedOrg.id)
+    : undefined
+
+  const active = selected || (user.workspace ? memberships.find(x => x.id === user.workspace?.id) : undefined) || memberships[0]
+
   authState.user = user
-  authState.organization = user.workspace ? { id: user.workspace.id, name: user.workspace.name } : null
+  authState.organizations = memberships
+  authState.organization = active ? { id: active.id, name: active.name } : null
   authState.isAuthenticated = true
-  authState.isAdmin = user.role === 'Admin'
+  authState.isAdmin = !!active && active.role === 'Admin'
+
   setStoredUser(user)
   setStoredOrganization(authState.organization)
 }
@@ -65,6 +77,7 @@ function clearSessionState() {
   setStoredOrganization(null)
   authState.user = null
   authState.organization = null
+  authState.organizations = []
   authState.isAuthenticated = false
   authState.isAdmin = false
 }
@@ -260,12 +273,29 @@ export function useAuth() {
     authState.isLoading = true
     try {
       if (!name.trim()) return { success: false, error: 'Organization name is required' }
-      const org = { id: `org_${Date.now()}`, name: name.trim() }
-      setStoredOrganization(org)
-      authState.organization = org
+      await authClient.createWorkspace(name.trim())
+      await refreshUser()
       return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Failed to create organization' }
     } finally {
       authState.isLoading = false
+    }
+  }
+
+  async function switchOrganization(workspaceId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const target = authState.organizations.find(x => x.id === workspaceId)
+      if (!target) return { success: false, error: 'Organization not available for this user' }
+
+      await authClient.switchWorkspace(workspaceId)
+      authState.organization = { id: target.id, name: target.name }
+      authState.isAdmin = target.role === 'Admin'
+      setStoredOrganization(authState.organization)
+      await refreshUser()
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Failed to switch organization' }
     }
   }
 
@@ -290,6 +320,7 @@ export function useAuth() {
   return {
     user: computed(() => authState.user),
     organization: computed(() => authState.organization),
+    organizations: computed(() => authState.organizations),
     hasOrganization: computed(() => !!authState.organization),
     isAuthenticated: computed(() => authState.isAuthenticated),
     isLoading: computed(() => authState.isLoading),
@@ -298,6 +329,7 @@ export function useAuth() {
     logout,
     register,
     createOrganization,
+    switchOrganization,
     requestPasswordReset,
     refreshUser,
     handleCallback,

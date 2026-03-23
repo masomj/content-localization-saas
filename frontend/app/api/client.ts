@@ -1,5 +1,6 @@
 const AUTH_STORAGE_KEY = 'locflow_auth_token'
 const REFRESH_STORAGE_KEY = 'locflow_refresh_token'
+const ORG_STORAGE_KEY = 'locflow_organization'
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60
 
 function parseCookie(name: string): string | null {
@@ -65,6 +66,18 @@ export class ApiError extends Error {
 }
 
 function getApiBaseUrl(): string { return '/api' }
+
+function getStoredWorkspaceId(): string | null {
+  if (typeof localStorage === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(ORG_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return typeof parsed?.id === 'string' ? parsed.id : null
+  } catch {
+    return null
+  }
+}
 
 export function decodeJwtExp(token: string | null): number {
   if (!token) return 0
@@ -180,6 +193,11 @@ async function executeRequest<T>(path: string, options: RequestInit, headers: Re
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers as Record<string, string> || {}) }
+  const workspaceId = getStoredWorkspaceId()
+  if (workspaceId && !headers['X-Workspace-Id']) {
+    headers['X-Workspace-Id'] = workspaceId
+  }
+
   const token = getAuthToken()
   if (token && !headers.Authorization) {
     if (!isAuthPath(path) && isTokenExpiringSoon(token)) {

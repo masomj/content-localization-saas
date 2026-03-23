@@ -20,12 +20,12 @@ export function useMembers() {
     { value: 'Admin', label: 'Admin' },
   ]
 
-  async function fetchMembers(workspaceId: string) {
+  async function fetchMembers() {
     isLoading.value = true
     error.value = ''
     try {
       const data = await adminClient.listMembers()
-      members.value = data.filter(m => m.workspaceId === workspaceId)
+      members.value = data
     } catch {
       error.value = 'Failed to load members'
       members.value = []

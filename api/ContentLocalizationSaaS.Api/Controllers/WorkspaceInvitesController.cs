@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ContentLocalizationSaaS.Api.Authorization;
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
@@ -16,14 +17,24 @@ public sealed record ChangeMembershipRoleRequest(Guid WorkspaceId, string Email,
 [RequireAppRole(AppRole.Admin)]
 public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
 {
-    private string ActorEmail => HttpContext.Request.Headers["X-Actor-Email"].ToString().Trim().ToLowerInvariant() is { Length: > 0 } actor
-        ? actor
-        : "admin@system.local";
+    private string ActorEmail => (User.FindFirst(ClaimTypes.Email)?.Value
+                                  ?? User.FindFirst("email")?.Value
+                                  ?? HttpContext.Request.Headers["X-Actor-Email"].ToString())
+        .Trim().ToLowerInvariant() is { Length: > 0 } actor
+            ? actor
+            : "admin@system.local";
 
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
+        var workspaceId = ResolveWorkspaceContext();
+        if (workspaceId == Guid.Empty) return BadRequest(new { error = "workspace_context_required" });
+
+        var adminCheck = await EnsureAdminInWorkspace(workspaceId, cancellationToken);
+        if (adminCheck is not null) return adminCheck;
+
         var invites = await db.WorkspaceInvites
+            .Where(x => x.WorkspaceId == workspaceId)
             .OrderByDescending(x => x.CreatedUtc)
             .ToListAsync(cancellationToken);
 
@@ -40,6 +51,9 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
                 ["request"] = ["workspaceId, email and role are required"]
             }));
         }
+
+        var adminCheck = await EnsureAdminInWorkspace(request.WorkspaceId, cancellationToken);
+        if (adminCheck is not null) return adminCheck;
 
         var workspaceExists = await db.Workspaces.AnyAsync(x => x.Id == request.WorkspaceId, cancellationToken);
         if (!workspaceExists) return BadRequest(new { error = "workspace_not_found" });
@@ -138,6 +152,9 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
     [HttpPost("revoke")]
     public async Task<IActionResult> Revoke([FromBody] RevokeMembershipRequest request, CancellationToken cancellationToken)
     {
+        var adminCheck = await EnsureAdminInWorkspace(request.WorkspaceId, cancellationToken);
+        if (adminCheck is not null) return adminCheck;
+
         var email = request.Email.Trim().ToLowerInvariant();
         var membership = await db.WorkspaceMemberships
             .FirstOrDefaultAsync(x => x.WorkspaceId == request.WorkspaceId && x.Email == email, cancellationToken);
@@ -181,6 +198,9 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
             }));
         }
 
+        var adminCheck = await EnsureAdminInWorkspace(request.WorkspaceId, cancellationToken);
+        if (adminCheck is not null) return adminCheck;
+
         var email = request.Email.Trim().ToLowerInvariant();
         var membership = await db.WorkspaceMemberships
             .FirstOrDefaultAsync(x => x.WorkspaceId == request.WorkspaceId && x.Email == email, cancellationToken);
@@ -202,5 +222,30 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
 
         await db.SaveChangesAsync(cancellationToken);
         return Ok(new { status = "updated", role = membership.Role });
+    }
+
+    private Guid ResolveWorkspaceContext()
+    {
+        var raw = HttpContext.Request.Headers["X-Workspace-Id"].ToString();
+        return Guid.TryParse(raw, out var workspaceId) ? workspaceId : Guid.Empty;
+    }
+
+    private async Task<IActionResult?> EnsureAdminInWorkspace(Guid workspaceId, CancellationToken cancellationToken)
+    {
+        var actor = ActorEmail;
+        var actorMembership = await db.WorkspaceMemberships
+            .FirstOrDefaultAsync(x => x.WorkspaceId == workspaceId && x.Email == actor && x.IsActive, cancellationToken);
+
+        if (actorMembership is null)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails { Status = 403, Title = "Forbidden" });
+        }
+
+        if (!string.Equals(actorMembership.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails { Status = 403, Title = "Forbidden" });
+        }
+
+        return null;
     }
 }

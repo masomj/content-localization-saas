@@ -41,7 +41,7 @@ onMounted(async () => {
     return
   }
   await Promise.all([
-    fetchMembers(workspaceId.value),
+    fetchMembers(),
     fetchInvites()
   ])
 })
@@ -66,7 +66,7 @@ async function handleRevokeInvite(email: string) {
   const result = await revokeInvite(workspaceId.value, email)
   if (result.success) {
     showFeedback('success', `Invite revoked for ${email}`)
-    await fetchMembers(workspaceId.value)
+    await fetchMembers()
   } else {
     showFeedback('error', result.error || 'Failed to revoke invite')
   }
@@ -76,7 +76,7 @@ async function handleChangeRole(email: string, role: string) {
   const result = await changeRole(workspaceId.value, email, role)
   if (result.success) {
     showFeedback('success', `Role changed for ${email}`)
-    await fetchMembers(workspaceId.value)
+    await fetchMembers()
   } else {
     showFeedback('error', result.error || 'Failed to change role')
   }
@@ -88,7 +88,7 @@ async function handleRemoveMember(email: string) {
   const result = await removeMember(workspaceId.value, email)
   if (result.success) {
     showFeedback('success', `${email} has been removed`)
-    await fetchMembers(workspaceId.value)
+    await fetchMembers()
   } else {
     showFeedback('error', result.error || 'Failed to remove member')
   }
@@ -96,7 +96,7 @@ async function handleRemoveMember(email: string) {
 
 function handleInvited() {
   showFeedback('success', 'Invitation sent successfully')
-  fetchMembers(workspaceId.value)
+  fetchMembers()
 }
 </script>
 
@@ -189,3 +189,4 @@ function handleInvited() {
   border: 1px solid var(--color-red-200);
 }
 </style>
+

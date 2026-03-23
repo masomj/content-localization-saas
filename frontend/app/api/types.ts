@@ -3,12 +3,17 @@ export interface Workspace {
   name: string
 }
 
+export interface WorkspaceMembership extends Workspace {
+  role: string
+}
+
 export interface User {
   id: string
   email: string
   name: string
   role?: string
   workspace?: Workspace
+  workspaces?: WorkspaceMembership[]
 }
 
 export interface AuthResponse {

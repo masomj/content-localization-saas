@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ContentLocalizationSaaS.Api.Authorization;
 using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -19,9 +20,18 @@ public sealed class MembershipAuditController(AppDbContext db) : ControllerBase
         [FromQuery] DateTime? toUtc,
         CancellationToken cancellationToken)
     {
-        var query = db.MembershipAuditLogs.AsQueryable();
+        var contextWorkspaceId = ResolveWorkspaceContext();
+        if (contextWorkspaceId == Guid.Empty && workspaceId is null)
+        {
+            return BadRequest(new { error = "workspace_context_required" });
+        }
 
-        if (workspaceId.HasValue) query = query.Where(x => x.WorkspaceId == workspaceId.Value);
+        var effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
+        var adminCheck = await EnsureAdminInWorkspace(effectiveWorkspaceId, cancellationToken);
+        if (adminCheck is not null) return adminCheck;
+
+        var query = db.MembershipAuditLogs.Where(x => x.WorkspaceId == effectiveWorkspaceId);
+
         if (!string.IsNullOrWhiteSpace(targetEmail))
         {
             var email = targetEmail.Trim().ToLowerInvariant();
@@ -49,6 +59,35 @@ public sealed class MembershipAuditController(AppDbContext db) : ControllerBase
         }
 
         return Ok(rows);
+    }
+
+    private Guid ResolveWorkspaceContext()
+    {
+        var raw = HttpContext.Request.Headers["X-Workspace-Id"].ToString();
+        return Guid.TryParse(raw, out var workspaceId) ? workspaceId : Guid.Empty;
+    }
+
+    private async Task<IActionResult?> EnsureAdminInWorkspace(Guid workspaceId, CancellationToken cancellationToken)
+    {
+        var actorEmail = (User.FindFirst(ClaimTypes.Email)?.Value
+                          ?? User.FindFirst("email")?.Value
+                          ?? HttpContext.Request.Headers["X-Actor-Email"].ToString())
+            .Trim().ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(actorEmail))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails { Status = 403, Title = "Forbidden" });
+        }
+
+        var actorMembership = await db.WorkspaceMemberships
+            .FirstOrDefaultAsync(x => x.WorkspaceId == workspaceId && x.Email == actorEmail && x.IsActive, cancellationToken);
+
+        if (actorMembership is null || !string.Equals(actorMembership.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails { Status = 403, Title = "Forbidden" });
+        }
+
+        return null;
     }
 
     private static string Escape(string value)
