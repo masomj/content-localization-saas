@@ -34,9 +34,30 @@ builder.Services
         options.MapInboundClaims = false;
         options.TokenValidationParameters.ValidateIssuer = true;
         options.TokenValidationParameters.ValidIssuer = authOptions.Oidc.Issuer;
-        options.TokenValidationParameters.ValidateAudience = true;
-        options.TokenValidationParameters.ValidAudience = authOptions.Oidc.Audience;
+        options.TokenValidationParameters.ValidateAudience = false;
         options.TokenValidationParameters.ValidateLifetime = true;
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                var principal = context.Principal;
+                var expectedAudience = authOptions.Oidc.Audience;
+
+                var audClaims = principal?.FindAll("aud").Select(c => c.Value) ?? Enumerable.Empty<string>();
+                var azp = principal?.FindFirst("azp")?.Value;
+
+                var audienceMatch = audClaims.Contains(expectedAudience, StringComparer.OrdinalIgnoreCase)
+                                    || string.Equals(azp, expectedAudience, StringComparison.OrdinalIgnoreCase);
+
+                if (!audienceMatch)
+                {
+                    context.Fail($"Token audience/azp does not match expected client '{expectedAudience}'.");
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
