@@ -18,18 +18,36 @@
 
       <div class="locflow-form-group">
         <label for="password" class="locflow-label">Password</label>
-        <input type="password" id="password" class="pf-c-form-control" name="password" autocomplete="new-password" required />
+        <div class="locflow-password-row">
+          <input type="password" id="password" class="pf-c-form-control" name="password" autocomplete="new-password" required />
+          <button type="button" class="locflow-password-toggle" data-toggle-password="password" aria-label="Show password">Show</button>
+        </div>
       </div>
 
       <div class="locflow-form-group">
         <label for="password-confirm" class="locflow-label">Confirm password</label>
-        <input type="password" id="password-confirm" class="pf-c-form-control" name="password-confirm" autocomplete="new-password" required />
+        <div class="locflow-password-row">
+          <input type="password" id="password-confirm" class="pf-c-form-control" name="password-confirm" autocomplete="new-password" required />
+          <button type="button" class="locflow-password-toggle" data-toggle-password="password-confirm" aria-label="Show confirm password">Show</button>
+        </div>
       </div>
 
       <div class="locflow-form-group">
         <input class="pf-c-button pf-m-primary pf-m-block" id="kc-register" type="submit" value="Create account" />
       </div>
     </form>
+    <script>
+      document.querySelectorAll('[data-toggle-password]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const input = document.getElementById(btn.getAttribute('data-toggle-password'))
+          if (!input) return
+          const showing = input.type === 'text'
+          input.type = showing ? 'password' : 'text'
+          btn.textContent = showing ? 'Show' : 'Hide'
+          btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password')
+        })
+      })
+    </script>
   <#elseif section = "info">
     <div class="locflow-register-cta">
       <span>Already have an account?</span>

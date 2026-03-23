@@ -11,7 +11,10 @@
 
       <div class="locflow-form-group">
         <label for="password" class="locflow-label">Password</label>
-        <input tabindex="2" id="password" class="pf-c-form-control" name="password" type="password" autocomplete="current-password"/>
+        <div class="locflow-password-row">
+          <input tabindex="2" id="password" class="pf-c-form-control" name="password" type="password" autocomplete="current-password"/>
+          <button type="button" class="locflow-password-toggle" data-toggle-password="password" aria-label="Show password">Show</button>
+        </div>
       </div>
 
       <#if realm.resetPasswordAllowed>
@@ -24,6 +27,18 @@
         <input tabindex="4" class="pf-c-button pf-m-primary pf-m-block" name="login" id="kc-login" type="submit" value="Sign in"/>
       </div>
     </form>
+    <script>
+      document.querySelectorAll('[data-toggle-password]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const input = document.getElementById(btn.getAttribute('data-toggle-password'))
+          if (!input) return
+          const showing = input.type === 'text'
+          input.type = showing ? 'password' : 'text'
+          btn.textContent = showing ? 'Show' : 'Hide'
+          btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password')
+        })
+      })
+    </script>
   <#elseif section = "info">
     <#if realm.password && realm.registrationAllowed && !registrationDisabled??>
       <div id="kc-registration" class="locflow-register-cta">
