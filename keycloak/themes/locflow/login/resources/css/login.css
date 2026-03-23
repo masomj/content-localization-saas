@@ -161,12 +161,15 @@ body.login-pf::after {
 
 .locflow-password-toggle {
   min-height: 42px;
+  width: 4.5rem;
+  flex: 0 0 4.5rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
   padding: 0.5rem 0.75rem;
   font-weight: 600;
+  text-align: center;
   cursor: pointer;
 }
 
