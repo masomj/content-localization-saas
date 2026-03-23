@@ -71,8 +71,15 @@ body.login-pf {
   box-shadow: var(--shadow-md);
 }
 
+#kc-header,
+#kc-header-wrapper,
+#kc-header-wrapper a {
+  color: var(--color-text-primary) !important;
+  text-shadow: none;
+  opacity: 1;
+}
+
 #kc-header-wrapper {
-  color: var(--color-text-primary);
   font-size: 1.5rem;
   font-weight: 700;
 }
