@@ -119,6 +119,21 @@ function randomString(length = 64): string {
   return Array.from(bytes).map(b => chars[b % chars.length]).join('')
 }
 
+function resolveUiTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'light'
+
+  const fromDom = document.documentElement.getAttribute('data-theme')
+  if (fromDom === 'light' || fromDom === 'dark') return fromDom
+
+  const pref = window.localStorage.getItem('locflow-theme')
+  if (pref === 'light' || pref === 'dark') return pref
+
+  const systemDark = typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-color-scheme: dark)').matches
+
+  return systemDark ? 'dark' : 'light'
+}
+
 let _bootstrapPromise: Promise<void> | null = null
 
 if (typeof window !== 'undefined') {
@@ -150,6 +165,7 @@ export function useAuth() {
       authorizeUrl.searchParams.set('state', state)
       authorizeUrl.searchParams.set('code_challenge', challenge)
       authorizeUrl.searchParams.set('code_challenge_method', 'S256')
+      authorizeUrl.searchParams.set('ui_theme', resolveUiTheme())
 
       window.location.href = authorizeUrl.toString()
       return { success: true }

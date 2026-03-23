@@ -29,7 +29,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     /* LocFlow dark token remap */
     --color-gray-50: #0b1020;
     --color-gray-100: #121a30;
@@ -51,6 +51,50 @@
     --color-primary-600: #6366f1;
     --color-primary-700: #818cf8;
   }
+}
+
+:root[data-theme='dark'] {
+  --color-gray-50: #0b1020;
+  --color-gray-100: #121a30;
+  --color-gray-200: #1b2842;
+  --color-gray-300: #24324f;
+  --color-gray-500: #8ea0bf;
+  --color-gray-600: #b8c4da;
+  --color-gray-700: #d3dced;
+  --color-gray-900: #f7f9fc;
+
+  --color-background: var(--color-gray-50);
+  --color-surface: var(--color-gray-100);
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-700);
+  --color-text-muted: var(--color-gray-500);
+  --color-border: var(--color-gray-300);
+
+  --color-primary-500: #818cf8;
+  --color-primary-600: #6366f1;
+  --color-primary-700: #818cf8;
+}
+
+:root[data-theme='light'] {
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-900: #111827;
+
+  --color-background: #ffffff;
+  --color-surface: var(--color-gray-50);
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-600);
+  --color-text-muted: var(--color-gray-500);
+  --color-border: var(--color-gray-200);
 }
 
 html,

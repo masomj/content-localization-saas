@@ -28,6 +28,21 @@
       </div>
     </form>
     <script>
+      const params = new URLSearchParams(window.location.search)
+      const uiTheme = params.get('ui_theme')
+      if (uiTheme === 'light' || uiTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', uiTheme)
+      }
+
+      document.querySelectorAll('a[href]').forEach((link) => {
+        if (!uiTheme) return
+        try {
+          const u = new URL(link.getAttribute('href'), window.location.origin)
+          u.searchParams.set('ui_theme', uiTheme)
+          link.setAttribute('href', u.pathname + u.search + u.hash)
+        } catch {}
+      })
+
       document.querySelectorAll('[data-toggle-password]').forEach((btn) => {
         btn.addEventListener('click', () => {
           const input = document.getElementById(btn.getAttribute('data-toggle-password'))
