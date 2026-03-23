@@ -174,21 +174,21 @@ async function handleSave() {
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-4);
-  background: var(--color-red-50);
-  border: 1px solid var(--color-red-200);
+  background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-error) 45%, var(--color-border));
   border-radius: var(--radius-lg);
 }
 
 .danger-action h3 {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-red-700);
+  color: var(--color-text-primary);
   margin: 0 0 var(--spacing-1) 0;
 }
 
 .danger-action p {
   font-size: var(--font-size-sm);
-  color: var(--color-red-600);
+  color: var(--color-text-secondary);
   margin: 0;
 }
 </style>
