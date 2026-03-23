@@ -225,8 +225,22 @@ export function useAuth() {
       sessionStorage.removeItem(OIDC_STATE_KEY)
       sessionStorage.removeItem(OIDC_VERIFIER_KEY)
 
-      await refreshUser()
-      return { success: true }
+      try {
+        const currentUser = await authClient.me()
+        applyAuthenticatedUser(currentUser)
+        return { success: true }
+      } catch (error: any) {
+        if (error?.status === 401) {
+          const newToken = await attemptTokenRefresh()
+          if (newToken) {
+            const currentUser = await authClient.me()
+            applyAuthenticatedUser(currentUser)
+            return { success: true }
+          }
+        }
+        clearSessionState()
+        return { success: false, error: 'Could not load user profile after sign in.' }
+      }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Login callback failed' }
     }
@@ -313,7 +327,7 @@ export function useAuth() {
         }
       }
       clearSessionState()
-      await router.push('/login')
+      throw new Error('Unable to refresh authenticated user')
     }
   }
 
