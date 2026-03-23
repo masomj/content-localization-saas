@@ -1,29 +1,62 @@
 :root {
-  --lf-bg: #f8fafc;
-  --lf-surface: #ffffff;
-  --lf-border: #e5e7eb;
-  --lf-text: #111827;
-  --lf-text-muted: #4b5563;
-  --lf-primary: #4f46e5;
-  --lf-primary-hover: #4338ca;
+  /* LocFlow light tokens (mirrors frontend/app/assets/css/tokens.css) */
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-900: #111827;
+
+  --color-white: #ffffff;
+  --color-background: var(--color-white);
+  --color-surface: var(--color-gray-50);
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-600);
+  --color-text-muted: var(--color-gray-500);
+  --color-border: var(--color-gray-200);
+
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  --shadow-md: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --lf-bg: #0b1220;
-    --lf-surface: #111827;
-    --lf-border: #1f2937;
-    --lf-text: #e5e7eb;
-    --lf-text-muted: #9ca3af;
-    --lf-primary: #6366f1;
-    --lf-primary-hover: #818cf8;
+    /* LocFlow dark token remap */
+    --color-gray-50: #0b1020;
+    --color-gray-100: #121a30;
+    --color-gray-200: #1b2842;
+    --color-gray-300: #24324f;
+    --color-gray-500: #8ea0bf;
+    --color-gray-600: #b8c4da;
+    --color-gray-700: #d3dced;
+    --color-gray-900: #f7f9fc;
+
+    --color-background: var(--color-gray-50);
+    --color-surface: var(--color-gray-100);
+    --color-text-primary: var(--color-gray-900);
+    --color-text-secondary: var(--color-gray-700);
+    --color-text-muted: var(--color-gray-500);
+    --color-border: var(--color-gray-300);
+
+    --color-primary-500: #818cf8;
+    --color-primary-600: #6366f1;
+    --color-primary-700: #818cf8;
   }
 }
 
 body.login-pf {
-  background: var(--lf-bg);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--lf-text);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .login-pf-page {
@@ -32,14 +65,14 @@ body.login-pf {
 }
 
 .card-pf {
-  border-radius: 16px;
-  border: 1px solid var(--lf-border);
-  background: var(--lf-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
 }
 
 #kc-header-wrapper {
-  color: var(--lf-text);
+  color: var(--color-text-primary);
   font-size: 1.5rem;
   font-weight: 700;
 }
@@ -51,47 +84,48 @@ body.login-pf {
 .locflow-label {
   display: block;
   margin-bottom: 0.4rem;
-  color: var(--lf-text);
+  color: var(--color-gray-700);
   font-weight: 600;
 }
 
 .pf-c-form-control {
-  border-radius: 10px;
-  border-color: var(--lf-border);
-  background: var(--lf-surface);
-  color: var(--lf-text);
   min-height: 42px;
+  border-radius: var(--radius-lg);
+  border-color: var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text-primary);
 }
 
 .pf-c-form-control:focus {
-  border-color: var(--lf-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .pf-c-button.pf-m-primary {
-  background: var(--lf-primary);
-  border-color: var(--lf-primary);
-  border-radius: 10px;
-  font-weight: 600;
   min-height: 42px;
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: var(--color-white);
+  font-weight: 600;
 }
 
 .pf-c-button.pf-m-primary:hover {
-  background: var(--lf-primary-hover);
-  border-color: var(--lf-primary-hover);
+  background: var(--color-primary-700);
+  border-color: var(--color-primary-700);
 }
 
 .locflow-form-options,
 .locflow-register-cta {
   margin-top: 0.5rem;
   margin-bottom: 1rem;
-  color: var(--lf-text-muted);
+  color: var(--color-text-secondary);
   font-size: 0.95rem;
 }
 
 .locflow-form-options a,
 .locflow-register-cta a {
-  color: var(--lf-primary);
+  color: var(--color-primary-600);
   font-weight: 600;
   text-decoration: none;
 }
