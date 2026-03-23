@@ -10,14 +10,13 @@ const error = ref('')
 
 onMounted(async () => {
   const code = String(route.query.code || '')
-  const state = String(route.query.state || '')
 
-  if (!code || !state) {
+  if (!code) {
     error.value = 'Missing identity provider callback parameters.'
     return
   }
 
-  const result = await auth.handleCallback(code, state)
+  const result = await auth.handleCallback()
   if (!result.success) {
     error.value = result.error || 'Could not complete sign in.'
     return

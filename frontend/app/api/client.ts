@@ -1,5 +1,6 @@
+import { refreshOidcUser } from '~/lib/oidc'
+
 const AUTH_STORAGE_KEY = 'locflow_auth_token'
-const REFRESH_STORAGE_KEY = 'locflow_refresh_token'
 const ORG_STORAGE_KEY = 'locflow_organization'
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60
 
@@ -120,9 +121,6 @@ export function setAuthToken(token: string | null, rememberMe = true): void {
   writeStorage(AUTH_STORAGE_KEY, token, rememberMe)
 }
 
-export function getRefreshToken(): string | null { return readStorage(REFRESH_STORAGE_KEY) }
-export function setRefreshToken(token: string | null, rememberMe = true): void { writeStorage(REFRESH_STORAGE_KEY, token, rememberMe) }
-
 function readErrorMessage(payload: any): string {
   const problemErrors = payload?.errors && typeof payload.errors === 'object' && !Array.isArray(payload.errors)
     ? Object.values(payload.errors).flat().join(', ')
@@ -134,33 +132,19 @@ let _refreshPromise: Promise<string | null> | null = null
 
 export async function attemptTokenRefresh(): Promise<string | null> {
   if (_refreshPromise) return _refreshPromise
+
   _refreshPromise = (async () => {
     try {
-      const refreshToken = getRefreshToken()
-      if (refreshToken) {
-        const cfg = useRuntimeConfig().public
-        const endpoint = `${cfg.keycloakUrl}/realms/${cfg.keycloakRealm}/protocol/openid-connect/token`
-        const body = new URLSearchParams({ grant_type: 'refresh_token', client_id: cfg.keycloakClientId, refresh_token: refreshToken })
-        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
-        if (!response.ok) return null
-        const data = await response.json()
-        const token = data?.access_token
-        if (!token || typeof token !== 'string') return null
-        setAuthToken(token, true)
-        if (data?.refresh_token && typeof data.refresh_token === 'string') setRefreshToken(data.refresh_token, true)
-        return token
-      }
+      if (typeof window === 'undefined') return null
 
-      const staleToken = getStoredTokenForRefresh()
-      if (!staleToken) return null
-      const response = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staleToken}` },
+      const config = useRuntimeConfig().public
+      const user = await refreshOidcUser({
+        authority: config.keycloakUrl,
+        realm: config.keycloakRealm,
+        clientId: config.keycloakClientId,
       })
-      if (!response.ok) return null
-      const data = await response.json()
-      const token = data?.token || data?.access_token
-      if (!token || typeof token !== 'string') return null
+
+      const token = user?.access_token ?? null
       setAuthToken(token, true)
       return token
     } catch {
@@ -169,6 +153,7 @@ export async function attemptTokenRefresh(): Promise<string | null> {
       _refreshPromise = null
     }
   })()
+
   return _refreshPromise
 }
 

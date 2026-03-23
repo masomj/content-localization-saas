@@ -19,7 +19,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
-  await waitForAuthReady()
+  const runtime = useRuntimeConfig().public
+  await waitForAuthReady({
+    keycloakUrl: runtime.keycloakUrl,
+    keycloakRealm: runtime.keycloakRealm,
+    keycloakClientId: runtime.keycloakClientId,
+  })
   const auth = useAuth()
 
   if (!auth.isAuthenticated.value) {
