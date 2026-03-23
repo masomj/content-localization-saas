@@ -39,7 +39,7 @@ function closeMenu() {
       </ul>
 
       <div class="nav-actions" :class="{ open: isMenuOpen }">
-        <UiThemeToggle class="nav-theme-toggle" />
+        <ClientOnly><UiThemeToggle class="nav-theme-toggle" /></ClientOnly>
         <NuxtLink to="/login" class="btn btn-ghost">Log in</NuxtLink>
         <NuxtLink to="/register" class="btn btn-primary">Get Started</NuxtLink>
       </div>

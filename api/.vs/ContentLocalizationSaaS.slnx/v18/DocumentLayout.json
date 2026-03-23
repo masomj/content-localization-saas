@@ -7,16 +7,28 @@
       "RelativeMoniker": "D:0:0:{572F7363-7B2A-0BEC-1964-321D3895B636}|ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj|solutionrelative:contentlocalizationsaas.apphost\\apphost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{572F7363-7B2A-0BEC-1964-321D3895B636}|ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.apphost\\contentlocalizationsaas.apphost.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{572F7363-7B2A-0BEC-1964-321D3895B636}|ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj|solutionrelative:contentlocalizationsaas.apphost\\contentlocalizationsaas.apphost.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+      "AbsoluteMoniker": "D:0:0:{4C67DC80-079D-3726-A26D-74EF8B9DA025}|ContentLocalizationSaaS.Cli\\ContentLocalizationSaaS.Cli.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.cli\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4C67DC80-079D-3726-A26D-74EF8B9DA025}|ContentLocalizationSaaS.Cli\\ContentLocalizationSaaS.Cli.csproj|solutionrelative:contentlocalizationsaas.cli\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\authorization\\approles.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\authorization\\approles.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\controllers\\workspacescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\controllers\\workspacescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{572F7363-7B2A-0BEC-1964-321D3895B636}|ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.apphost\\contentlocalizationsaas.apphost.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{572F7363-7B2A-0BEC-1964-321D3895B636}|ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj|solutionrelative:contentlocalizationsaas.apphost\\contentlocalizationsaas.apphost.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{136EAB93-1555-083F-4779-45D9E7E9468C}|ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.application\\contentlocalizationsaas.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{136EAB93-1555-083F-4779-45D9E7E9468C}|ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj|solutionrelative:contentlocalizationsaas.application\\contentlocalizationsaas.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{136EAB93-1555-083F-4779-45D9E7E9468C}|ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.application\\workspacescontracts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -38,8 +50,47 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 3,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Cli\\Program.cs",
+              "RelativeDocumentMoniker": "ContentLocalizationSaaS.Cli\\Program.cs",
+              "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Cli\\Program.cs",
+              "RelativeToolTip": "ContentLocalizationSaaS.Cli\\Program.cs",
+              "ViewState": "AgIAAA0AAAAAAAAAAAAiwB8AAAA0AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-22T19:55:58.998Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "AppRoles.cs",
+              "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Authorization\\AppRoles.cs",
+              "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Authorization\\AppRoles.cs",
+              "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Authorization\\AppRoles.cs",
+              "RelativeToolTip": "ContentLocalizationSaaS.Api\\Authorization\\AppRoles.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-17T13:23:48.785Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "ContentLocalizationSaaS.Application.csproj",
+              "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj",
+              "RelativeDocumentMoniker": "ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj",
+              "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj",
+              "RelativeToolTip": "ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-03-15T22:30:46.977Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -48,34 +99,36 @@
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.AppHost\\AppHost.cs",
               "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.AppHost\\AppHost.cs",
               "RelativeToolTip": "ContentLocalizationSaaS.AppHost\\AppHost.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAC8AAAAAAAAAAIAwwEIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-14T20:34:00.004Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "ContentLocalizationSaaS.AppHost.csproj",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj",
               "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj",
               "RelativeToolTip": "ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2026-03-14T20:33:57.986Z"
+              "WhenOpened": "2026-03-14T20:33:57.986Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "WorkspacesController.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\WorkspacesController.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Controllers\\WorkspacesController.cs",
               "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\WorkspacesController.cs",
               "RelativeToolTip": "ContentLocalizationSaaS.Api\\Controllers\\WorkspacesController.cs",
-              "ViewState": "AgIAAAkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAYAAAAAAAAAAMBgwAEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-13T21:55:00.274Z"
+              "WhenOpened": "2026-03-13T21:55:00.274Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -85,13 +138,14 @@
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
               "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
               "RelativeToolTip": "ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAAwBQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-13T21:54:59.157Z"
+              "WhenOpened": "2026-03-13T21:54:59.157Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 7,
               "Title": "WorkspacesContracts.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\WorkspacesContracts.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Application\\WorkspacesContracts.cs",
@@ -99,11 +153,12 @@
               "RelativeToolTip": "ContentLocalizationSaaS.Application\\WorkspacesContracts.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-13T21:54:46.867Z"
+              "WhenOpened": "2026-03-13T21:54:46.867Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 9,
               "Title": "ProjectsContracts.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\ProjectsContracts.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Application\\ProjectsContracts.cs",
@@ -111,11 +166,12 @@
               "RelativeToolTip": "ContentLocalizationSaaS.Application\\ProjectsContracts.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-13T21:54:41.028Z"
+              "WhenOpened": "2026-03-13T21:54:41.028Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 8,
               "Title": "DependencyInjection.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\DependencyInjection.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Application\\DependencyInjection.cs",
@@ -123,7 +179,8 @@
               "RelativeToolTip": "ContentLocalizationSaaS.Application\\DependencyInjection.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-13T21:54:39.259Z"
+              "WhenOpened": "2026-03-13T21:54:39.259Z",
+              "EditorCaption": ""
             }
           ]
         }

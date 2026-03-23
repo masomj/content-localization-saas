@@ -13,8 +13,10 @@ const auth = useAuth()
 <template>
   <div class="dashboard">
     <h1>Welcome to LocFlow</h1>
-    <p>Logged in as: {{ auth.user.value?.email }}</p>
-    <p>Organization: {{ auth.organization.value?.name }}</p>
+    <template v-if="!auth.isLoading.value">
+      <p>Logged in as: {{ auth.user.value?.email }}</p>
+      <p>Organization: {{ auth.organization.value?.name }}</p>
+    </template>
   </div>
 </template>
 
