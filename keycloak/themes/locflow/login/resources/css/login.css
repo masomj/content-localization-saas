@@ -109,6 +109,27 @@ body.login-pf::after {
   font-weight: 700;
 }
 
+/* Force Keycloak card title text color (covers kc-page-title / pf title variants) */
+.card-pf h1,
+.card-pf h2,
+.card-pf .pf-c-title,
+#kc-page-title,
+#kc-page-title * {
+  color: var(--color-text-primary) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .card-pf h1,
+  .card-pf h2,
+  .card-pf .pf-c-title,
+  #kc-page-title,
+  #kc-page-title * {
+    color: #f7f9fc !important;
+  }
+}
+
 .locflow-form-group {
   margin-bottom: 1rem;
 }
