@@ -281,10 +281,11 @@ function formatDate(dateStr: string): string {
 
 .role-select {
   padding: var(--spacing-1) var(--spacing-2);
-  border: 1px solid var(--color-gray-300);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  background: var(--color-white);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .icon-btn {

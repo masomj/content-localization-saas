@@ -111,7 +111,8 @@ function handleClose() {
 }
 
 .modal {
-  background: var(--color-white);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   width: 100%;
   max-width: 420px;

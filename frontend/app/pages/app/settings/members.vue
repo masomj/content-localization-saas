@@ -178,14 +178,14 @@ function handleInvited() {
 }
 
 .feedback--success {
-  background: var(--color-green-50);
-  color: var(--color-green-700);
-  border: 1px solid var(--color-green-200);
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+  color: var(--color-text-primary);
+  border: 1px solid color-mix(in srgb, var(--color-success) 40%, var(--color-border));
 }
 
 .feedback--error {
-  background: var(--color-red-50);
-  color: var(--color-red-700);
-  border: 1px solid var(--color-red-200);
+  background: color-mix(in srgb, var(--color-error) 14%, var(--color-surface));
+  color: var(--color-text-primary);
+  border: 1px solid color-mix(in srgb, var(--color-error) 45%, var(--color-border));
 }
 </style>
