@@ -1,7 +1,29 @@
+:root {
+  --lf-bg: #f8fafc;
+  --lf-surface: #ffffff;
+  --lf-border: #e5e7eb;
+  --lf-text: #111827;
+  --lf-text-muted: #4b5563;
+  --lf-primary: #4f46e5;
+  --lf-primary-hover: #4338ca;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lf-bg: #0b1220;
+    --lf-surface: #111827;
+    --lf-border: #1f2937;
+    --lf-text: #e5e7eb;
+    --lf-text-muted: #9ca3af;
+    --lf-primary: #6366f1;
+    --lf-primary-hover: #818cf8;
+  }
+}
+
 body.login-pf {
-  background: linear-gradient(135deg, #eef2ff 0%, #ffffff 45%, #ecfeff 100%);
+  background: var(--lf-bg);
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #111827;
+  color: var(--lf-text);
 }
 
 .login-pf-page {
@@ -11,12 +33,13 @@ body.login-pf {
 
 .card-pf {
   border-radius: 16px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--lf-border);
+  background: var(--lf-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 #kc-header-wrapper {
-  color: #111827;
+  color: var(--lf-text);
   font-size: 1.5rem;
   font-weight: 700;
 }
@@ -28,45 +51,47 @@ body.login-pf {
 .locflow-label {
   display: block;
   margin-bottom: 0.4rem;
-  color: #374151;
+  color: var(--lf-text);
   font-weight: 600;
 }
 
 .pf-c-form-control {
   border-radius: 10px;
-  border-color: #d1d5db;
+  border-color: var(--lf-border);
+  background: var(--lf-surface);
+  color: var(--lf-text);
   min-height: 42px;
 }
 
 .pf-c-form-control:focus {
-  border-color: #6366f1;
+  border-color: var(--lf-primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 .pf-c-button.pf-m-primary {
-  background: #4f46e5;
-  border-color: #4f46e5;
+  background: var(--lf-primary);
+  border-color: var(--lf-primary);
   border-radius: 10px;
   font-weight: 600;
   min-height: 42px;
 }
 
 .pf-c-button.pf-m-primary:hover {
-  background: #4338ca;
-  border-color: #4338ca;
+  background: var(--lf-primary-hover);
+  border-color: var(--lf-primary-hover);
 }
 
 .locflow-form-options,
 .locflow-register-cta {
   margin-top: 0.5rem;
   margin-bottom: 1rem;
-  color: #4b5563;
+  color: var(--lf-text-muted);
   font-size: 0.95rem;
 }
 
 .locflow-form-options a,
 .locflow-register-cta a {
-  color: #4f46e5;
+  color: var(--lf-primary);
   font-weight: 600;
   text-decoration: none;
 }
