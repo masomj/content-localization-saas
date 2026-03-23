@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiSelect from '~/components/ui/Select.vue'
+
 const theme = useTheme()
 
 const options = [
@@ -9,71 +11,46 @@ const options = [
 </script>
 
 <template>
-  <label class="theme-toggle" data-testid="theme-toggle">
+  <div class="theme-toggle" data-testid="theme-toggle">
     <span class="theme-toggle__icon" aria-hidden="true">🌓</span>
-    <span class="sr-only">Theme</span>
-    <select
+    <UiSelect
+      id="theme-preference"
+      v-model="theme.preference.value"
       class="theme-toggle__select"
-      :value="theme.preference.value"
-      aria-label="Theme"
-      @change="theme.setThemePreference(($event.target as HTMLSelectElement).value as 'light' | 'dark' | 'system')"
-    >
-      <option v-for="option in options" :key="option.value" :value="option.value">
-        {{ option.label }}
-      </option>
-    </select>
-  </label>
+      :options="options"
+      label="Theme"
+      @update:model-value="theme.setThemePreference($event as 'light' | 'dark' | 'system')"
+    />
+  </div>
 </template>
 
 <style scoped>
 .theme-toggle {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
   display: inline-flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--spacing-2);
-  padding: var(--spacing-1) var(--spacing-2);
-  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.theme-toggle:hover {
-  background: var(--color-primary-50);
-  border-color: var(--color-primary-300);
 }
 
 .theme-toggle__icon {
   font-size: var(--font-size-sm);
+  margin-bottom: 0.55rem;
 }
 
 .theme-toggle__select {
-  border: 0;
-  background: transparent;
-  color: inherit;
+  min-width: 9rem;
+}
+
+:deep(.theme-toggle__select .ui-select-wrapper) {
+  gap: var(--spacing-1);
+}
+
+:deep(.theme-toggle__select .ui-select-label) {
+  font-size: var(--font-size-xs);
+}
+
+:deep(.theme-toggle__select .ui-select) {
+  padding-top: var(--spacing-2);
+  padding-bottom: var(--spacing-2);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  padding-right: var(--spacing-4);
-}
-
-.theme-toggle__select:focus {
-  outline: none;
-}
-
-.theme-toggle__select option {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
 }
 </style>
