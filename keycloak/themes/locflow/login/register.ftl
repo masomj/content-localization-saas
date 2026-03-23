@@ -8,10 +8,21 @@
     </#if>
     <form id="kc-register-form" class="locflow-form" action="${url.registrationAction}" method="post">
       <div class="locflow-form-group">
+        <label for="firstName" class="locflow-label">First name</label>
+        <input type="text" id="firstName" class="pf-c-form-control" name="firstName" value="${(register.formData.firstName!'')}" autocomplete="given-name" required />
+      </div>
+
+      <div class="locflow-form-group">
+        <label for="lastName" class="locflow-label">Last name</label>
+        <input type="text" id="lastName" class="pf-c-form-control" name="lastName" value="${(register.formData.lastName!'')}" autocomplete="family-name" required />
+      </div>
+
+      <div class="locflow-form-group">
         <label for="email" class="locflow-label">Email</label>
         <input type="email" id="email" class="pf-c-form-control" name="email" value="${(register.formData.email!'')}" autocomplete="email" required />
       </div>
 
+      <input type="hidden" id="username" name="username" value="${(register.formData.username!'')}" />
 
       <div class="locflow-form-group">
         <label for="password" class="locflow-label">Password</label>
@@ -48,6 +59,16 @@
           link.setAttribute('href', u.pathname + u.search + u.hash)
         } catch {}
       })
+
+      const emailInput = document.getElementById('email')
+      const usernameInput = document.getElementById('username')
+      const syncUsername = () => {
+        if (emailInput && usernameInput) usernameInput.value = emailInput.value || ''
+      }
+      if (emailInput) {
+        emailInput.addEventListener('input', syncUsername)
+        syncUsername()
+      }
 
       document.querySelectorAll('[data-toggle-password]').forEach((btn) => {
         btn.addEventListener('click', () => {
