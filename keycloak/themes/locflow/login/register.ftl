@@ -9,12 +9,6 @@
         <input type="email" id="email" class="pf-c-form-control" name="email" value="${(register.formData.email!'')}" autocomplete="email" required />
       </div>
 
-      <#if !realm.registrationEmailAsUsername>
-        <div class="locflow-form-group">
-          <label for="username" class="locflow-label">Username</label>
-          <input type="text" id="username" class="pf-c-form-control" name="username" value="${(register.formData.username!'')}" autocomplete="username" required />
-        </div>
-      </#if>
 
       <div class="locflow-form-group">
         <label for="password" class="locflow-label">Password</label>

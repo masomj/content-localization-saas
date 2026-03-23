@@ -8,6 +8,8 @@
   "emailTheme": "keycloak",
   "registrationAllowed": true,
   "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
   "editUsernameAllowed": false,
   "resetPasswordAllowed": true,
   "rememberMe": true,
