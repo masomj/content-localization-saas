@@ -21,7 +21,7 @@ public sealed class AuthController(
     IWebHostEnvironment environment,
     ILogger<AuthController> logger) : ControllerBase
 {
-    private readonly JwtOptions _jwtOptions = configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>()?.Jwt 
+    private readonly JwtOptions _jwtOptions = configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>()?.Jwt
         ?? throw new InvalidOperationException("JWT configuration is missing");
 
     [HttpPost("register")]
@@ -56,7 +56,7 @@ public sealed class AuthController(
         var role = isFirstUser ? AppRole.Admin : AppRole.Editor;
 
         await userManager.AddToRoleAsync(user, role.ToString());
-        
+
         var claims = new List<Claim>
         {
             new("app_role", role.ToString()),
@@ -65,7 +65,7 @@ public sealed class AuthController(
             new("first_name", request.FirstName),
             new("last_name", request.LastName),
         };
-        
+
         await userManager.AddClaimsAsync(user, claims);
 
         var workspace = new Workspace
@@ -73,7 +73,7 @@ public sealed class AuthController(
             Id = Guid.NewGuid(),
             Name = request.Company ?? $"{request.FirstName}'s Workspace",
         };
-        
+
         dbContext.Workspaces.Add(workspace);
 
         var membership = new WorkspaceMembership
@@ -83,7 +83,7 @@ public sealed class AuthController(
             Email = user.Email ?? "",
             Role = role.ToString(),
         };
-        
+
         dbContext.WorkspaceMemberships.Add(membership);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -165,7 +165,7 @@ public sealed class AuthController(
         var membership = await dbContext.WorkspaceMemberships
             .FirstOrDefaultAsync(m => m.Email == user.Email, cancellationToken);
 
-        var workspace = membership != null 
+        var workspace = membership != null
             ? await dbContext.Workspaces.FirstOrDefaultAsync(w => w.Id == membership.WorkspaceId, cancellationToken)
             : null;
 
@@ -218,7 +218,7 @@ public sealed class AuthController(
         var membership = await dbContext.WorkspaceMemberships
             .FirstOrDefaultAsync(m => m.Email == user.Email, cancellationToken);
 
-        var workspace = membership != null 
+        var workspace = membership != null
             ? await dbContext.Workspaces.FirstOrDefaultAsync(w => w.Id == membership.WorkspaceId, cancellationToken)
             : null;
 

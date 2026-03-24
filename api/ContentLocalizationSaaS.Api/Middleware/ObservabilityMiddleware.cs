@@ -16,11 +16,11 @@ public sealed class ObservabilityMiddleware(RequestDelegate next, ILogger<Observ
         context.Items[CorrelationHeader] = correlationId;
 
         using (logger.BeginScope(new Dictionary<string, object>
-               {
-                   ["CorrelationId"] = correlationId,
-                   ["RequestPath"] = context.Request.Path.ToString(),
-                   ["RequestMethod"] = context.Request.Method
-               }))
+        {
+            ["CorrelationId"] = correlationId,
+            ["RequestPath"] = context.Request.Path.ToString(),
+            ["RequestMethod"] = context.Request.Method
+        }))
         {
             var started = DateTime.UtcNow;
             await next(context);

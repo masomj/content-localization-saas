@@ -37,7 +37,7 @@ public sealed class WorkspaceMembersController(AppDbContext db) : ControllerBase
         if (membership is null) return NotFound();
 
         var oldMembership = $"role={membership.Role};active={membership.IsActive}";
-        
+
         db.WorkspaceMemberships.Remove(membership);
 
         var pendingInvites = await db.WorkspaceInvites
