@@ -23,4 +23,12 @@ public sealed class ContentItemsController(IContentItemService contentItems) : C
         var item = await contentItems.CreateAsync(request, cancellationToken);
         return Ok(item);
     }
+
+    [HttpPut("{id:guid}/move")]
+    [RequireAppRole(AppRole.Editor)]
+    public async Task<IActionResult> Move(Guid id, [FromBody] MoveContentItemRequest request, CancellationToken cancellationToken)
+    {
+        var item = await contentItems.MoveAsync(id, request, cancellationToken);
+        return Ok(item);
+    }
 }
