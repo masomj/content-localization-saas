@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
+import LanguageManager from '~/components/projects/LanguageManager.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
@@ -16,6 +17,7 @@ const projects = ref<Array<{ id: string; name: string }>>([])
 const selectedProjectId = ref('')
 const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status'>>>([])
 
+const showLanguages = ref(false)
 const showAddContentForm = ref(false)
 const newContentKey = ref('')
 const newContentSource = ref('')
@@ -115,12 +117,17 @@ watch(selectedProjectId, async () => {
         <h1>Content</h1>
         <p class="page-subtitle">Content is attached to a project</p>
       </div>
-      <UiButton :disabled="!selectedProjectId" @click="openAddContentForm">
-        <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
-          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-        </svg>
-        Add Content
-      </UiButton>
+      <div class="page-header-actions">
+        <UiButton :disabled="!selectedProjectId" variant="secondary" @click="showLanguages = !showLanguages">
+          Languages
+        </UiButton>
+        <UiButton :disabled="!selectedProjectId" @click="openAddContentForm">
+          <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
+            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+          </svg>
+          Add Content
+        </UiButton>
+      </div>
     </header>
 
     <div class="project-picker">
@@ -135,6 +142,13 @@ watch(selectedProjectId, async () => {
       />
       <p class="label-hint">Select a project to view/manage content</p>
     </div>
+
+    <LanguageManager
+      v-if="showLanguages && selectedProjectId"
+      :project-id="selectedProjectId"
+      class="lang-manager-section"
+      @updated="loadContent"
+    />
 
     <AppEmptyState
       v-if="projects.length === 0"
@@ -198,8 +212,10 @@ watch(selectedProjectId, async () => {
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-6); }
 .page-header h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--spacing-1) 0; }
 .page-subtitle { color: var(--color-text-muted); margin: 0; }
+.page-header-actions { display: flex; gap: var(--spacing-2); align-items: center; }
 .btn-icon { width: 1.25em; height: 1.25em; margin-right: var(--spacing-2); }
 .project-picker { margin-bottom: var(--spacing-5); display: flex; flex-direction: column; gap: var(--spacing-2); max-width: 420px; }
+.lang-manager-section { margin-bottom: var(--spacing-5); }
 .label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
 .label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); }
 .content-list { display: flex; flex-direction: column; gap: var(--spacing-3); }
