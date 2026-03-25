@@ -9,7 +9,7 @@ import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
 import { projectsClient } from '~/api/projectsClient'
-import type { ContentItem, Project } from '~/api/types'
+import type { ContentItem, Project, ProjectTreeNode } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Content - LocFlow' })
@@ -18,7 +18,7 @@ const auth = useAuth()
 const isLoading = ref(false)
 const projects = ref<Array<{ id: string; name: string }>>([])
 const selectedProjectId = ref('')
-const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status'>>>([])
+const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>>>([])
 
 const showLanguages = ref(false)
 const showExport = ref(false)
@@ -31,6 +31,134 @@ const addContentError = ref('')
 const editingCell = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
 const gridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
 
+// ---------------------------------------------------------------------------
+// Folder navigation state
+// ---------------------------------------------------------------------------
+const treeNodes = ref<ProjectTreeNode[]>([])
+const currentFolderId = ref<string | null>(null)
+
+interface BreadcrumbItem {
+  id: string | null
+  name: string
+}
+
+/** Build breadcrumb trail from root to current folder */
+const breadcrumbs = computed<BreadcrumbItem[]>(() => {
+  const trail: BreadcrumbItem[] = [{ id: null, name: 'Project Root' }]
+  if (currentFolderId.value === null) return trail
+
+  // Walk the tree to find the path to currentFolderId
+  function findPath(nodes: ProjectTreeNode[], target: string): ProjectTreeNode[] | null {
+    for (const node of nodes) {
+      if (node.id === target) return [node]
+      if (node.nodeType === 'folder' && node.children.length > 0) {
+        const sub = findPath(node.children, target)
+        if (sub) return [node, ...sub]
+      }
+    }
+    return null
+  }
+
+  const path = findPath(treeNodes.value, currentFolderId.value)
+  if (path) {
+    for (const node of path) {
+      trail.push({ id: node.id, name: node.name })
+    }
+  }
+  return trail
+})
+
+/** Children of the current folder (folders first, then content keys) */
+const currentChildren = computed(() => {
+  if (currentFolderId.value === null) {
+    return treeNodes.value
+  }
+  function findNode(nodes: ProjectTreeNode[], id: string): ProjectTreeNode | null {
+    for (const n of nodes) {
+      if (n.id === id) return n
+      if (n.children.length > 0) {
+        const found = findNode(n.children, id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  const folder = findNode(treeNodes.value, currentFolderId.value)
+  return folder?.children ?? []
+})
+
+const currentFolders = computed(() =>
+  currentChildren.value.filter(n => n.nodeType === 'folder'),
+)
+
+const currentContentKeys = computed(() =>
+  currentChildren.value.filter(n => n.nodeType === 'contentKey'),
+)
+
+/** Content items in the current folder (matched from the flat contents list) */
+const folderContentItems = computed(() => {
+  // Match content items whose collectionId equals currentFolderId
+  return contents.value.filter(c => (c.collectionId ?? null) === currentFolderId.value)
+})
+
+// ---------------------------------------------------------------------------
+// List-view pagination
+// ---------------------------------------------------------------------------
+const listPage = ref(1)
+const listPageSize = ref(20)
+
+const listTotalPages = computed(() =>
+  Math.max(1, Math.ceil(folderContentItems.value.length / listPageSize.value)),
+)
+
+const paginatedContentItems = computed(() => {
+  const start = (listPage.value - 1) * listPageSize.value
+  return folderContentItems.value.slice(start, start + listPageSize.value)
+})
+
+// ---------------------------------------------------------------------------
+// Grid: build item→collection mapping for client-side filtering
+// ---------------------------------------------------------------------------
+const itemCollectionMap = computed(() => {
+  const map: Record<string, string | null> = {}
+  for (const c of contents.value) {
+    map[c.id] = c.collectionId ?? null
+  }
+  return map
+})
+
+// ---------------------------------------------------------------------------
+// Folder child count (for display)
+// ---------------------------------------------------------------------------
+function folderChildCount(node: ProjectTreeNode): number {
+  let count = 0
+  function walk(n: ProjectTreeNode) {
+    if (n.nodeType === 'contentKey') count++
+    for (const child of n.children) walk(child)
+  }
+  for (const child of node.children) walk(child)
+  return count
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+function navigateToFolder(folderId: string | null) {
+  currentFolderId.value = folderId
+  listPage.value = 1
+}
+
+/** Navigate to parent folder. Uses breadcrumbs — the parent is the second-to-last breadcrumb. */
+function navigateUp() {
+  const bc = breadcrumbs.value
+  if (bc.length >= 2) {
+    navigateToFolder(bc[bc.length - 2]!.id)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Translation editor
+// ---------------------------------------------------------------------------
 function openEditor(payload: { itemId: string; itemKey: string; source: string; language: string }) {
   editingCell.value = payload
 }
@@ -57,6 +185,9 @@ function onLanguagesUpdated() {
 
 const gridReloadKey = ref(0)
 
+// ---------------------------------------------------------------------------
+// Data loading
+// ---------------------------------------------------------------------------
 async function loadProjects() {
   if (!auth.organization.value?.id) return
   const data = await projectsClient.list(auth.organization.value.id)
@@ -70,25 +201,35 @@ async function loadProjects() {
 async function loadContent() {
   if (!selectedProjectId.value) {
     contents.value = []
+    treeNodes.value = []
     return
   }
 
   isLoading.value = true
   try {
-    const data = await contentClient.list(selectedProjectId.value)
-    contents.value = (Array.isArray(data) ? data : []).map((c: ContentItem) => ({
+    const [contentData, treeData] = await Promise.all([
+      contentClient.list(selectedProjectId.value),
+      projectsClient.getProjectTree(selectedProjectId.value),
+    ])
+    contents.value = (Array.isArray(contentData) ? contentData : []).map((c: ContentItem) => ({
       id: c.id,
       key: c.key,
       source: c.source,
       status: c.status,
+      collectionId: c.collectionId,
     }))
+    treeNodes.value = Array.isArray(treeData) ? treeData : []
   } catch {
     contents.value = []
+    treeNodes.value = []
   } finally {
     isLoading.value = false
   }
 }
 
+// ---------------------------------------------------------------------------
+// Add content
+// ---------------------------------------------------------------------------
 function openAddContentForm() {
   addContentError.value = ''
   showAddContentForm.value = true
@@ -124,7 +265,7 @@ async function addContent() {
       tags: [],
       context: null,
       notes: null,
-      collectionId: null,
+      collectionId: currentFolderId.value,
     })
 
     await loadContent()
@@ -135,12 +276,41 @@ async function addContent() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Status badge helper
+// ---------------------------------------------------------------------------
+function statusBadgeClass(status: string): string {
+  switch (status) {
+    case 'approved':
+    case 'done':
+      return 'badge--done'
+    case 'pending_review':
+      return 'badge--review'
+    case 'outdated':
+      return 'badge--outdated'
+    case 'draft':
+      return 'badge--draft'
+    default:
+      return 'badge--default'
+  }
+}
+
+function truncate(text: string, max: number): string {
+  if (!text) return ''
+  return text.length > max ? `${text.slice(0, max)}...` : text
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
 onMounted(async () => {
   await loadProjects()
   await loadContent()
 })
 
 watch(selectedProjectId, async () => {
+  currentFolderId.value = null
+  listPage.value = 1
   await loadContent()
 })
 </script>
@@ -211,44 +381,167 @@ watch(selectedProjectId, async () => {
       description="Create a project first. Content cannot exist without a project."
     />
 
-    <template v-else>
+    <template v-else-if="selectedProjectId">
+      <!-- ============================================================ -->
+      <!-- Breadcrumb navigation (shared by list and grid views)        -->
+      <!-- ============================================================ -->
+      <nav v-if="breadcrumbs.length > 0" class="breadcrumb-bar" aria-label="Folder navigation">
+        <template v-for="(crumb, idx) in breadcrumbs" :key="crumb.id ?? '__root'">
+          <span v-if="idx > 0" class="breadcrumb-sep">/</span>
+          <button
+            v-if="idx < breadcrumbs.length - 1"
+            class="breadcrumb-link"
+            @click="navigateToFolder(crumb.id)"
+          >
+            {{ crumb.name }}
+          </button>
+          <span v-else class="breadcrumb-current">{{ crumb.name }}</span>
+        </template>
+      </nav>
+
+      <!-- ============================================================ -->
+      <!-- GRID VIEW                                                    -->
+      <!-- ============================================================ -->
       <template v-if="viewMode === 'grid'">
+        <!-- Folder rows above the grid -->
+        <div v-if="currentFolderId !== null || currentFolders.length > 0" class="folder-list">
+          <button
+            v-if="currentFolderId !== null"
+            class="folder-row folder-row--parent"
+            @click="navigateUp"
+          >
+            <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+            <span class="folder-name">..</span>
+          </button>
+          <button
+            v-for="folder in currentFolders"
+            :key="folder.id"
+            class="folder-row"
+            @click="navigateToFolder(folder.id)"
+          >
+            <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+            </svg>
+            <span class="folder-name">{{ folder.name }}</span>
+            <span class="folder-count">{{ folderChildCount(folder) }} items</span>
+            <svg class="folder-chevron" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
         <LocalizationGrid
           :key="gridReloadKey"
           ref="gridRef"
           :project-id="selectedProjectId"
+          :collection-id="currentFolderId"
+          :item-collection-map="itemCollectionMap"
           @edit-cell="openEditor"
         />
       </template>
 
+      <!-- ============================================================ -->
+      <!-- LIST VIEW                                                    -->
+      <!-- ============================================================ -->
       <template v-else>
         <div v-if="isLoading" class="content-list">
           <div v-for="i in 3" :key="i" class="content-item"><AppSkeleton lines="2" height="1rem" /></div>
         </div>
 
-        <AppEmptyState
-          v-else-if="contents.length === 0"
-          title="No content in this project"
-          description="Add content items linked to this project"
-        >
-          <template #action>
-            <UiButton @click="openAddContentForm">Add Content</UiButton>
-          </template>
-        </AppEmptyState>
+        <template v-else>
+          <AppEmptyState
+            v-if="currentFolders.length === 0 && folderContentItems.length === 0 && currentFolderId === null"
+            title="No content in this project"
+            description="Add content items linked to this project"
+          >
+            <template #action>
+              <UiButton @click="openAddContentForm">Add Content</UiButton>
+            </template>
+          </AppEmptyState>
 
-        <div v-else class="content-list">
-          <div v-for="item in contents" :key="item.id" class="content-item">
-            <h3>{{ item.key }}</h3>
-            <p>{{ item.source }}</p>
-            <small>Status: {{ item.status }}</small>
+          <div v-else class="explorer-list">
+            <!-- Parent navigation -->
+            <button
+              v-if="currentFolderId !== null"
+              class="folder-row folder-row--parent"
+              @click="navigateUp"
+            >
+              <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+              <span class="folder-name">..</span>
+            </button>
+
+            <!-- Folders -->
+            <button
+              v-for="folder in currentFolders"
+              :key="folder.id"
+              class="folder-row"
+              @click="navigateToFolder(folder.id)"
+            >
+              <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+              </svg>
+              <span class="folder-name">{{ folder.name }}</span>
+              <span class="folder-count">{{ folderChildCount(folder) }} items</span>
+              <svg class="folder-chevron" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+
+            <!-- Content items (paginated) -->
+            <div
+              v-for="(item, idx) in paginatedContentItems"
+              :key="item.id"
+              class="content-row"
+              :class="{ 'content-row--alt': idx % 2 === 1 }"
+            >
+              <div class="content-row-main">
+                <span class="content-key">{{ item.key }}</span>
+                <span class="content-source">{{ truncate(item.source, 80) }}</span>
+              </div>
+              <span class="content-badge" :class="statusBadgeClass(item.status)">
+                {{ item.status }}
+              </span>
+            </div>
+
+            <!-- Empty folder state -->
+            <div
+              v-if="currentFolders.length === 0 && folderContentItems.length === 0 && currentFolderId !== null"
+              class="explorer-empty"
+            >
+              This folder is empty. Add content items or create subfolders.
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="listTotalPages > 1" class="list-pagination">
+              <UiButton size="sm" variant="secondary" :disabled="listPage <= 1" @click="listPage--">
+                Previous
+              </UiButton>
+              <span class="list-page-info">
+                Page {{ listPage }} of {{ listTotalPages }} ({{ folderContentItems.length }} items)
+              </span>
+              <UiButton size="sm" variant="secondary" :disabled="listPage >= listTotalPages" @click="listPage++">
+                Next
+              </UiButton>
+            </div>
           </div>
-        </div>
+        </template>
       </template>
     </template>
 
+    <!-- ============================================================ -->
+    <!-- Add content modal                                            -->
+    <!-- ============================================================ -->
     <div v-if="showAddContentForm" class="content-form-overlay" @click.self="closeAddContentForm">
       <form class="content-form" @submit.prevent="addContent">
         <h2>Add content item</h2>
+
+        <div v-if="currentFolderId !== null" class="content-form-folder-hint">
+          Adding to: <strong>{{ breadcrumbs[breadcrumbs.length - 1]?.name }}</strong>
+        </div>
 
         <label for="contentKey" class="label-with-hint">
           <span>Key</span>
@@ -301,14 +594,210 @@ watch(selectedProjectId, async () => {
 .lang-manager-section { margin-bottom: var(--spacing-5); }
 .label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
 .label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); }
+
+/* Breadcrumb bar */
+.breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3) var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  flex-wrap: wrap;
+}
+.breadcrumb-sep {
+  color: var(--color-text-muted);
+  margin: 0 var(--spacing-1);
+  user-select: none;
+}
+.breadcrumb-link {
+  background: none;
+  border: none;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-md);
+  color: var(--color-primary-600);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: background var(--transition-fast);
+}
+.breadcrumb-link:hover {
+  background: color-mix(in srgb, var(--color-primary-600) 8%, transparent);
+}
+.breadcrumb-current {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-1) var(--spacing-2);
+}
+
+/* Folder list (shared between list and grid views) */
+.folder-list {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--spacing-4);
+}
+.folder-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  width: 100%;
+}
+.folder-row:first-child {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.folder-row:last-child {
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.folder-row:first-child:last-child {
+  border-radius: var(--radius-lg);
+}
+.folder-row:hover {
+  background: color-mix(in srgb, var(--color-primary-600) 5%, transparent);
+}
+.folder-row--parent {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+.folder-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  color: var(--color-primary-500);
+}
+.folder-row--parent .folder-icon {
+  color: var(--color-text-muted);
+}
+.folder-name {
+  flex: 1;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+.folder-row--parent .folder-name {
+  color: var(--color-text-muted);
+}
+.folder-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+.folder-chevron {
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+/* Explorer list (list view) */
+.explorer-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Content rows */
+.content-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  font-size: var(--font-size-sm);
+}
+.content-row:last-of-type {
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+/* When there are no folders and this is the first content row */
+.explorer-list > .content-row:first-child,
+.explorer-list > .folder-row--parent + .content-row:first-of-type {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.content-row--alt {
+  background: color-mix(in srgb, var(--color-border) 15%, var(--color-surface));
+}
+.content-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.content-key {
+  font-family: monospace;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.content-source {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.content-badge {
+  flex-shrink: 0;
+  padding: 2px var(--spacing-2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: capitalize;
+}
+.badge--done { background: color-mix(in srgb, #22c55e 15%, transparent); color: #16a34a; }
+.badge--review { background: color-mix(in srgb, #eab308 15%, transparent); color: #a16207; }
+.badge--outdated { background: color-mix(in srgb, #f97316 15%, transparent); color: #c2410c; }
+.badge--draft { background: color-mix(in srgb, #6366f1 12%, transparent); color: #6366f1; }
+.badge--default { background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+
+/* Empty folder state */
+.explorer-empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-6) var(--spacing-4);
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* List pagination */
+.list-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+  padding-top: var(--spacing-4);
+}
+.list-page-info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* Content list (skeleton state) */
 .content-list { display: flex; flex-direction: column; gap: var(--spacing-3); }
 .content-item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--spacing-4); }
-.content-item h3 { margin: 0 0 var(--spacing-1); }
-.content-item p { margin: 0 0 var(--spacing-2); }
+
+/* Add content form */
 .content-form-overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-black) 45%, transparent); display: grid; place-items: center; z-index: var(--z-modal); }
 .content-form { width: min(560px, 92vw); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--spacing-6); display: flex; flex-direction: column; gap: var(--spacing-3); }
 .content-form h2 { margin: 0 0 var(--spacing-2); color: var(--color-text-primary); }
 .content-form input,.content-form textarea { padding: var(--spacing-3) var(--spacing-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-background); color: var(--color-text-primary); }
+.content-form-folder-hint { font-size: var(--font-size-sm); color: var(--color-text-muted); padding: var(--spacing-2) var(--spacing-3); background: color-mix(in srgb, var(--color-primary-600) 6%, transparent); border-radius: var(--radius-md); }
 .field-error { margin: 0; color: var(--color-error); font-size: var(--font-size-xs); }
 .content-form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); }
 </style>

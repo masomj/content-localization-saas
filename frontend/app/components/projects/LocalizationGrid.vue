@@ -7,6 +7,10 @@ import type { LocalizationGridRow, ProjectLanguage } from '~/api/types'
 
 interface Props {
   projectId: string
+  /** When set, only show grid rows whose itemId belongs to this folder. null = project root keys only, undefined = show all. */
+  collectionId?: string | null
+  /** Map of content-item id → collectionId, used to filter grid rows to current folder */
+  itemCollectionMap?: Record<string, string | null>
 }
 
 const props = defineProps<Props>()
@@ -14,14 +18,33 @@ const emit = defineEmits<{
   'edit-cell': [payload: { itemId: string; itemKey: string; source: string; language: string }]
 }>()
 
-const rows = ref<LocalizationGridRow[]>([])
+const allRows = ref<LocalizationGridRow[]>([])
 const languages = ref<ProjectLanguage[]>([])
-const total = ref(0)
+const serverTotal = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const isLoading = ref(false)
 const statusFilter = ref('')
 const searchQuery = ref('')
+
+/** Rows filtered to current folder (client-side) */
+const filteredRows = computed(() => {
+  if (props.collectionId === undefined && !props.itemCollectionMap) {
+    return allRows.value
+  }
+  if (!props.itemCollectionMap) return allRows.value
+  return allRows.value.filter((row) => {
+    const itemCollection = props.itemCollectionMap![row.itemId] ?? null
+    return itemCollection === (props.collectionId ?? null)
+  })
+})
+
+/** Paginated slice of filtered rows */
+const total = computed(() => filteredRows.value.length)
+const paginatedRows = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return filteredRows.value.slice(start, start + pageSize.value)
+})
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -66,12 +89,12 @@ function getTarget(row: LocalizationGridRow, langCode: string) {
 }
 
 function completionPct(langCode: string): string {
-  if (rows.value.length === 0) return '0%'
-  const done = rows.value.filter(r => {
+  if (filteredRows.value.length === 0) return '0%'
+  const done = filteredRows.value.filter(r => {
     const t = getTarget(r, langCode)
     return t && (t.status === 'approved' || t.status === 'done')
   }).length
-  return `${Math.round((done / rows.value.length) * 100)}%`
+  return `${Math.round((done / filteredRows.value.length) * 100)}%`
 }
 
 async function loadLanguages() {
@@ -86,17 +109,18 @@ async function loadLanguages() {
 async function loadGrid() {
   isLoading.value = true
   try {
+    // Load all rows from server (large page) so we can filter client-side by folder
     const data = await translationClient.getGrid(props.projectId, {
-      page: page.value,
-      pageSize: pageSize.value,
+      page: 1,
+      pageSize: 10000,
       status: statusFilter.value || undefined,
       search: searchQuery.value || undefined,
     })
-    rows.value = data.rows ?? []
-    total.value = data.total ?? 0
+    allRows.value = data.rows ?? []
+    serverTotal.value = data.total ?? 0
   } catch {
-    rows.value = []
-    total.value = 0
+    allRows.value = []
+    serverTotal.value = 0
   } finally {
     isLoading.value = false
   }
@@ -105,7 +129,6 @@ async function loadGrid() {
 function goToPage(p: number) {
   if (p < 1 || p > totalPages.value) return
   page.value = p
-  loadGrid()
 }
 
 function applyFilters() {
@@ -127,10 +150,14 @@ watch(() => props.projectId, async (id) => {
     await loadLanguages()
     await loadGrid()
   } else {
-    rows.value = []
+    allRows.value = []
     languages.value = []
   }
 }, { immediate: true })
+
+watch(() => props.collectionId, () => {
+  page.value = 1
+})
 
 defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } })
 </script>
@@ -164,7 +191,7 @@ defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } }
 
     <div v-if="isLoading" class="loc-grid-loading">Loading grid...</div>
 
-    <div v-else-if="rows.length === 0" class="loc-grid-empty">
+    <div v-else-if="paginatedRows.length === 0" class="loc-grid-empty">
       No content keys found. Add content items first, then manage translations here.
     </div>
 
@@ -185,7 +212,7 @@ defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } }
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.itemId">
+          <tr v-for="row in paginatedRows" :key="row.itemId">
             <td class="loc-td loc-td--key" :title="row.itemKey">
               {{ row.itemKey }}
             </td>
