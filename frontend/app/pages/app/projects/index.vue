@@ -23,6 +23,18 @@ const draggingNodeType = ref<'folder' | 'contentKey'>('folder')
 
 const showCreateProjectForm = ref(false)
 const newProjectName = ref('')
+
+// Tree action modals
+const treeModal = ref<{
+  type: 'newFolder' | 'newContentKey' | 'rename' | 'delete'
+  parentId?: string | null
+  nodeId?: string
+  nodeType?: 'folder' | 'contentKey'
+  nodeName?: string
+} | null>(null)
+const treeModalInput = ref('')
+const treeModalError = ref('')
+const treeModalSubmitting = ref(false)
 const createProjectError = ref('')
 
 async function loadProjects() {
@@ -68,114 +80,92 @@ async function loadTree(projectId: string) {
   }
 }
 
-async function handleRename(nodeId: string) {
+function handleRename(nodeId: string) {
   if (!selectedProjectId.value) return
   const node = findNode(treeNodes.value, nodeId)
   if (!node) return
+  treeModal.value = { type: 'rename', nodeId, nodeType: node.nodeType, nodeName: node.name }
+  treeModalInput.value = node.name
+  treeModalError.value = ''
+}
 
-  const nextName = window.prompt(`Rename ${node.nodeType === 'folder' ? 'folder' : 'content key'}`, node.name)?.trim()
-  if (!nextName || nextName === node.name) return
+function handleDelete(nodeId: string) {
+  if (!selectedProjectId.value) return
+  const node = findNode(treeNodes.value, nodeId)
+  if (!node) return
+  treeModal.value = { type: 'delete', nodeId, nodeType: node.nodeType, nodeName: node.name }
+  treeModalError.value = ''
+}
+
+function handleNewFolder(parentId: string) {
+  treeModal.value = { type: 'newFolder', parentId }
+  treeModalInput.value = ''
+  treeModalError.value = ''
+}
+
+function handleNewContentKey(parentId: string) {
+  treeModal.value = { type: 'newContentKey', parentId }
+  treeModalInput.value = ''
+  treeModalError.value = ''
+}
+
+function handleNewRootFolder() {
+  treeModal.value = { type: 'newFolder', parentId: null }
+  treeModalInput.value = ''
+  treeModalError.value = ''
+}
+
+function handleNewRootContentKey() {
+  treeModal.value = { type: 'newContentKey', parentId: null }
+  treeModalInput.value = ''
+  treeModalError.value = ''
+}
+
+function closeTreeModal() {
+  treeModal.value = null
+  treeModalInput.value = ''
+  treeModalError.value = ''
+  treeModalSubmitting.value = false
+}
+
+async function submitTreeModal() {
+  if (!selectedProjectId.value || !treeModal.value) return
+  const m = treeModal.value
+  treeModalSubmitting.value = true
+  treeModalError.value = ''
 
   try {
-    if (node.nodeType === 'folder') {
-      await projectsClient.renameCollection(selectedProjectId.value, nodeId, nextName)
+    if (m.type === 'newFolder') {
+      const name = treeModalInput.value.trim()
+      if (!name) { treeModalError.value = 'Folder name is required'; treeModalSubmitting.value = false; return }
+      await projectsClient.createCollection(selectedProjectId.value, { name, parentId: m.parentId ?? null })
+    } else if (m.type === 'newContentKey') {
+      const key = treeModalInput.value.trim()
+      if (!key) { treeModalError.value = 'Content key is required'; treeModalSubmitting.value = false; return }
+      await contentClient.create({
+        projectId: selectedProjectId.value,
+        key,
+        source: '',
+        status: 'Draft',
+        tags: [],
+        context: null,
+        notes: null,
+        collectionId: m.parentId ?? null,
+      })
+    } else if (m.type === 'rename' && m.nodeId) {
+      const name = treeModalInput.value.trim()
+      if (!name) { treeModalError.value = 'Name is required'; treeModalSubmitting.value = false; return }
+      if (m.nodeType === 'folder') {
+        await projectsClient.renameCollection(selectedProjectId.value, m.nodeId, name)
+      }
+    } else if (m.type === 'delete' && m.nodeId) {
+      // Delete endpoint — reload tree after
     }
-    // Content key rename would use a different endpoint when available
     await loadTree(selectedProjectId.value)
+    closeTreeModal()
   } catch (error: any) {
-    treeError.value = error?.message || 'Rename failed'
-  }
-}
-
-async function handleDelete(nodeId: string) {
-  if (!selectedProjectId.value) return
-  const node = findNode(treeNodes.value, nodeId)
-  if (!node) return
-
-  const confirmed = window.confirm(`Delete "${node.name}"? ${node.nodeType === 'folder' ? 'Content keys inside will be moved to the project root.' : ''}`)
-  if (!confirmed) return
-
-  try {
-    // Delete calls would go here when backend endpoints are available
-    await loadTree(selectedProjectId.value)
-  } catch (error: any) {
-    treeError.value = error?.message || 'Delete failed'
-  }
-}
-
-async function handleNewFolder(parentId: string) {
-  if (!selectedProjectId.value) return
-  const name = window.prompt('New folder name')?.trim()
-  if (!name) return
-
-  try {
-    await projectsClient.createCollection(selectedProjectId.value, {
-      name,
-      parentId,
-    })
-    await loadTree(selectedProjectId.value)
-  } catch (error: any) {
-    treeError.value = error?.message || 'Failed to create folder'
-  }
-}
-
-async function handleNewContentKey(parentId: string) {
-  if (!selectedProjectId.value) return
-  const key = window.prompt('New content key')?.trim()
-  if (!key) return
-
-  try {
-    await contentClient.create({
-      projectId: selectedProjectId.value,
-      key,
-      source: '',
-      status: 'Draft',
-      tags: [],
-      context: null,
-      notes: null,
-      collectionId: parentId || null,
-    })
-    await loadTree(selectedProjectId.value)
-  } catch (error: any) {
-    treeError.value = error?.message || 'Failed to create content key'
-  }
-}
-
-async function handleNewRootFolder() {
-  if (!selectedProjectId.value) return
-  const name = window.prompt('New folder name')?.trim()
-  if (!name) return
-
-  try {
-    await projectsClient.createCollection(selectedProjectId.value, {
-      name,
-      parentId: null,
-    })
-    await loadTree(selectedProjectId.value)
-  } catch (error: any) {
-    treeError.value = error?.message || 'Failed to create folder'
-  }
-}
-
-async function handleNewRootContentKey() {
-  if (!selectedProjectId.value) return
-  const key = window.prompt('New content key')?.trim()
-  if (!key) return
-
-  try {
-    await contentClient.create({
-      projectId: selectedProjectId.value,
-      key,
-      source: '',
-      status: 'Draft',
-      tags: [],
-      context: null,
-      notes: null,
-      collectionId: null,
-    })
-    await loadTree(selectedProjectId.value)
-  } catch (error: any) {
-    treeError.value = error?.message || 'Failed to create content key'
+    treeModalError.value = error?.message || 'Operation failed'
+    treeModalSubmitting.value = false
   }
 }
 
@@ -372,6 +362,63 @@ watch(selectedProjectId, (id) => id && loadTree(id))
       </section>
     </div>
 
+    <!-- Tree action modal -->
+    <div v-if="treeModal" class="project-form-overlay" @click.self="closeTreeModal">
+      <form class="project-form" @submit.prevent="submitTreeModal">
+        <h2 v-if="treeModal.type === 'newFolder'">New folder</h2>
+        <h2 v-else-if="treeModal.type === 'newContentKey'">New content key</h2>
+        <h2 v-else-if="treeModal.type === 'rename'">Rename {{ treeModal.nodeType === 'folder' ? 'folder' : 'content key' }}</h2>
+        <h2 v-else-if="treeModal.type === 'delete'">Delete {{ treeModal.nodeType === 'folder' ? 'folder' : 'content key' }}</h2>
+
+        <template v-if="treeModal.type === 'delete'">
+          <p class="modal-body-text">
+            Are you sure you want to delete <strong>"{{ treeModal.nodeName }}"</strong>?
+            <template v-if="treeModal.nodeType === 'folder'">
+              Content keys inside will be moved to the project root.
+            </template>
+          </p>
+        </template>
+
+        <template v-else>
+          <label :for="'treeModalInput'" class="label-with-hint">
+            <span v-if="treeModal.type === 'newFolder'">Folder name</span>
+            <span v-else-if="treeModal.type === 'newContentKey'">Content key</span>
+            <span v-else>Name</span>
+            <span v-if="treeModal.type === 'newFolder'" class="label-hint">e.g. auth, common, onboarding</span>
+            <span v-else-if="treeModal.type === 'newContentKey'" class="label-hint">e.g. auth.login.title</span>
+            <span v-else class="label-hint">Enter the new name</span>
+          </label>
+          <input
+            id="treeModalInput"
+            v-model="treeModalInput"
+            type="text"
+            autocomplete="off"
+          >
+        </template>
+
+        <p v-if="treeModalError" class="field-error" role="alert">{{ treeModalError }}</p>
+
+        <div class="project-form-actions">
+          <UiButton type="button" variant="secondary" @click="closeTreeModal">Cancel</UiButton>
+          <UiButton
+            v-if="treeModal.type === 'delete'"
+            type="submit"
+            variant="danger"
+            :disabled="treeModalSubmitting"
+          >
+            Delete
+          </UiButton>
+          <UiButton
+            v-else
+            type="submit"
+            :disabled="treeModalSubmitting"
+          >
+            {{ treeModal.type === 'rename' ? 'Rename' : 'Create' }}
+          </UiButton>
+        </div>
+      </form>
+    </div>
+
     <div v-if="showCreateProjectForm" class="project-form-overlay" @click.self="closeCreateProjectForm">
       <form class="project-form" @submit.prevent="createProject">
         <h2>Create project</h2>
@@ -411,6 +458,7 @@ watch(selectedProjectId, (id) => id && loadTree(id))
 .tree-root { list-style: none; margin: 0; padding: 0; }
 .root-drop-zone { border: 1px dashed var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-2); color: var(--color-text-muted); font-size: var(--font-size-xs); text-align: center; margin-top: var(--spacing-2); }
 .field-error { color: var(--color-error); font-size: var(--font-size-xs); }
+.modal-body-text { margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: 1.5; }
 .project-form-overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-black) 45%, transparent); display: grid; place-items: center; z-index: var(--z-modal); }
 .project-form { width: min(480px, 92vw); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--spacing-6); display: flex; flex-direction: column; gap: var(--spacing-3); }
 .project-form input {

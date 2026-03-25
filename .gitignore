@@ -39,3 +39,7 @@ coverage/
 *.coveragexml
 frontend/test-results/
 frontend/playwright-report/
+/api/.vs/ContentLocalizationSaaS/CopilotIndices/18.3.511.5503/CodeChunks.db
+/api/.vs/ContentLocalizationSaaS/CopilotIndices/18.3.511.5503/SemanticSymbols.db
+/api/.vs/ContentLocalizationSaaS.slnx/DesignTimeBuild/.dtbcache.v2
+/api/.vs/ContentLocalizationSaaS.slnx/v18/DocumentLayout.json
