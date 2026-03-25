@@ -85,6 +85,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         [FromQuery] Guid projectId,
         [FromQuery] string? language,
         [FromQuery] string? @namespace,
+        [FromQuery] string? version,
         CancellationToken cancellationToken)
     {
         var requestId = Request.Headers["X-Request-Id"].ToString().Trim();
@@ -130,51 +131,141 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
 
         if (projectId == Guid.Empty) return BadRequest(new { error = "projectId_required" });
 
-        var itemsQuery = db.ContentItems.Where(x => x.ProjectId == projectId && x.Status == "approved");
-        if (!string.IsNullOrWhiteSpace(@namespace))
+        // Resolve which version to serve from
+        var useSnapshot = false;
+        Guid? resolvedVersionId = null;
+        var normalizedVersion = version?.Trim().ToLowerInvariant();
+
+        if (normalizedVersion == "working")
         {
-            var prefix = @namespace.Trim() + ".";
-            itemsQuery = itemsQuery.Where(x => x.Key.StartsWith(prefix));
+            // Explicit working copy override — use content items
+            useSnapshot = false;
         }
-
-        var items = await itemsQuery.OrderBy(x => x.Key).ToListAsync(cancellationToken);
-
-        if (items.Count == 0)
+        else if (!string.IsNullOrWhiteSpace(normalizedVersion) && normalizedVersion != "live" && Guid.TryParse(normalizedVersion, out var specificVersionId))
         {
-            return Ok(new { empty = true, files = new Dictionary<string, object>() });
+            // Specific version ID
+            var versionExists = await db.ProjectVersions.AnyAsync(x => x.Id == specificVersionId && x.ProjectId == projectId, cancellationToken);
+            if (!versionExists) return NotFound(new { error = "version_not_found" });
+            resolvedVersionId = specificVersionId;
+            useSnapshot = true;
         }
-
-        var contentIds = items.Select(x => x.Id).ToList();
-        var tasks = await db.ContentItemLanguageTasks.Where(x => contentIds.Contains(x.ContentItemId)).ToListAsync(cancellationToken);
+        else
+        {
+            // Default: use live version if one exists, otherwise working copy
+            var liveVersion = await db.ProjectVersions.FirstOrDefaultAsync(x => x.ProjectId == projectId && x.IsLive, cancellationToken);
+            if (liveVersion is not null)
+            {
+                resolvedVersionId = liveVersion.Id;
+                useSnapshot = true;
+            }
+        }
 
         var payload = new Dictionary<string, Dictionary<string, string>>();
-        foreach (var item in items)
+
+        if (useSnapshot && resolvedVersionId.HasValue)
         {
-            var key = item.Key;
-            var value = item.Source;
-
-            if (!string.IsNullOrWhiteSpace(language))
+            // Serve from version snapshot
+            var snapshotsQuery = db.ProjectVersionSnapshots.Where(x => x.VersionId == resolvedVersionId.Value);
+            if (!string.IsNullOrWhiteSpace(@namespace))
             {
-                var t = tasks.FirstOrDefault(x => x.ContentItemId == item.Id && x.LanguageCode == language && (x.Status == "approved" || x.Status == "done"));
-                if (t is not null && !string.IsNullOrWhiteSpace(t.TranslationText)) value = t.TranslationText;
+                var prefix = @namespace.Trim() + ".";
+                snapshotsQuery = snapshotsQuery.Where(x => x.Key.StartsWith(prefix));
             }
 
-            var ns = "common";
-            var leaf = key;
-            var idx = key.IndexOf('.');
-            if (idx > 0 && idx < key.Length - 1)
+            var snapshots = await snapshotsQuery.OrderBy(x => x.Key).ToListAsync(cancellationToken);
+
+            if (snapshots.Count == 0)
             {
-                ns = key[..idx];
-                leaf = key[(idx + 1)..];
+                return Ok(new { empty = true, files = new Dictionary<string, object>() });
             }
 
-            if (!payload.TryGetValue(ns, out var bucket))
+            foreach (var snap in snapshots)
             {
-                bucket = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                payload[ns] = bucket;
+                var key = snap.Key;
+                var value = snap.Source;
+
+                if (!string.IsNullOrWhiteSpace(language) && !string.IsNullOrWhiteSpace(snap.TranslationsJson) && snap.TranslationsJson != "{}")
+                {
+                    try
+                    {
+                        var translations = JsonSerializer.Deserialize<Dictionary<string, string>>(snap.TranslationsJson);
+                        if (translations is not null && translations.TryGetValue(language, out var translatedText) && !string.IsNullOrWhiteSpace(translatedText))
+                        {
+                            value = translatedText;
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        // Ignore malformed JSON, fall back to source
+                    }
+                }
+
+                var ns = "common";
+                var leaf = key;
+                var idx = key.IndexOf('.');
+                if (idx > 0 && idx < key.Length - 1)
+                {
+                    ns = key[..idx];
+                    leaf = key[(idx + 1)..];
+                }
+
+                if (!payload.TryGetValue(ns, out var bucket))
+                {
+                    bucket = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    payload[ns] = bucket;
+                }
+
+                bucket[leaf] = value;
+            }
+        }
+        else
+        {
+            // Serve from working copy (original behavior)
+            var itemsQuery = db.ContentItems.Where(x => x.ProjectId == projectId && x.Status == "approved");
+            if (!string.IsNullOrWhiteSpace(@namespace))
+            {
+                var prefix = @namespace.Trim() + ".";
+                itemsQuery = itemsQuery.Where(x => x.Key.StartsWith(prefix));
             }
 
-            bucket[leaf] = value;
+            var items = await itemsQuery.OrderBy(x => x.Key).ToListAsync(cancellationToken);
+
+            if (items.Count == 0)
+            {
+                return Ok(new { empty = true, files = new Dictionary<string, object>() });
+            }
+
+            var contentIds = items.Select(x => x.Id).ToList();
+            var tasks = await db.ContentItemLanguageTasks.Where(x => contentIds.Contains(x.ContentItemId)).ToListAsync(cancellationToken);
+
+            foreach (var item in items)
+            {
+                var key = item.Key;
+                var value = item.Source;
+
+                if (!string.IsNullOrWhiteSpace(language))
+                {
+                    var t = tasks.FirstOrDefault(x => x.ContentItemId == item.Id && x.LanguageCode == language && (x.Status == "approved" || x.Status == "done"));
+                    if (t is not null && !string.IsNullOrWhiteSpace(t.TranslationText)) value = t.TranslationText;
+                }
+
+                var ns = "common";
+                var leaf = key;
+                var idx = key.IndexOf('.');
+                if (idx > 0 && idx < key.Length - 1)
+                {
+                    ns = key[..idx];
+                    leaf = key[(idx + 1)..];
+                }
+
+                if (!payload.TryGetValue(ns, out var bucket))
+                {
+                    bucket = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    payload[ns] = bucket;
+                }
+
+                bucket[leaf] = value;
+            }
         }
 
         var bundle = new
