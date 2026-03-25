@@ -119,3 +119,46 @@ export interface MembershipAuditRow {
   newValue: string | null
   createdUtc: string
 }
+
+export interface ProjectLanguage {
+  id: string
+  projectId: string
+  bcp47Code: string
+  isSource: boolean
+  isActive: boolean
+}
+
+export interface LanguageTask {
+  id: string
+  contentItemId: string
+  languageCode: string
+  assigneeEmail: string
+  translationText: string
+  previousApprovedTranslation: string
+  isOutdated: boolean
+  dueUtc: string | null
+  status: string
+}
+
+export interface TranslationSuggestion {
+  hasSuggestion: boolean
+  suggestion: { id: string; translationText: string; createdUtc: string } | null
+}
+
+export interface LocalizationGridRow {
+  itemId: string
+  itemKey: string
+  source: string
+  sourceStatus: string
+  targets: Array<{ language: string; status: string; assigneeEmail: string; dueUtc: string | null }>
+  hasMissing: boolean
+  hasOutdated: boolean
+  hasReview: boolean
+}
+
+export interface LocalizationGridResponse {
+  total: number
+  page: number
+  pageSize: number
+  rows: LocalizationGridRow[]
+}
