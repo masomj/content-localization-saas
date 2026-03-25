@@ -34,7 +34,7 @@ const options = [
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-2);
-  padding: var(--spacing-1) var(--spacing-2);
+  padding: var(--spacing-1) var(--spacing-3);
   transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
@@ -51,10 +51,17 @@ const options = [
   border: 0;
   background: transparent;
   color: inherit;
+  font-family: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
-  padding-right: var(--spacing-4);
+  appearance: none;
+  color-scheme: light dark;
+  padding: var(--spacing-1) var(--spacing-5) var(--spacing-1) 0;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0 center;
+  background-repeat: no-repeat;
+  background-size: 1.125em;
 }
 
 .theme-toggle__select:focus {
