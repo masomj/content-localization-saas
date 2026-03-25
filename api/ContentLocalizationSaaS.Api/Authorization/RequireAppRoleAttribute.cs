@@ -1,22 +1,36 @@
+using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 
 namespace ContentLocalizationSaaS.Api.Authorization;
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
-public sealed class RequireAppRoleAttribute(AppRole minimumRole) : Attribute, IAsyncAuthorizationFilter
+public sealed class RequireAppRoleAttribute : TypeFilterAttribute
 {
-    public Task OnAuthorizationAsync(AuthorizationFilterContext context)
+    public RequireAppRoleAttribute(AppRole minimumRole)
+        : base(typeof(RequireAppRoleFilter))
     {
-        var sp = context.HttpContext.RequestServices;
-        var options = sp.GetService(typeof(IOptions<AuthOptions>)) as IOptions<AuthOptions>;
+        Arguments = new object[] { minimumRole };
+    }
+}
+
+public sealed class RequireAppRoleFilter(AppRole minimumRole, AppDbContext db, IOptions<AuthOptions> options) : IAsyncAuthorizationFilter
+{
+    public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
+    {
         var legacyEnabled = options?.Value.LegacyHeaderAuthEnabled ?? true;
 
         AppRole current;
         if (AppRoleResolver.TryResolveFromClaims(context.HttpContext.User, out var claimsRole))
         {
             current = claimsRole;
+        }
+        else if (TryResolveWorkspaceRole(context.HttpContext, db, out var wsRole))
+        {
+            current = await wsRole;
         }
         else if (legacyEnabled)
         {
@@ -38,7 +52,34 @@ public sealed class RequireAppRoleAttribute(AppRole minimumRole) : Attribute, IA
                 StatusCode = StatusCodes.Status403Forbidden
             };
         }
+    }
 
-        return Task.CompletedTask;
+    private static bool TryResolveWorkspaceRole(HttpContext context, AppDbContext db, out Task<AppRole> roleTask)
+    {
+        roleTask = Task.FromResult(AppRole.Viewer);
+
+        var principal = context.User;
+        if (principal?.Identity?.IsAuthenticated != true) return false;
+
+        var email = principal.FindFirst(ClaimTypes.Email)?.Value
+                    ?? principal.FindFirst("email")?.Value;
+        if (string.IsNullOrWhiteSpace(email)) return false;
+
+        var workspaceIdRaw = context.Request.Headers["X-Workspace-Id"].ToString();
+        if (!Guid.TryParse(workspaceIdRaw, out var workspaceId)) return false;
+
+        roleTask = ResolveFromMembership(db, email.Trim().ToLowerInvariant(), workspaceId);
+        return true;
+    }
+
+    private static async Task<AppRole> ResolveFromMembership(AppDbContext db, string email, Guid workspaceId)
+    {
+        var membership = await db.WorkspaceMemberships
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.Email == email && m.IsActive);
+
+        if (membership is null) return AppRole.Viewer;
+
+        return Enum.TryParse<AppRole>(membership.Role, true, out var role) ? role : AppRole.Viewer;
     }
 }

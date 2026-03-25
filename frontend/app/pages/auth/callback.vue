@@ -3,19 +3,11 @@ definePageMeta({
   layout: 'auth',
 })
 
-const route = useRoute()
 const router = useRouter()
 const auth = useAuth()
 const error = ref('')
 
 onMounted(async () => {
-  const code = String(route.query.code || '')
-
-  if (!code) {
-    error.value = 'Missing identity provider callback parameters.'
-    return
-  }
-
   const result = await auth.handleCallback()
   if (!result.success) {
     error.value = result.error || 'Could not complete sign in.'

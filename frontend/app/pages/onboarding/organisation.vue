@@ -4,8 +4,8 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Create Organization - LocFlow',
-  description: 'Create your organization to get started with LocFlow.',
+  title: 'Create Organisation - LocFlow',
+  description: 'Create your organisation or workspace to get started with LocFlow.',
 })
 
 const auth = useAuth()
@@ -20,7 +20,7 @@ const availableOrganizations = computed(() => auth.organizations.value || [])
 
 async function handleSelectExisting() {
   if (!selectedOrgId.value) {
-    error.value = 'Select an organization to continue'
+    error.value = 'Select an organisation to continue'
     return
   }
 
@@ -31,7 +31,7 @@ async function handleSelectExisting() {
   if (result.success) {
     router.push('/app/dashboard')
   } else {
-    error.value = result.error || 'Failed to switch organization. Please try again.'
+    error.value = result.error || 'Failed to switch organisation. Please try again.'
   }
 
   isSubmitting.value = false
@@ -39,7 +39,7 @@ async function handleSelectExisting() {
 
 async function handleSubmit() {
   if (!orgName.value.trim()) {
-    error.value = 'Organization name is required'
+    error.value = 'Organisation name is required'
     return
   }
 
@@ -51,7 +51,7 @@ async function handleSubmit() {
   if (result.success) {
     router.push('/app/dashboard')
   } else {
-    error.value = result.error || 'Failed to create organization. Please try again.'
+    error.value = result.error || 'Failed to create organisation. Please try again.'
   }
 
   isSubmitting.value = false
@@ -60,7 +60,7 @@ async function handleSubmit() {
 
 <template>
   <div class="auth-card">
-    <h1 class="auth-title">Create your organization</h1>
+    <h1 class="auth-title">Create your organisation</h1>
     <p class="auth-subtitle">Set up your workspace to start managing translations</p>
 
     <form class="auth-form" novalidate @submit.prevent="handleSubmit">
@@ -68,11 +68,11 @@ async function handleSubmit() {
 
       <div v-if="availableOrganizations.length > 0" class="form-group">
         <label for="existingOrg" class="label-with-hint">
-          <span>Choose an organization</span>
-          <span class="label-hint">Continue with an existing workspace</span>
+          <span>Choose an existing organisation</span>
+          <span class="label-hint">Join a workspace you already belong to</span>
         </label>
         <select id="existingOrg" v-model="selectedOrgId" :disabled="isSubmitting">
-          <option value="">Select organization</option>
+          <option value="">Select an organisation...</option>
           <option v-for="org in availableOrganizations" :key="org.id" :value="org.id">
             {{ org.name }} ({{ org.role }})
           </option>
@@ -84,7 +84,7 @@ async function handleSubmit() {
 
       <div class="form-group">
         <label for="orgName" class="label-with-hint">
-          <span>Organization name</span>
+          <span>Organisation name</span>
           <span class="label-hint">e.g. Acme Inc.</span>
         </label>
         <input
@@ -96,7 +96,7 @@ async function handleSubmit() {
           :disabled="isSubmitting"
           @input="error = undefined"
         >
-        <p class="field-hint">This is the name of your company or team</p>
+        <p class="field-hint">This becomes the name of your workspace</p>
       </div>
 
       <button
@@ -106,14 +106,14 @@ async function handleSubmit() {
         :disabled="isSubmitting"
         :aria-busy="isSubmitting"
       >
-        <span :class="{ 'btn-content-hidden': isSubmitting }">Create organization</span>
+        <span :class="{ 'btn-content-hidden': isSubmitting }">Create organisation</span>
       </button>
     </form>
   </div>
 </template>
 
 <style scoped>
-.auth-card { width: 100%; max-width: 400px; padding: 2.5rem; background: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06); }
+.auth-card { width: 100%; max-width: 400px; margin: 0 auto; padding: var(--spacing-6) var(--spacing-8); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); }
 .auth-title { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); margin: 0 0 0.5rem; text-align: center; }
 .auth-subtitle { font-size: 0.9375rem; color: var(--color-text-muted); margin: 0 0 2rem; text-align: center; }
 .auth-form { display: flex; flex-direction: column; gap: 1.25rem; }

@@ -38,7 +38,7 @@
       "webOrigins": [
         "http://localhost:3000"
       ],
-      "defaultClientScopes": ["web-origins", "profile", "roles", "email"]
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email", "openId", "offline_access"]
     }
   ]
 }

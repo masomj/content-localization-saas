@@ -3,6 +3,7 @@ import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import LanguageManager from '~/components/projects/LanguageManager.vue'
 import LocalizationGrid from '~/components/projects/LocalizationGrid.vue'
+import TranslationEditor from '~/components/projects/TranslationEditor.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
@@ -24,6 +25,29 @@ const showAddContentForm = ref(false)
 const newContentKey = ref('')
 const newContentSource = ref('')
 const addContentError = ref('')
+
+const editingCell = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
+const gridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
+
+function openEditor(payload: { itemId: string; itemKey: string; source: string; language: string }) {
+  editingCell.value = payload
+}
+
+function closeEditor() {
+  editingCell.value = null
+}
+
+function onTranslationSaved() {
+  editingCell.value = null
+  // Reload grid to reflect the updated translation
+  if (viewMode.value === 'grid' && gridRef.value) {
+    // The grid component will reload when project-id watcher fires or we can call its exposed method
+    // For simplicity, toggle a key to force re-render
+    gridReloadKey.value++
+  }
+}
+
+const gridReloadKey = ref(0)
 
 async function loadProjects() {
   if (!auth.organization.value?.id) return
@@ -178,7 +202,10 @@ watch(selectedProjectId, async () => {
     <template v-else>
       <template v-if="viewMode === 'grid'">
         <LocalizationGrid
+          :key="gridReloadKey"
+          ref="gridRef"
           :project-id="selectedProjectId"
+          @edit-cell="openEditor"
         />
       </template>
 
@@ -231,6 +258,16 @@ watch(selectedProjectId, async () => {
         </div>
       </form>
     </div>
+
+    <TranslationEditor
+      v-if="editingCell"
+      :item-id="editingCell.itemId"
+      :item-key="editingCell.itemKey"
+      :source="editingCell.source"
+      :language="editingCell.language"
+      @close="closeEditor"
+      @saved="onTranslationSaved"
+    />
   </div>
 </template>
 

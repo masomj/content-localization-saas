@@ -3,6 +3,18 @@
   "WorkspaceRootPath": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\authorization\\requireapproleattribute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\authorization\\requireapproleattribute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\controllers\\activityfeedcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\controllers\\activityfeedcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{572F7363-7B2A-0BEC-1964-321D3895B636}|ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.apphost\\apphost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{572F7363-7B2A-0BEC-1964-321D3895B636}|ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj|solutionrelative:contentlocalizationsaas.apphost\\apphost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -13,10 +25,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\authorization\\approles.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\authorization\\approles.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|solutionrelative:contentlocalizationsaas.api\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DC70763B-B459-D0AE-B6F9-1C86AF183467}|ContentLocalizationSaaS.Api\\ContentLocalizationSaaS.Api.csproj|c:\\users\\mason\\repos\\content-localization-saas\\api\\contentlocalizationsaas.api\\controllers\\workspacescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -50,11 +58,38 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "RequireAppRoleAttribute.cs",
+              "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Authorization\\RequireAppRoleAttribute.cs",
+              "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Authorization\\RequireAppRoleAttribute.cs",
+              "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Authorization\\RequireAppRoleAttribute.cs",
+              "RelativeToolTip": "ContentLocalizationSaaS.Api\\Authorization\\RequireAppRoleAttribute.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-24T07:29:41.312Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "ActivityFeedController.cs",
+              "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\ActivityFeedController.cs",
+              "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Controllers\\ActivityFeedController.cs",
+              "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\ActivityFeedController.cs",
+              "RelativeToolTip": "ContentLocalizationSaaS.Api\\Controllers\\ActivityFeedController.cs",
+              "ViewState": "AgIAACQAAAAAAAAAAAAewDEAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-24T07:53:14.316Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Cli\\Program.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Cli\\Program.cs",
@@ -67,7 +102,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 5,
               "Title": "AppRoles.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Authorization\\AppRoles.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Authorization\\AppRoles.cs",
@@ -80,7 +115,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 8,
               "Title": "ContentLocalizationSaaS.Application.csproj",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Application\\ContentLocalizationSaaS.Application.csproj",
@@ -93,7 +128,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "AppHost.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.AppHost\\AppHost.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.AppHost\\AppHost.cs",
@@ -106,7 +141,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 2,
+              "Title": "ProjectsController.cs",
+              "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
+              "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
+              "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
+              "RelativeToolTip": "ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAAwBMAAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-13T21:54:59.157Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "ContentLocalizationSaaS.AppHost.csproj",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.AppHost\\ContentLocalizationSaaS.AppHost.csproj",
@@ -119,7 +167,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 6,
               "Title": "WorkspacesController.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\WorkspacesController.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Controllers\\WorkspacesController.cs",
@@ -132,20 +180,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "ProjectsController.cs",
-              "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
-              "RelativeDocumentMoniker": "ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
-              "ToolTip": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
-              "RelativeToolTip": "ContentLocalizationSaaS.Api\\Controllers\\ProjectsController.cs",
-              "ViewState": "AgIAAAcAAAAAAAAAAAAAwBQAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-13T21:54:59.157Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 9,
               "Title": "WorkspacesContracts.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\WorkspacesContracts.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Application\\WorkspacesContracts.cs",
@@ -158,7 +193,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 11,
               "Title": "ProjectsContracts.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\ProjectsContracts.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Application\\ProjectsContracts.cs",
@@ -171,7 +206,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 10,
               "Title": "DependencyInjection.cs",
               "DocumentMoniker": "C:\\Users\\mason\\repos\\content-localization-saas\\api\\ContentLocalizationSaaS.Application\\DependencyInjection.cs",
               "RelativeDocumentMoniker": "ContentLocalizationSaaS.Application\\DependencyInjection.cs",
