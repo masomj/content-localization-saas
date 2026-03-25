@@ -72,10 +72,12 @@ public sealed class ContentItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ProjectId { get; set; }
+    public Guid? CollectionId { get; set; }
     public Guid? CopyComponentId { get; set; }
     public required string Key { get; set; }
     public required string Source { get; set; }
     public required string Status { get; set; }
+    public int SortOrder { get; set; }
     public string ReviewAssigneeEmail { get; set; } = string.Empty;
     public DateTime? ApprovedUtc { get; set; }
     public string ApprovedByEmail { get; set; } = string.Empty;

@@ -132,6 +132,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Context).HasMaxLength(1000).HasDefaultValue(string.Empty);
             e.Property(x => x.Notes).HasMaxLength(2000).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
+            e.HasIndex(x => new { x.ProjectId, x.CollectionId });
             e.HasIndex(x => x.Tags);
             e.HasIndex(x => x.CopyComponentId);
         });
@@ -404,6 +405,12 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .HasOne<CopyComponent>()
             .WithMany()
             .HasForeignKey(x => x.CopyComponentId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<ContentItem>()
+            .HasOne<ProjectCollection>()
+            .WithMany()
+            .HasForeignKey(x => x.CollectionId)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.Entity<CopyComponent>()
