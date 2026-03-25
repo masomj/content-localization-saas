@@ -10,4 +10,5 @@ public interface IContentItemService
     Task<IReadOnlyList<ContentItemRevision>> GetRevisionsAsync(Guid contentItemId, CancellationToken cancellationToken);
     Task<object> CompareRevisionsAsync(Guid contentItemId, Guid leftRevisionId, Guid rightRevisionId, CancellationToken cancellationToken);
     Task<ContentItem> RollbackAsync(Guid contentItemId, Guid revisionId, string actorEmail, CancellationToken cancellationToken);
+    Task<ContentItem> MoveAsync(Guid contentItemId, MoveContentItemRequest request, CancellationToken cancellationToken);
 }

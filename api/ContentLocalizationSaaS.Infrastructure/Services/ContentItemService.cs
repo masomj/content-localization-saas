@@ -175,4 +175,9 @@ internal sealed class ContentItemService(
         if (parts.Count == 0) parts.Add("no-op edit");
         return string.Join(", ", parts);
     }
+
+    public Task<ContentItem> MoveAsync(Guid contentItemId, MoveContentItemRequest request, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
 }

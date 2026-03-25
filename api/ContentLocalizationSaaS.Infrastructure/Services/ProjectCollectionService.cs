@@ -253,4 +253,9 @@ internal sealed class ProjectCollectionService(
             throw RequestValidationException.FromFailures(validation.Errors);
         }
     }
+
+    public Task<List<ProjectTreeNode>> GetTreeAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
 }
