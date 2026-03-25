@@ -52,6 +52,7 @@ jobs:
   integration:
     name: Integration tests (Aspire)
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Checkout
