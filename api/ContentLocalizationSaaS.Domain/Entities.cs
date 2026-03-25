@@ -319,3 +319,32 @@ public sealed class PluginSyncConflict
     public string ResolutionState { get; set; } = "open";
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class ProjectVersion
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public string Tag { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Notes { get; set; } = string.Empty;
+    public bool IsLive { get; set; }
+    public string CreatedByEmail { get; set; } = string.Empty;
+    public int ContentItemCount { get; set; }
+    public int TranslationCount { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class ProjectVersionSnapshot
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid VersionId { get; set; }
+    public Guid OriginalContentItemId { get; set; }
+    public string Key { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Tags { get; set; } = string.Empty;
+    public Guid? CollectionId { get; set; }
+    public int SortOrder { get; set; }
+    public string TranslationsJson { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

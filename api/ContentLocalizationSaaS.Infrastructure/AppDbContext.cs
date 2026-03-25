@@ -43,6 +43,8 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<WebhookDeliveryLog> WebhookDeliveryLogs => Set<WebhookDeliveryLog>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<ContentReview> ContentReviews => Set<ContentReview>();
+    public DbSet<ProjectVersion> ProjectVersions => Set<ProjectVersion>();
+    public DbSet<ProjectVersionSnapshot> ProjectVersionSnapshots => Set<ProjectVersionSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -371,6 +373,32 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => x.ReviewerEmail);
         });
 
+        builder.Entity<ProjectVersion>(e =>
+        {
+            e.ToTable("project_versions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Tag).HasMaxLength(128).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(256).HasDefaultValue(string.Empty);
+            e.Property(x => x.Notes).HasMaxLength(8000).HasDefaultValue(string.Empty);
+            e.Property(x => x.CreatedByEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ProjectId, x.CreatedUtc });
+            e.HasIndex(x => new { x.ProjectId, x.Tag }).IsUnique();
+            e.HasIndex(x => new { x.ProjectId, x.IsLive }).IsUnique().HasFilter("\"is_live\" = true");
+        });
+
+        builder.Entity<ProjectVersionSnapshot>(e =>
+        {
+            e.ToTable("project_version_snapshots");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Key).HasMaxLength(200).HasDefaultValue(string.Empty);
+            e.Property(x => x.Source).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.Property(x => x.Tags).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.Property(x => x.TranslationsJson).HasMaxLength(16000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.VersionId);
+            e.HasIndex(x => new { x.VersionId, x.Key });
+        });
+
         // Story 8.1: explicit FK constraints for core relations
         builder.Entity<Project>()
             .HasOne<Workspace>()
@@ -520,6 +548,18 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .HasOne<WebhookSubscription>()
             .WithMany()
             .HasForeignKey(x => x.SubscriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ProjectVersion>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ProjectVersionSnapshot>()
+            .HasOne<ProjectVersion>()
+            .WithMany()
+            .HasForeignKey(x => x.VersionId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
