@@ -41,12 +41,18 @@ function closeEditor() {
 
 function onTranslationSaved() {
   editingCell.value = null
-  // Reload grid to reflect the updated translation
+  reloadGridIfVisible()
+}
+
+function reloadGridIfVisible() {
   if (viewMode.value === 'grid' && gridRef.value) {
-    // The grid component will reload when project-id watcher fires or we can call its exposed method
-    // For simplicity, toggle a key to force re-render
-    gridReloadKey.value++
+    gridRef.value.reload()
   }
+}
+
+function onLanguagesUpdated() {
+  loadContent()
+  reloadGridIfVisible()
 }
 
 const gridReloadKey = ref(0)
@@ -122,6 +128,7 @@ async function addContent() {
     })
 
     await loadContent()
+    reloadGridIfVisible()
     closeAddContentForm()
   } catch (error: any) {
     addContentError.value = error?.message || 'Failed to add content'
@@ -195,7 +202,7 @@ watch(selectedProjectId, async () => {
       v-if="showLanguages && selectedProjectId"
       :project-id="selectedProjectId"
       class="lang-manager-section"
-      @updated="loadContent"
+      @updated="onLanguagesUpdated"
     />
 
     <AppEmptyState

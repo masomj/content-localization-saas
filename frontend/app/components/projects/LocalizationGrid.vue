@@ -131,6 +131,8 @@ watch(() => props.projectId, async (id) => {
     languages.value = []
   }
 }, { immediate: true })
+
+defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } })
 </script>
 
 <template>
