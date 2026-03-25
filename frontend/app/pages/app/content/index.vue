@@ -88,6 +88,7 @@ async function addContent() {
       tags: [],
       context: null,
       notes: null,
+      collectionId: null,
     })
 
     await loadContent()

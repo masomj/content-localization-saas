@@ -1,5 +1,5 @@
 import { apiRequest } from '~/api/client'
-import type { Collection, CreateCollectionRequest, CreateProjectRequest, MoveCollectionRequest, Project } from '~/api/types'
+import type { Collection, CreateCollectionRequest, CreateProjectRequest, MoveCollectionRequest, Project, ProjectTreeNode } from '~/api/types'
 
 export const projectsClient = {
   list(workspaceId: string) {
@@ -31,5 +31,8 @@ export const projectsClient = {
       method: 'PUT',
       body: JSON.stringify(payload),
     })
+  },
+  getProjectTree(projectId: string) {
+    return apiRequest<ProjectTreeNode[]>(`/projects/${projectId}/tree`)
   },
 }

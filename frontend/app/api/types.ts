@@ -43,6 +43,8 @@ export interface ContentItem {
   key: string
   source: string
   status: string
+  collectionId: string | null
+  sortOrder: number
 }
 
 export interface CreateProjectRequest {
@@ -62,6 +64,23 @@ export interface MoveCollectionRequest {
   newIndex: number
 }
 
+export interface ProjectTreeNode {
+  id: string
+  name: string
+  nodeType: 'folder' | 'contentKey'
+  parentId: string | null
+  sortOrder: number
+  depth: number
+  children: ProjectTreeNode[]
+  key?: string
+  status?: string
+}
+
+export interface MoveContentItemRequest {
+  collectionId: string | null
+  sortOrder: number
+}
+
 export interface CreateContentItemRequest {
   projectId: string
   key: string
@@ -70,6 +89,7 @@ export interface CreateContentItemRequest {
   tags: string[]
   context: string | null
   notes: string | null
+  collectionId: string | null
 }
 
 export interface Member {

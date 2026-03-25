@@ -2,50 +2,28 @@
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
-import UiSelect from '~/components/ui/Select.vue'
 import { projectsClient } from '~/api/projectsClient'
-import type { Collection, Project } from '~/api/types'
+import { contentClient } from '~/api/contentClient'
+import type { Project, ProjectTreeNode } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Projects - LocFlow' })
 
 type ProjectView = Project & { status: string; progress: number; languages: number }
-type TreeNode = Collection & { children: TreeNode[] }
 
 const auth = useAuth()
 const isLoading = ref(false)
 const projects = ref<ProjectView[]>([])
 const selectedProjectId = ref<string>('')
-const collections = ref<Collection[]>([])
-const isLoadingCollections = ref(false)
-const newCollectionName = ref('')
-const newCollectionParentId = ref<string>('')
-const collectionError = ref('')
+const treeNodes = ref<ProjectTreeNode[]>([])
+const isLoadingTree = ref(false)
+const treeError = ref('')
 const draggingId = ref('')
+const draggingNodeType = ref<'folder' | 'contentKey'>('folder')
 
 const showCreateProjectForm = ref(false)
 const newProjectName = ref('')
 const createProjectError = ref('')
-
-const collectionTree = computed<TreeNode[]>(() => {
-  const byParent = new Map<string | null, Collection[]>()
-  for (const item of collections.value) {
-    const key = item.parentId ?? null
-    const arr = byParent.get(key) || []
-    arr.push(item)
-    byParent.set(key, arr)
-  }
-
-  const build = (parentId: string | null): TreeNode[] => {
-    const rows = (byParent.get(parentId) || []).sort((a, b) => a.sortOrder - b.sortOrder)
-    return rows.map(row => ({ ...row, children: build(row.id) }))
-  }
-
-  return build(null)
-})
-
-const rootCollection = computed(() => collections.value.find(x => x.isRoot) || null)
-const selectableParents = computed(() => collections.value.filter(x => x.depth < 2))
 
 async function loadProjects() {
   if (!auth.organization.value?.id) {
@@ -66,7 +44,7 @@ async function loadProjects() {
 
     if (!selectedProjectId.value && projects.value.length > 0) {
       selectedProjectId.value = projects.value[0].id
-      await loadCollections(selectedProjectId.value)
+      await loadTree(selectedProjectId.value)
     }
   } catch {
     projects.value = []
@@ -75,70 +53,195 @@ async function loadProjects() {
   }
 }
 
-async function loadCollections(projectId: string) {
+async function loadTree(projectId: string) {
   if (!projectId) return
-  isLoadingCollections.value = true
-  collectionError.value = ''
+  isLoadingTree.value = true
+  treeError.value = ''
 
   try {
-    collections.value = await projectsClient.listCollections(projectId)
-    newCollectionParentId.value = rootCollection.value?.id || ''
+    treeNodes.value = await projectsClient.getProjectTree(projectId)
   } catch (error: any) {
-    collectionError.value = error?.message || 'Failed to load collections'
-    collections.value = []
+    treeError.value = error?.message || 'Failed to load project tree'
+    treeNodes.value = []
   } finally {
-    isLoadingCollections.value = false
+    isLoadingTree.value = false
   }
 }
 
-async function createCollection() {
-  const name = newCollectionName.value.trim()
-  if (!name || !selectedProjectId.value) return
+async function handleRename(nodeId: string) {
+  if (!selectedProjectId.value) return
+  const node = findNode(treeNodes.value, nodeId)
+  if (!node) return
+
+  const nextName = window.prompt(`Rename ${node.nodeType === 'folder' ? 'folder' : 'content key'}`, node.name)?.trim()
+  if (!nextName || nextName === node.name) return
+
+  try {
+    if (node.nodeType === 'folder') {
+      await projectsClient.renameCollection(selectedProjectId.value, nodeId, nextName)
+    }
+    // Content key rename would use a different endpoint when available
+    await loadTree(selectedProjectId.value)
+  } catch (error: any) {
+    treeError.value = error?.message || 'Rename failed'
+  }
+}
+
+async function handleDelete(nodeId: string) {
+  if (!selectedProjectId.value) return
+  const node = findNode(treeNodes.value, nodeId)
+  if (!node) return
+
+  const confirmed = window.confirm(`Delete "${node.name}"? ${node.nodeType === 'folder' ? 'Content keys inside will be moved to the project root.' : ''}`)
+  if (!confirmed) return
+
+  try {
+    // Delete calls would go here when backend endpoints are available
+    await loadTree(selectedProjectId.value)
+  } catch (error: any) {
+    treeError.value = error?.message || 'Delete failed'
+  }
+}
+
+async function handleNewFolder(parentId: string) {
+  if (!selectedProjectId.value) return
+  const name = window.prompt('New folder name')?.trim()
+  if (!name) return
 
   try {
     await projectsClient.createCollection(selectedProjectId.value, {
       name,
-      parentId: newCollectionParentId.value || null,
+      parentId,
     })
-    newCollectionName.value = ''
-    await loadCollections(selectedProjectId.value)
+    await loadTree(selectedProjectId.value)
   } catch (error: any) {
-    collectionError.value = error?.message || 'Failed to create collection'
+    treeError.value = error?.message || 'Failed to create folder'
   }
 }
 
-async function renameCollection(item: Collection) {
-  if (!selectedProjectId.value || item.isRoot) return
-  const nextName = window.prompt('Rename folder', item.name)?.trim()
-  if (!nextName || nextName === item.name) return
-
-  try {
-    await projectsClient.renameCollection(selectedProjectId.value, item.id, nextName)
-    await loadCollections(selectedProjectId.value)
-  } catch (error: any) {
-    collectionError.value = error?.message || 'Rename failed'
-  }
-}
-
-async function moveCollection(collectionId: string, newParentId: string | null, newIndex: number) {
+async function handleNewContentKey(parentId: string) {
   if (!selectedProjectId.value) return
-  const result = await projectsClient.moveCollection(selectedProjectId.value, collectionId, { newParentId, newIndex })
-  collections.value = Array.isArray(result) ? result : collections.value
-}
+  const key = window.prompt('New content key')?.trim()
+  if (!key) return
 
-function onDragStart(item: Collection) {
-  draggingId.value = item.id
-}
-
-async function onDrop(parentId: string | null, index: number) {
-  if (!draggingId.value) return
   try {
-    await moveCollection(draggingId.value, parentId, index)
+    await contentClient.create({
+      projectId: selectedProjectId.value,
+      key,
+      source: '',
+      status: 'Draft',
+      tags: [],
+      context: null,
+      notes: null,
+      collectionId: parentId || null,
+    })
+    await loadTree(selectedProjectId.value)
   } catch (error: any) {
-    collectionError.value = error?.message || 'Move failed'
+    treeError.value = error?.message || 'Failed to create content key'
+  }
+}
+
+async function handleNewRootFolder() {
+  if (!selectedProjectId.value) return
+  const name = window.prompt('New folder name')?.trim()
+  if (!name) return
+
+  try {
+    await projectsClient.createCollection(selectedProjectId.value, {
+      name,
+      parentId: null,
+    })
+    await loadTree(selectedProjectId.value)
+  } catch (error: any) {
+    treeError.value = error?.message || 'Failed to create folder'
+  }
+}
+
+async function handleNewRootContentKey() {
+  if (!selectedProjectId.value) return
+  const key = window.prompt('New content key')?.trim()
+  if (!key) return
+
+  try {
+    await contentClient.create({
+      projectId: selectedProjectId.value,
+      key,
+      source: '',
+      status: 'Draft',
+      tags: [],
+      context: null,
+      notes: null,
+      collectionId: null,
+    })
+    await loadTree(selectedProjectId.value)
+  } catch (error: any) {
+    treeError.value = error?.message || 'Failed to create content key'
+  }
+}
+
+function onDragStart(payload: { nodeId: string; nodeType: 'folder' | 'contentKey' }) {
+  draggingId.value = payload.nodeId
+  draggingNodeType.value = payload.nodeType
+}
+
+async function onDrop(payload: { targetId: string | null; index: number; nodeType: 'folder' | 'contentKey' }) {
+  if (!draggingId.value || !selectedProjectId.value) return
+
+  try {
+    if (draggingNodeType.value === 'contentKey') {
+      await contentClient.move(draggingId.value, {
+        collectionId: payload.targetId,
+        sortOrder: payload.index,
+      })
+    } else {
+      await projectsClient.moveCollection(
+        selectedProjectId.value,
+        draggingId.value,
+        { newParentId: payload.targetId, newIndex: payload.index },
+      )
+    }
+    await loadTree(selectedProjectId.value)
+  } catch (error: any) {
+    treeError.value = error?.message || 'Move failed'
   } finally {
     draggingId.value = ''
   }
+}
+
+async function onRootDrop(e: DragEvent) {
+  e.preventDefault()
+  if (!draggingId.value || !selectedProjectId.value) return
+
+  try {
+    if (draggingNodeType.value === 'contentKey') {
+      await contentClient.move(draggingId.value, {
+        collectionId: null,
+        sortOrder: treeNodes.value.length,
+      })
+    } else {
+      await projectsClient.moveCollection(
+        selectedProjectId.value,
+        draggingId.value,
+        { newParentId: null, newIndex: treeNodes.value.length },
+      )
+    }
+    await loadTree(selectedProjectId.value)
+  } catch (error: any) {
+    treeError.value = error?.message || 'Move failed'
+  } finally {
+    draggingId.value = ''
+  }
+}
+
+function findNode(nodes: ProjectTreeNode[], id: string): ProjectTreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children?.length) {
+      const found = findNode(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
 }
 
 function openCreateProjectForm() {
@@ -174,7 +277,7 @@ async function createProject() {
 
     await loadProjects()
     selectedProjectId.value = project.id
-    await loadCollections(project.id)
+    await loadTree(project.id)
     closeCreateProjectForm()
   } catch (error: any) {
     createProjectError.value = error?.message || 'Failed to create project'
@@ -182,7 +285,7 @@ async function createProject() {
 }
 
 onMounted(loadProjects)
-watch(selectedProjectId, (id) => id && loadCollections(id))
+watch(selectedProjectId, (id) => id && loadTree(id))
 </script>
 
 <template>
@@ -221,40 +324,46 @@ watch(selectedProjectId, (id) => id && loadCollections(id))
       </section>
 
       <section class="collections-panel">
-        <h2 class="section-title">Collections</h2>
-        <p class="label-hint">Top-level folder is fixed as “Collections”. Drag and drop folders to reorder or move.</p>
-
-        <div class="collection-form">
-          <label class="label-with-hint" for="collectionName">
-            <span>Folder name</span>
-            <span class="label-hint">Names must be unique within the same parent folder</span>
-          </label>
-          <input id="collectionName" v-model="newCollectionName" type="text" autocomplete="off">
-
-          <UiSelect
-            id="collectionParent"
-            v-model="newCollectionParentId"
-            label="Parent folder"
-            :options="selectableParents.map(option => ({ value: option.id, label: option.name }))"
-          />
-          <p class="label-hint">Nested folders are supported to a maximum depth of 3</p>
-          <UiButton @click="createCollection">Add folder</UiButton>
+        <div class="tree-header">
+          <h2 class="section-title">Project Tree</h2>
+          <div class="tree-header__actions">
+            <UiButton variant="secondary" @click="handleNewRootFolder">New Folder</UiButton>
+            <UiButton variant="secondary" @click="handleNewRootContentKey">New Content Key</UiButton>
+          </div>
         </div>
+        <p class="label-hint">Drag content keys between folders. Right-click or use the menu for more actions.</p>
 
-        <p v-if="collectionError" class="field-error">{{ collectionError }}</p>
-        <AppSkeleton v-if="isLoadingCollections" lines="4" height="1.25rem" />
+        <p v-if="treeError" class="field-error">{{ treeError }}</p>
+        <AppSkeleton v-if="isLoadingTree" lines="4" height="1.25rem" />
 
-        <ul v-else class="tree-root">
+        <ul
+          v-else
+          class="tree-root"
+          role="tree"
+          aria-label="Project content tree"
+        >
           <CollectionTreeNode
-            v-for="root in collectionTree"
+            v-for="root in treeNodes"
             :key="root.id"
             :node="root"
             :dragging-id="draggingId"
-            @dragstart="onDragStart(collections.find(c => c.id === $event)!)"
-            @rename="renameCollection(collections.find(c => c.id === $event)!)"
-            @drop="onDrop($event.parentId, $event.index)"
+            @dragstart="onDragStart"
+            @rename="handleRename"
+            @delete="handleDelete"
+            @new-folder="handleNewFolder"
+            @new-content-key="handleNewContentKey"
+            @drop="onDrop"
           />
         </ul>
+
+        <div
+          v-if="!isLoadingTree && treeNodes.length > 0"
+          class="root-drop-zone"
+          @dragover.prevent
+          @drop="onRootDrop"
+        >
+          Drop here to move to project root
+        </div>
       </section>
     </div>
 
@@ -286,10 +395,16 @@ watch(selectedProjectId, (id) => id && loadCollections(id))
 .project-card { text-align: left; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--spacing-4); cursor: pointer; }
 .project-card.selected { border-color: var(--color-primary-600); }
 .collections-panel { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--spacing-4); background: var(--color-surface); }
-.collection-form { display: grid; gap: var(--spacing-2); margin-bottom: var(--spacing-4); }
+.tree-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-2); }
+.tree-header .section-title { margin: 0; }
+.tree-header__actions { display: flex; gap: var(--spacing-2); }
 .label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
-.label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); }
-.collection-form input,
+.label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-bottom: var(--spacing-2); }
+.tree-root { list-style: none; margin: 0; padding: 0; }
+.root-drop-zone { border: 1px dashed var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-2); color: var(--color-text-muted); font-size: var(--font-size-xs); text-align: center; margin-top: var(--spacing-2); }
+.field-error { color: var(--color-error); font-size: var(--font-size-xs); }
+.project-form-overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-black) 45%, transparent); display: grid; place-items: center; z-index: var(--z-modal); }
+.project-form { width: min(480px, 92vw); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--spacing-6); display: flex; flex-direction: column; gap: var(--spacing-3); }
 .project-form input {
   padding: var(--spacing-3);
   border: 1px solid var(--color-border);
@@ -297,13 +412,5 @@ watch(selectedProjectId, (id) => id && loadCollections(id))
   background: var(--color-background);
   color: var(--color-text-primary);
 }
-.tree-root, .tree-root ul { list-style: none; margin: 0; padding-left: var(--spacing-4); }
-.tree-node { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-2) var(--spacing-3); margin-bottom: var(--spacing-2); }
-.root-node { font-weight: 600; background: var(--color-primary-50); }
-.drop-zone { border: 1px dashed var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-2); color: var(--color-text-muted); margin-bottom: var(--spacing-2); }
-.inline-action { border: 0; background: transparent; color: var(--color-primary-700); cursor: pointer; }
-.field-error { color: var(--color-error); font-size: var(--font-size-xs); }
-.project-form-overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-black) 45%, transparent); display: grid; place-items: center; z-index: var(--z-modal); }
-.project-form { width: min(480px, 92vw); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--spacing-6); display: flex; flex-direction: column; gap: var(--spacing-3); }
 .project-form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); }
 </style>
