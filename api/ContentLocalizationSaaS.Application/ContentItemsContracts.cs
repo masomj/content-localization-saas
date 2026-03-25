@@ -22,7 +22,7 @@ public sealed class CreateContentItemRequestValidator : AbstractValidator<Create
             .NotEmpty()
             .MaximumLength(200)
             .Matches(KeyPattern)
-            .WithMessage("Key must use lowercase letters/numbers and separators (., _, -).") ;
+            .WithMessage("Key must use lowercase letters/numbers and separators (., _, -).");
         RuleFor(x => x.Source).NotEmpty().MaximumLength(4000);
         RuleFor(x => x.Status).NotEmpty().MaximumLength(32);
         RuleFor(x => x.Context).MaximumLength(1000);
