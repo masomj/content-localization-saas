@@ -174,6 +174,7 @@ public sealed class DiscussionComment
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ThreadId { get; set; }
     public Guid? ParentCommentId { get; set; }
+    public Guid? ReviewId { get; set; }
     public string Body { get; set; } = string.Empty;
     public string AuthorEmail { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
@@ -296,6 +297,16 @@ public sealed class DesignLayerLink
     public string LayerId { get; set; } = string.Empty;
     public Guid ContentItemId { get; set; }
     public string DuplicateLinkRule { get; set; } = "preserve"; // preserve|clear
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class ContentReview
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemId { get; set; }
+    public string ReviewerEmail { get; set; } = string.Empty;
+    public string Verdict { get; set; } = string.Empty; // approved | changes_requested | comment
+    public string Body { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 

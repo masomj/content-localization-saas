@@ -42,6 +42,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDeliveryLog> WebhookDeliveryLogs => Set<WebhookDeliveryLog>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    public DbSet<ContentReview> ContentReviews => Set<ContentReview>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -232,6 +233,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.AuthorEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ThreadId, x.CreatedUtc });
             e.HasIndex(x => x.ParentCommentId);
+            e.HasIndex(x => x.ReviewId);
         });
 
         builder.Entity<NotificationPreference>(e =>
@@ -358,6 +360,17 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => new { x.Operation, x.Key }).IsUnique();
         });
 
+        builder.Entity<ContentReview>(e =>
+        {
+            e.ToTable("content_reviews");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ReviewerEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.Verdict).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Body).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ContentItemId, x.CreatedUtc });
+            e.HasIndex(x => x.ReviewerEmail);
+        });
+
         // Story 8.1: explicit FK constraints for core relations
         builder.Entity<Project>()
             .HasOne<Workspace>()
@@ -454,6 +467,18 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .WithMany()
             .HasForeignKey(x => x.ThreadId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ContentReview>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DiscussionComment>()
+            .HasOne<ContentReview>()
+            .WithMany()
+            .HasForeignKey(x => x.ReviewId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.Entity<ExternalReviewLink>()
             .HasOne<ContentItem>()

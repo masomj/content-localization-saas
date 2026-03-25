@@ -3,6 +3,7 @@ using System;
 using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ContentLocalizationSaaS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260325104403_AddContentReview")]
+    partial class AddContentReview
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -475,17 +478,12 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.Property<Guid?>("ParentCommentId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("ReviewId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("ThreadId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ParentCommentId");
-
-                    b.HasIndex("ReviewId");
 
                     b.HasIndex("ThreadId", "CreatedUtc");
 
@@ -1576,11 +1574,6 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
 
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.DiscussionComment", b =>
                 {
-                    b.HasOne("ContentLocalizationSaaS.Domain.ContentReview", null)
-                        .WithMany()
-                        .HasForeignKey("ReviewId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("ContentLocalizationSaaS.Domain.DiscussionThread", null)
                         .WithMany()
                         .HasForeignKey("ThreadId")
