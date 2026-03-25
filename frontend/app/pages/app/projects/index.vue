@@ -316,10 +316,15 @@ watch(selectedProjectId, (id) => id && loadTree(id))
       <section>
         <h2 class="section-title">Your projects</h2>
         <div class="projects-grid">
-          <button v-for="project in projects" :key="project.id" class="project-card" :class="{ selected: selectedProjectId === project.id }" @click="selectedProjectId = project.id">
-            <h3>{{ project.name }}</h3>
-            <p>Status: {{ project.status }}</p>
-          </button>
+          <div v-for="project in projects" :key="project.id" class="project-card" :class="{ selected: selectedProjectId === project.id }">
+            <button class="project-card-select" @click="selectedProjectId = project.id">
+              <h3>{{ project.name }}</h3>
+              <p>Status: {{ project.status }}</p>
+            </button>
+            <NuxtLink :to="`/app/projects/${project.id}/versions`" class="project-card-releases">
+              Releases
+            </NuxtLink>
+          </div>
         </div>
       </section>
 
@@ -392,8 +397,11 @@ watch(selectedProjectId, (id) => id && loadTree(id))
 .projects-layout { display: grid; gap: var(--spacing-6); }
 .section-title { margin: 0 0 var(--spacing-3); }
 .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--spacing-4); }
-.project-card { text-align: left; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--spacing-4); cursor: pointer; }
+.project-card { text-align: left; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; }
 .project-card.selected { border-color: var(--color-primary-600); }
+.project-card-select { text-align: left; background: none; border: none; padding: var(--spacing-4); cursor: pointer; flex: 1; color: inherit; font: inherit; }
+.project-card-releases { display: block; padding: var(--spacing-2) var(--spacing-4); font-size: var(--font-size-xs); color: var(--color-primary-600); text-decoration: none; border-top: 1px solid var(--color-border); }
+.project-card-releases:hover { background: var(--color-background); }
 .collections-panel { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--spacing-4); background: var(--color-surface); }
 .tree-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-2); }
 .tree-header .section-title { margin: 0; }
