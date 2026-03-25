@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ContentLocalizationSaaS.Api.Controllers;
 
 public sealed record CreateThreadRequest(Guid ContentItemId, string Title, string Body);
-public sealed record ReplyRequest(Guid ThreadId, Guid? ParentCommentId, string Body);
+public sealed record ReplyRequest(Guid ThreadId, Guid? ParentCommentId, string Body, Guid? ReviewId = null);
 
 [ApiController]
 [Route("api/discussions")]
@@ -87,6 +87,7 @@ public sealed class DiscussionThreadsController(AppDbContext db) : ControllerBas
         {
             ThreadId = request.ThreadId,
             ParentCommentId = request.ParentCommentId,
+            ReviewId = request.ReviewId,
             Body = request.Body.Trim(),
             AuthorEmail = CurrentActor
         };
