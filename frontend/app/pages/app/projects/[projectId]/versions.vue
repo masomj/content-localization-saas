@@ -3,9 +3,10 @@ import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiInput from '~/components/ui/Input.vue'
+import UiSelect from '~/components/ui/Select.vue'
 import { versionsClient } from '~/api/versionsClient'
 import { contentClient } from '~/api/contentClient'
-import type { ProjectVersion } from '~/api/types'
+import type { ProjectVersion, VersionDiff } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Releases - LocFlow' })
@@ -45,6 +46,14 @@ const expandedNotes = ref<Set<string>>(new Set())
 
 // Confirm dialogs
 const confirmAction = ref<{ type: 'promote' | 'demote' | 'delete'; versionId: string; tag: string } | null>(null)
+
+// Compare state
+const showCompare = ref(false)
+const compareFromId = ref('')
+const compareToId = ref('')
+const compareDiff = ref<VersionDiff | null>(null)
+const isComparing = ref(false)
+const compareError = ref('')
 
 const liveVersion = computed(() => versions.value.find(v => v.isLive))
 const sortedVersions = computed(() => [...versions.value].sort((a, b) => new Date(b.createdUtc).getTime() - new Date(a.createdUtc).getTime()))
@@ -193,6 +202,45 @@ const confirmMessage = computed(() => {
   return ''
 })
 
+const versionSelectOptions = computed(() =>
+  sortedVersions.value.map(v => ({ value: v.id, label: `${v.tag}${v.isLive ? ' (LIVE)' : ''}` }))
+)
+
+function toggleCompare() {
+  showCompare.value = !showCompare.value
+  if (!showCompare.value) {
+    compareDiff.value = null
+    compareError.value = ''
+  }
+}
+
+async function runCompare() {
+  if (!compareFromId.value || !compareToId.value) {
+    compareError.value = 'Select two versions to compare'
+    return
+  }
+  if (compareFromId.value === compareToId.value) {
+    compareError.value = 'Select two different versions'
+    return
+  }
+
+  isComparing.value = true
+  compareError.value = ''
+  compareDiff.value = null
+  try {
+    compareDiff.value = await versionsClient.compare(projectId.value, compareFromId.value, compareToId.value)
+  } catch (error: any) {
+    compareError.value = error?.message || 'Failed to compare versions'
+  } finally {
+    isComparing.value = false
+  }
+}
+
+const diffTotalCount = computed(() => {
+  if (!compareDiff.value) return 0
+  return compareDiff.value.added.length + compareDiff.value.removed.length + compareDiff.value.changed.length
+})
+
 onMounted(loadVersions)
 </script>
 
@@ -208,7 +256,12 @@ onMounted(loadVersions)
         <h1>Releases</h1>
         <p class="page-subtitle">Manage versioned snapshots of your project content</p>
       </div>
-      <UiButton @click="openCreateModal">Create Release</UiButton>
+      <div class="page-header-actions">
+        <UiButton v-if="versions.length >= 2" variant="secondary" @click="toggleCompare">
+          {{ showCompare ? 'Hide Compare' : 'Compare Versions' }}
+        </UiButton>
+        <UiButton @click="openCreateModal">Create Release</UiButton>
+      </div>
     </header>
 
     <!-- Action error banner -->
@@ -340,6 +393,88 @@ onMounted(loadVersions)
             </UiButton>
           </div>
         </article>
+      </div>
+
+      <!-- Compare section -->
+      <div v-if="showCompare" class="compare-section">
+        <h2 class="compare-title">Compare Versions</h2>
+        <p class="compare-subtitle">Select two versions to see what changed between them</p>
+
+        <div class="compare-selectors">
+          <div class="compare-field">
+            <UiSelect
+              id="compareFrom"
+              v-model="compareFromId"
+              label="From (older)"
+              :options="[{ value: '', label: 'Select version' }, ...versionSelectOptions]"
+            />
+          </div>
+          <span class="compare-arrow" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+              <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </span>
+          <div class="compare-field">
+            <UiSelect
+              id="compareTo"
+              v-model="compareToId"
+              label="To (newer)"
+              :options="[{ value: '', label: 'Select version' }, ...versionSelectOptions]"
+            />
+          </div>
+          <UiButton :loading="isComparing" :disabled="!compareFromId || !compareToId" @click="runCompare">
+            Compare
+          </UiButton>
+        </div>
+
+        <p v-if="compareError" class="field-error" role="alert">{{ compareError }}</p>
+
+        <div v-if="compareDiff" class="compare-results">
+          <p class="compare-summary">
+            {{ diffTotalCount }} difference{{ diffTotalCount !== 1 ? 's' : '' }} found:
+            <span v-if="compareDiff.added.length" class="diff-count diff-count--added">{{ compareDiff.added.length }} added</span>
+            <span v-if="compareDiff.removed.length" class="diff-count diff-count--removed">{{ compareDiff.removed.length }} removed</span>
+            <span v-if="compareDiff.changed.length" class="diff-count diff-count--changed">{{ compareDiff.changed.length }} changed</span>
+          </p>
+
+          <!-- Added keys -->
+          <div v-if="compareDiff.added.length" class="diff-group">
+            <h3 class="diff-group-title diff-group-title--added">Added keys</h3>
+            <div v-for="item in compareDiff.added" :key="'add-' + item.key" class="diff-row diff-row--added">
+              <code class="diff-key">{{ item.key }}</code>
+              <span class="diff-source">{{ item.source }}</span>
+            </div>
+          </div>
+
+          <!-- Removed keys -->
+          <div v-if="compareDiff.removed.length" class="diff-group">
+            <h3 class="diff-group-title diff-group-title--removed">Removed keys</h3>
+            <div v-for="item in compareDiff.removed" :key="'rem-' + item.key" class="diff-row diff-row--removed">
+              <code class="diff-key">{{ item.key }}</code>
+              <span class="diff-source">{{ item.source }}</span>
+            </div>
+          </div>
+
+          <!-- Changed keys -->
+          <div v-if="compareDiff.changed.length" class="diff-group">
+            <h3 class="diff-group-title diff-group-title--changed">Changed keys</h3>
+            <div v-for="item in compareDiff.changed" :key="'chg-' + item.key" class="diff-row diff-row--changed">
+              <code class="diff-key">{{ item.key }}</code>
+              <div class="diff-changes">
+                <div class="diff-old">
+                  <span class="diff-label">Before:</span>
+                  <span>{{ item.oldSource }}</span>
+                </div>
+                <div class="diff-new">
+                  <span class="diff-label">After:</span>
+                  <span>{{ item.newSource }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p v-if="diffTotalCount === 0" class="compare-empty">No differences found between these versions.</p>
+        </div>
       </div>
     </template>
 
@@ -836,5 +971,184 @@ onMounted(loadVersions)
   .version-stat-sep {
     display: none;
   }
+
+  .compare-selectors {
+    flex-direction: column;
+  }
+
+  .compare-arrow {
+    transform: rotate(90deg);
+  }
+}
+
+/* Header actions */
+.page-header-actions {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+}
+
+/* Compare section */
+.compare-section {
+  margin-top: var(--spacing-6);
+  padding: var(--spacing-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+}
+
+.compare-title {
+  margin: 0 0 var(--spacing-1);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.compare-subtitle {
+  margin: 0 0 var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.compare-selectors {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+  flex-wrap: wrap;
+}
+
+.compare-field {
+  flex: 1;
+  min-width: 180px;
+}
+
+.compare-arrow {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: var(--spacing-2);
+}
+
+.compare-results {
+  margin-top: var(--spacing-4);
+}
+
+.compare-summary {
+  margin: 0 0 var(--spacing-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.diff-count {
+  padding: 1px var(--spacing-2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.diff-count--added {
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #16a34a;
+}
+
+.diff-count--removed {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+}
+
+.diff-count--changed {
+  background: color-mix(in srgb, #d97706 12%, transparent);
+  color: #d97706;
+}
+
+.diff-group {
+  margin-bottom: var(--spacing-4);
+}
+
+.diff-group-title {
+  margin: 0 0 var(--spacing-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.diff-group-title--added { color: #16a34a; }
+.diff-group-title--removed { color: var(--color-error); }
+.diff-group-title--changed { color: #d97706; }
+
+.diff-row {
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-2);
+  border-left: 3px solid transparent;
+}
+
+.diff-row--added {
+  background: color-mix(in srgb, #16a34a 6%, transparent);
+  border-left-color: #16a34a;
+}
+
+.diff-row--removed {
+  background: color-mix(in srgb, var(--color-error) 6%, transparent);
+  border-left-color: var(--color-error);
+}
+
+.diff-row--changed {
+  background: color-mix(in srgb, #d97706 6%, transparent);
+  border-left-color: #d97706;
+}
+
+.diff-key {
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  display: block;
+  margin-bottom: var(--spacing-1);
+}
+
+.diff-source {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.diff-changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.diff-old,
+.diff-new {
+  font-size: var(--font-size-sm);
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.diff-label {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.diff-old span:last-child {
+  color: var(--color-error);
+  text-decoration: line-through;
+}
+
+.diff-new span:last-child {
+  color: #16a34a;
+}
+
+.compare-empty {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--spacing-4);
 }
 </style>

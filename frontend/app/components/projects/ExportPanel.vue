@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
-import { translationClient } from '~/api/translationClient'
+import { apiRequest } from '~/api/client'
 import { languagesClient } from '~/api/languagesClient'
-import type { ProjectLanguage } from '~/api/types'
+import { versionsClient } from '~/api/versionsClient'
+import type { ProjectLanguage, ProjectVersion } from '~/api/types'
 
 interface Props {
   projectId: string
@@ -13,8 +14,10 @@ const props = defineProps<Props>()
 const emit = defineEmits<{ close: [] }>()
 
 const languages = ref<ProjectLanguage[]>([])
+const versions = ref<ProjectVersion[]>([])
 const selectedLanguage = ref('__all__')
 const selectedFormat = ref('json')
+const selectedVersion = ref('working')
 const isLoadingPreview = ref(false)
 const isExporting = ref(false)
 const previewData = ref<string>('')
@@ -35,12 +38,34 @@ const languageOptions = computed(() => {
   return opts
 })
 
+const versionOptions = computed(() => {
+  const opts: Array<{ value: string; label: string }> = [
+    { value: 'working', label: 'Working Copy' },
+  ]
+  const liveVersion = versions.value.find(v => v.isLive)
+  if (liveVersion) {
+    opts.push({ value: 'live', label: `Live (${liveVersion.tag})` })
+  }
+  for (const v of versions.value) {
+    if (!v.isLive) {
+      opts.push({ value: v.id, label: v.tag })
+    }
+  }
+  return opts
+})
+
 const apiEndpointUrl = computed(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  let base: string
   if (selectedLanguage.value === '__all__') {
-    return `${origin}/api/exports/neutral?projectId=${props.projectId}`
+    base = `${origin}/api/exports/neutral?projectId=${props.projectId}`
+  } else {
+    base = `${origin}/api/integration/exports/bundle?projectId=${props.projectId}&language=${selectedLanguage.value}`
   }
-  return `${origin}/api/integration/exports/bundle?projectId=${props.projectId}&language=${selectedLanguage.value}`
+  if (selectedVersion.value && selectedVersion.value !== 'working') {
+    base += `&version=${encodeURIComponent(selectedVersion.value)}`
+  }
+  return base
 })
 
 function transformToFlat(data: Record<string, any>, prefix = ''): Record<string, string> {
@@ -119,11 +144,14 @@ async function loadPreview() {
   isLoadingPreview.value = true
   exportError.value = ''
   try {
+    const versionParam = selectedVersion.value !== 'working' ? selectedVersion.value : undefined
     let raw: unknown
     if (selectedLanguage.value === '__all__') {
-      raw = await translationClient.exportNeutral(props.projectId)
+      const url = `/exports/neutral?projectId=${encodeURIComponent(props.projectId)}${versionParam ? `&version=${encodeURIComponent(versionParam)}` : ''}`
+      raw = await apiRequest<unknown>(url)
     } else {
-      raw = await translationClient.exportBundle(props.projectId, selectedLanguage.value)
+      const url = `/integration/exports/bundle?projectId=${encodeURIComponent(props.projectId)}&language=${encodeURIComponent(selectedLanguage.value)}${versionParam ? `&version=${encodeURIComponent(versionParam)}` : ''}`
+      raw = await apiRequest<unknown>(url)
     }
     previewData.value = formatExportData(raw)
   } catch (error: any) {
@@ -223,12 +251,26 @@ async function loadLanguages() {
   }
 }
 
-watch([selectedLanguage, selectedFormat], () => {
+async function loadVersions() {
+  try {
+    const data = await versionsClient.list(props.projectId)
+    versions.value = Array.isArray(data) ? data : []
+  } catch {
+    versions.value = []
+  }
+}
+
+watch([selectedLanguage, selectedFormat, selectedVersion], () => {
   if (previewData.value) loadPreview()
 })
 
 onMounted(async () => {
-  await loadLanguages()
+  await Promise.all([loadLanguages(), loadVersions()])
+  // Default to live version if one exists
+  const liveVersion = versions.value.find(v => v.isLive)
+  if (liveVersion) {
+    selectedVersion.value = 'live'
+  }
   await loadPreview()
 })
 </script>
@@ -247,6 +289,16 @@ onMounted(async () => {
       <div class="ep-body">
         <!-- Options -->
         <div class="ep-options">
+          <div class="ep-field">
+            <UiSelect
+              id="epVersion"
+              v-model="selectedVersion"
+              label="Version"
+              :options="versionOptions"
+            />
+            <span class="ep-hint">Choose which version to export from</span>
+          </div>
+
           <div class="ep-field">
             <UiSelect
               id="epFormat"
