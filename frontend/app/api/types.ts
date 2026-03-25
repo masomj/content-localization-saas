@@ -162,3 +162,51 @@ export interface LocalizationGridResponse {
   pageSize: number
   rows: LocalizationGridRow[]
 }
+
+export interface ContentReview {
+  id: string
+  contentItemId: string
+  reviewerEmail: string
+  verdict: 'approved' | 'changes_requested' | 'comment'
+  body: string
+  createdUtc: string
+}
+
+export interface ReviewQueueItem {
+  id: string
+  key: string
+  source: string
+  status: string
+  reviewAssigneeEmail: string
+  projectId: string
+  commentCount: number
+  reviewCount: number
+  latestReviewVerdict: string | null
+}
+
+export interface TimelineEntry {
+  type: 'review' | 'comment' | 'status_change' | 'revision'
+  timestamp: string
+  actorEmail: string
+  summary: string
+  details: any
+}
+
+export interface DiscussionThread {
+  id: string
+  contentItemId: string
+  title: string
+  createdByEmail: string
+  isResolved: boolean
+  createdUtc: string
+}
+
+export interface DiscussionComment {
+  id: string
+  threadId: string
+  parentCommentId: string | null
+  reviewId: string | null
+  body: string
+  authorEmail: string
+  createdUtc: string
+}
