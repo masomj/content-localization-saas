@@ -2,6 +2,7 @@
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import LanguageManager from '~/components/projects/LanguageManager.vue'
+import LocalizationGrid from '~/components/projects/LocalizationGrid.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
@@ -18,6 +19,7 @@ const selectedProjectId = ref('')
 const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status'>>>([])
 
 const showLanguages = ref(false)
+const viewMode = ref<'list' | 'grid'>('list')
 const showAddContentForm = ref(false)
 const newContentKey = ref('')
 const newContentSource = ref('')
@@ -118,6 +120,23 @@ watch(selectedProjectId, async () => {
         <p class="page-subtitle">Content is attached to a project</p>
       </div>
       <div class="page-header-actions">
+        <div class="view-toggle">
+          <UiButton
+            size="sm"
+            :variant="viewMode === 'list' ? 'primary' : 'secondary'"
+            @click="viewMode = 'list'"
+          >
+            List
+          </UiButton>
+          <UiButton
+            size="sm"
+            :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
+            :disabled="!selectedProjectId"
+            @click="viewMode = 'grid'"
+          >
+            Grid
+          </UiButton>
+        </div>
         <UiButton :disabled="!selectedProjectId" variant="secondary" @click="showLanguages = !showLanguages">
           Languages
         </UiButton>
@@ -157,27 +176,35 @@ watch(selectedProjectId, async () => {
     />
 
     <template v-else>
-      <div v-if="isLoading" class="content-list">
-        <div v-for="i in 3" :key="i" class="content-item"><AppSkeleton lines="2" height="1rem" /></div>
-      </div>
+      <template v-if="viewMode === 'grid'">
+        <LocalizationGrid
+          :project-id="selectedProjectId"
+        />
+      </template>
 
-      <AppEmptyState
-        v-else-if="contents.length === 0"
-        title="No content in this project"
-        description="Add content items linked to this project"
-      >
-        <template #action>
-          <UiButton @click="openAddContentForm">Add Content</UiButton>
-        </template>
-      </AppEmptyState>
-
-      <div v-else class="content-list">
-        <div v-for="item in contents" :key="item.id" class="content-item">
-          <h3>{{ item.key }}</h3>
-          <p>{{ item.source }}</p>
-          <small>Status: {{ item.status }}</small>
+      <template v-else>
+        <div v-if="isLoading" class="content-list">
+          <div v-for="i in 3" :key="i" class="content-item"><AppSkeleton lines="2" height="1rem" /></div>
         </div>
-      </div>
+
+        <AppEmptyState
+          v-else-if="contents.length === 0"
+          title="No content in this project"
+          description="Add content items linked to this project"
+        >
+          <template #action>
+            <UiButton @click="openAddContentForm">Add Content</UiButton>
+          </template>
+        </AppEmptyState>
+
+        <div v-else class="content-list">
+          <div v-for="item in contents" :key="item.id" class="content-item">
+            <h3>{{ item.key }}</h3>
+            <p>{{ item.source }}</p>
+            <small>Status: {{ item.status }}</small>
+          </div>
+        </div>
+      </template>
     </template>
 
     <div v-if="showAddContentForm" class="content-form-overlay" @click.self="closeAddContentForm">
@@ -213,6 +240,7 @@ watch(selectedProjectId, async () => {
 .page-header h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--spacing-1) 0; }
 .page-subtitle { color: var(--color-text-muted); margin: 0; }
 .page-header-actions { display: flex; gap: var(--spacing-2); align-items: center; }
+.view-toggle { display: flex; gap: 1px; background: var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
 .btn-icon { width: 1.25em; height: 1.25em; margin-right: var(--spacing-2); }
 .project-picker { margin-bottom: var(--spacing-5); display: flex; flex-direction: column; gap: var(--spacing-2); max-width: 420px; }
 .lang-manager-section { margin-bottom: var(--spacing-5); }
