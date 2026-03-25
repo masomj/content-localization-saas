@@ -161,10 +161,10 @@ async function submitTreeModal() {
     } else if (m.type === 'delete' && m.nodeId) {
       // Delete endpoint — reload tree after
     }
-    await loadTree(selectedProjectId.value)
     closeTreeModal()
+    await loadTree(selectedProjectId.value)
   } catch (error: any) {
-    treeModalError.value = error?.message || 'Operation failed'
+    treeModalError.value = error?.data?.error || error?.message || 'Operation failed'
     treeModalSubmitting.value = false
   }
 }
