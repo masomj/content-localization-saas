@@ -210,3 +210,33 @@ export interface DiscussionComment {
   authorEmail: string
   createdUtc: string
 }
+
+export interface ProjectVersion {
+  id: string
+  projectId: string
+  tag: string
+  title: string
+  notes: string
+  isLive: boolean
+  createdByEmail: string
+  contentItemCount: number
+  translationCount: number
+  createdUtc: string
+}
+
+export interface VersionSnapshotItem {
+  id: string
+  versionId: string
+  originalContentItemId: string
+  key: string
+  source: string
+  status: string
+  tags: string
+  translationsJson: string
+}
+
+export interface VersionDiff {
+  added: Array<{ key: string; source: string }>
+  removed: Array<{ key: string; source: string }>
+  changed: Array<{ key: string; oldSource: string; newSource: string }>
+}
