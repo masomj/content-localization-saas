@@ -254,8 +254,89 @@ internal sealed class ProjectCollectionService(
         }
     }
 
-    public Task<List<ProjectTreeNode>> GetTreeAsync(Guid projectId, CancellationToken cancellationToken)
+    public async Task<List<ProjectTreeNode>> GetTreeAsync(Guid projectId, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        await EnsureProjectExists(projectId, cancellationToken);
+
+        var collections = await db.ProjectCollections
+            .Where(x => x.ProjectId == projectId)
+            .ToListAsync(cancellationToken);
+
+        var contentItems = await db.ContentItems
+            .Where(x => x.ProjectId == projectId)
+            .ToListAsync(cancellationToken);
+
+        // Find root collection to exclude it from visible nodes but use its Id for grouping
+        var rootCollection = collections.FirstOrDefault(x => x.IsRoot);
+        var rootCollectionId = rootCollection?.Id;
+
+        // Build folder nodes (exclude root — its children become top-level)
+        var folderNodes = collections
+            .Where(x => !x.IsRoot)
+            .Select(c => new ProjectTreeNode
+            {
+                Id = c.Id,
+                Name = c.Name,
+                NodeType = "folder",
+                ParentId = c.ParentId == rootCollectionId ? null : c.ParentId,
+                SortOrder = c.SortOrder,
+                Depth = c.Depth - (rootCollection != null ? 1 : 0),
+                Children = []
+            })
+            .ToList();
+
+        // Build content key nodes
+        var keyNodes = contentItems
+            .Select(ci => new ProjectTreeNode
+            {
+                Id = ci.Id,
+                Name = ci.Key,
+                NodeType = "contentKey",
+                ParentId = ci.CollectionId == rootCollectionId ? null : ci.CollectionId,
+                SortOrder = ci.SortOrder,
+                Depth = 0, // will be calculated below
+                Children = [],
+                Key = ci.Key,
+                Status = ci.Status
+            })
+            .ToList();
+
+        // Combine and index by Id
+        var allNodes = new List<ProjectTreeNode>();
+        allNodes.AddRange(folderNodes);
+        allNodes.AddRange(keyNodes);
+
+        var lookup = allNodes.ToDictionary(x => x.Id);
+
+        // Assign children
+        var roots = new List<ProjectTreeNode>();
+        foreach (var node in allNodes)
+        {
+            if (node.ParentId.HasValue && lookup.TryGetValue(node.ParentId.Value, out var parent))
+            {
+                parent.Children.Add(node);
+            }
+            else
+            {
+                roots.Add(node);
+            }
+        }
+
+        // Sort children at each level
+        SortChildren(roots);
+
+        return roots;
+    }
+
+    private static void SortChildren(List<ProjectTreeNode> nodes)
+    {
+        nodes.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+        foreach (var node in nodes)
+        {
+            if (node.Children.Count > 0)
+            {
+                SortChildren(node.Children);
+            }
+        }
     }
 }

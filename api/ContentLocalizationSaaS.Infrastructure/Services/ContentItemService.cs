@@ -25,6 +25,7 @@ internal sealed class ContentItemService(
         var item = new ContentItem
         {
             ProjectId = request.ProjectId,
+            CollectionId = request.CollectionId,
             Key = request.Key.Trim(),
             Source = request.Source.Trim(),
             Status = request.Status.Trim(),
@@ -176,8 +177,31 @@ internal sealed class ContentItemService(
         return string.Join(", ", parts);
     }
 
-    public Task<ContentItem> MoveAsync(Guid contentItemId, MoveContentItemRequest request, CancellationToken cancellationToken)
+    public async Task<ContentItem> MoveAsync(Guid contentItemId, MoveContentItemRequest request, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == contentItemId, cancellationToken)
+            ?? throw new ResourceNotFoundException(nameof(ContentItem), contentItemId);
+
+        // If a target collection is specified, validate it belongs to the same project
+        if (request.CollectionId.HasValue)
+        {
+            var collection = await db.ProjectCollections
+                .FirstOrDefaultAsync(x => x.Id == request.CollectionId.Value, cancellationToken)
+                ?? throw new ResourceNotFoundException(nameof(ProjectCollection), request.CollectionId.Value);
+
+            if (collection.ProjectId != item.ProjectId)
+            {
+                throw new RequestValidationException(new Dictionary<string, string[]>
+                {
+                    ["collectionId"] = ["Target collection must belong to the same project."]
+                });
+            }
+        }
+
+        item.CollectionId = request.CollectionId;
+        item.SortOrder = request.SortOrder;
+
+        await db.SaveChangesAsync(cancellationToken);
+        return item;
     }
 }
