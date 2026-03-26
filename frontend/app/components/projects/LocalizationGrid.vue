@@ -68,8 +68,10 @@ function statusClass(status: string): string {
       return 'status--review'
     case 'outdated':
       return 'status--outdated'
-    default:
+    case 'todo':
       return 'status--todo'
+    default:
+      return 'status--untranslated'
   }
 }
 
@@ -80,7 +82,7 @@ function statusLabel(status: string): string {
     case 'pending_review': return 'Review'
     case 'outdated': return 'Outdated'
     case 'todo': return 'Todo'
-    default: return 'Missing'
+    default: return 'Untranslated'
   }
 }
 
@@ -230,13 +232,21 @@ defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } }
               @click="handleCellClick(row, lang.bcp47Code)"
               @keyup.enter="handleCellClick(row, lang.bcp47Code)"
             >
-              <span class="loc-status-icon">
-                <template v-if="getTarget(row, lang.bcp47Code)?.status === 'approved' || getTarget(row, lang.bcp47Code)?.status === 'done'">&#10003;</template>
-                <template v-else-if="getTarget(row, lang.bcp47Code)?.status === 'pending_review'">&#9998;</template>
-                <template v-else-if="getTarget(row, lang.bcp47Code)?.status === 'outdated'">&#9888;</template>
-                <template v-else>&#8212;</template>
-              </span>
-              <span class="loc-status-text">{{ statusLabel(getTarget(row, lang.bcp47Code)?.status ?? '') }}</span>
+              <template v-if="getTarget(row, lang.bcp47Code)">
+                <span class="loc-status-icon">
+                  <template v-if="getTarget(row, lang.bcp47Code)?.status === 'approved' || getTarget(row, lang.bcp47Code)?.status === 'done'">&#10003;</template>
+                  <template v-else-if="getTarget(row, lang.bcp47Code)?.status === 'pending_review'">&#9998;</template>
+                  <template v-else-if="getTarget(row, lang.bcp47Code)?.status === 'outdated'">&#9888;</template>
+                  <template v-else>&#8212;</template>
+                </span>
+                <span class="loc-status-text">{{ statusLabel(getTarget(row, lang.bcp47Code)?.status ?? '') }}</span>
+              </template>
+              <template v-else>
+                <span class="loc-untranslated-hint">
+                  <span class="loc-status-icon">+</span>
+                  <span class="loc-status-text">Untranslated</span>
+                </span>
+              </template>
             </td>
           </tr>
         </tbody>
@@ -354,6 +364,18 @@ defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } }
 .status--review { background: color-mix(in srgb, #eab308 10%, transparent); color: #a16207; }
 .status--outdated { background: color-mix(in srgb, #f97316 10%, transparent); color: #c2410c; }
 .status--todo { background: var(--color-surface); color: var(--color-text-muted); }
+.status--untranslated { background: var(--color-surface); color: var(--color-text-muted); }
+
+.loc-untranslated-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+.loc-td--cell:hover .loc-untranslated-hint {
+  opacity: 1;
+}
 
 .loc-pagination {
   display: flex;
