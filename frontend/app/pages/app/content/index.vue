@@ -8,8 +8,9 @@ import TranslationEditor from '~/components/projects/TranslationEditor.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
+import { languagesClient } from '~/api/languagesClient'
 import { projectsClient } from '~/api/projectsClient'
-import type { ContentItem, Project, ProjectTreeNode } from '~/api/types'
+import type { ContentItem, Project, ProjectLanguage, ProjectTreeNode } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Content - LocFlow' })
@@ -30,6 +31,7 @@ const addContentError = ref('')
 
 const editingCell = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
 const gridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
+const noTargetLangMessage = ref('')
 
 // ---------------------------------------------------------------------------
 // Folder navigation state
@@ -161,6 +163,30 @@ function navigateUp() {
 // ---------------------------------------------------------------------------
 function openEditor(payload: { itemId: string; itemKey: string; source: string; language: string }) {
   editingCell.value = payload
+}
+
+async function handleContentRowClick(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>) {
+  if (!selectedProjectId.value) return
+  noTargetLangMessage.value = ''
+
+  try {
+    const langs: ProjectLanguage[] = await languagesClient.list(selectedProjectId.value)
+    const targets = (Array.isArray(langs) ? langs : []).filter(l => !l.isSource && l.isActive)
+
+    if (targets.length === 0) {
+      noTargetLangMessage.value = 'No target languages configured. Add languages via the Languages panel to start translating.'
+      return
+    }
+
+    editingCell.value = {
+      itemId: item.id,
+      itemKey: item.key,
+      source: item.source,
+      language: targets[0]!.bcp47Code,
+    }
+  } catch {
+    noTargetLangMessage.value = 'Failed to load project languages.'
+  }
 }
 
 function closeEditor() {
@@ -492,11 +518,12 @@ watch(selectedProjectId, async () => {
             </button>
 
             <!-- Content items (paginated) -->
-            <div
+            <button
               v-for="(item, idx) in paginatedContentItems"
               :key="item.id"
-              class="content-row"
+              class="content-row content-row--clickable"
               :class="{ 'content-row--alt': idx % 2 === 1 }"
+              @click="handleContentRowClick(item)"
             >
               <div class="content-row-main">
                 <span class="content-key">{{ item.key }}</span>
@@ -505,7 +532,7 @@ watch(selectedProjectId, async () => {
               <span class="content-badge" :class="statusBadgeClass(item.status)">
                 {{ item.status }}
               </span>
-            </div>
+            </button>
 
             <!-- Empty folder state -->
             <div
@@ -562,6 +589,12 @@ watch(selectedProjectId, async () => {
           <UiButton type="submit">Add content</UiButton>
         </div>
       </form>
+    </div>
+
+    <!-- No target languages message -->
+    <div v-if="noTargetLangMessage" class="no-target-lang-banner">
+      <p>{{ noTargetLangMessage }}</p>
+      <UiButton size="sm" variant="secondary" @click="noTargetLangMessage = ''">Dismiss</UiButton>
     </div>
 
     <TranslationEditor
@@ -715,6 +748,17 @@ watch(selectedProjectId, async () => {
   border: 1px solid var(--color-border);
   border-bottom: none;
   font-size: var(--font-size-sm);
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.content-row--clickable {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.content-row--clickable:hover {
+  background: color-mix(in srgb, var(--color-primary-600) 5%, transparent);
 }
 .content-row:last-of-type {
   border-bottom: 1px solid var(--color-border);
@@ -800,4 +844,24 @@ watch(selectedProjectId, async () => {
 .content-form-folder-hint { font-size: var(--font-size-sm); color: var(--color-text-muted); padding: var(--spacing-2) var(--spacing-3); background: color-mix(in srgb, var(--color-primary-600) 6%, transparent); border-radius: var(--radius-md); }
 .field-error { margin: 0; color: var(--color-error); font-size: var(--font-size-xs); }
 .content-form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); }
+
+/* No target languages banner */
+.no-target-lang-banner {
+  position: fixed;
+  bottom: var(--spacing-6);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  z-index: var(--z-modal);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+.no-target-lang-banner p { margin: 0; }
 </style>
