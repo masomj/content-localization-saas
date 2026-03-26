@@ -9,9 +9,14 @@ import type { Project, ProjectTreeNode } from '~/api/types'
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Projects - LocFlow' })
 
+// Redirect non-admins away from projects page
+const auth = useAuth()
+if (import.meta.client && !auth.isLoading.value && !auth.isAdmin.value) {
+  navigateTo('/app/content')
+}
+
 type ProjectView = Project & { status: string; progress: number; languages: number }
 
-const auth = useAuth()
 const isLoading = ref(false)
 const projects = ref<ProjectView[]>([])
 const selectedProjectId = ref<string>('')
