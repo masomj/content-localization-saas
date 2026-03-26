@@ -699,7 +699,7 @@ watch(selectedProjectId, async () => {
 .page-subtitle { color: var(--color-text-muted); margin: 0; }
 .page-header-actions { display: flex; gap: var(--spacing-2); align-items: center; }
 .view-toggle { display: flex; gap: 1px; background: var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
-.btn-icon { display: block; width: 1.25em; height: 1.25em; margin-right: var(--spacing-2); flex-shrink: 0; }
+.btn-icon { width: 1em; height: 1em; flex-shrink: 0; }
 .project-picker { margin-bottom: var(--spacing-5); display: flex; flex-direction: column; gap: var(--spacing-2); max-width: 420px; }
 .lang-manager-section { margin-bottom: var(--spacing-5); }
 .label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
