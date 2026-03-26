@@ -29,6 +29,10 @@ const newContentKey = ref('')
 const newContentSource = ref('')
 const addContentError = ref('')
 
+const showNewFolderForm = ref(false)
+const newFolderName = ref('')
+const newFolderError = ref('')
+
 const editingCell = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
 const gridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
 const noTargetLangMessage = ref('')
@@ -303,6 +307,47 @@ async function addContent() {
 }
 
 // ---------------------------------------------------------------------------
+// New folder
+// ---------------------------------------------------------------------------
+function openNewFolderForm() {
+  newFolderError.value = ''
+  showNewFolderForm.value = true
+}
+
+function closeNewFolderForm() {
+  showNewFolderForm.value = false
+  newFolderName.value = ''
+  newFolderError.value = ''
+}
+
+async function createFolder() {
+  const name = newFolderName.value.trim()
+
+  if (!selectedProjectId.value) {
+    newFolderError.value = 'Please select a project first'
+    return
+  }
+
+  if (!name) {
+    newFolderError.value = 'Folder name is required'
+    return
+  }
+
+  try {
+    await projectsClient.createCollection(selectedProjectId.value, {
+      name,
+      parentId: currentFolderId.value,
+    })
+
+    await loadContent()
+    reloadGridIfVisible()
+    closeNewFolderForm()
+  } catch (error: any) {
+    newFolderError.value = error?.message || 'Failed to create folder'
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Status badge helper
 // ---------------------------------------------------------------------------
 function statusBadgeClass(status: string): string {
@@ -377,6 +422,12 @@ watch(selectedProjectId, async () => {
             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
           </svg>
           Add Content
+        </UiButton>
+        <UiButton :disabled="!selectedProjectId" variant="secondary" @click="openNewFolderForm">
+          <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
+            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+          </svg>
+          New Folder
         </UiButton>
       </div>
     </header>
@@ -587,6 +638,32 @@ watch(selectedProjectId, async () => {
         <div class="content-form-actions">
           <UiButton type="button" variant="secondary" @click="closeAddContentForm">Cancel</UiButton>
           <UiButton type="submit">Add content</UiButton>
+        </div>
+      </form>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- New folder modal                                             -->
+    <!-- ============================================================ -->
+    <div v-if="showNewFolderForm" class="content-form-overlay" @click.self="closeNewFolderForm">
+      <form class="content-form" @submit.prevent="createFolder">
+        <h2>New folder</h2>
+
+        <div v-if="currentFolderId !== null" class="content-form-folder-hint">
+          Creating inside: <strong>{{ breadcrumbs[breadcrumbs.length - 1]?.name }}</strong>
+        </div>
+
+        <label for="folderName" class="label-with-hint">
+          <span>Folder name</span>
+          <span class="label-hint">e.g. auth, common, onboarding</span>
+        </label>
+        <input id="folderName" v-model="newFolderName" type="text" autocomplete="off">
+
+        <p v-if="newFolderError" class="field-error">{{ newFolderError }}</p>
+
+        <div class="content-form-actions">
+          <UiButton type="button" variant="secondary" @click="closeNewFolderForm">Cancel</UiButton>
+          <UiButton type="submit">Create folder</UiButton>
         </div>
       </form>
     </div>
