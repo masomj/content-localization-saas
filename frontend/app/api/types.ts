@@ -26,6 +26,9 @@ export interface Project {
   id: string
   name: string
   status?: string
+  description?: string
+  sourceLanguage?: string
+  createdUtc?: string
 }
 
 export interface Collection {

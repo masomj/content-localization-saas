@@ -17,7 +17,7 @@ useSeoMeta({ title: 'Content - LocFlow' })
 
 const auth = useAuth()
 const isLoading = ref(false)
-const projects = ref<Array<{ id: string; name: string }>>([])
+const projects = ref<Array<{ id: string; name: string; description?: string }>>([])
 const selectedProjectId = ref('')
 const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>>>([])
 
@@ -32,6 +32,10 @@ const addContentError = ref('')
 const showNewFolderForm = ref(false)
 const newFolderName = ref('')
 const newFolderError = ref('')
+
+const selectedProject = computed(() =>
+  projects.value.find(p => p.id === selectedProjectId.value) ?? null,
+)
 
 const editingCell = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
 const gridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
@@ -221,7 +225,7 @@ const gridReloadKey = ref(0)
 async function loadProjects() {
   if (!auth.organization.value?.id) return
   const data = await projectsClient.list(auth.organization.value.id)
-  projects.value = (Array.isArray(data) ? data : []).map((p: Project) => ({ id: p.id, name: p.name }))
+  projects.value = (Array.isArray(data) ? data : []).map((p: Project) => ({ id: p.id, name: p.name, description: p.description }))
 
   if (!selectedProjectId.value && projects.value.length > 0) {
     selectedProjectId.value = projects.value[0]!.id
@@ -443,6 +447,11 @@ watch(selectedProjectId, async () => {
         ]"
       />
       <p class="label-hint">Select a project to view/manage content</p>
+    </div>
+
+    <div v-if="selectedProject" class="project-subheader">
+      <p class="project-subheader-name">{{ selectedProject.name }}</p>
+      <p v-if="selectedProject.description" class="project-subheader-desc">{{ selectedProject.description }}</p>
     </div>
 
     <LanguageManager
@@ -701,6 +710,25 @@ watch(selectedProjectId, async () => {
 .view-toggle { display: flex; gap: 1px; background: var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
 .btn-icon { width: 1em; height: 1em; flex-shrink: 0; }
 .project-picker { margin-bottom: var(--spacing-5); display: flex; flex-direction: column; gap: var(--spacing-2); max-width: 420px; }
+.project-subheader {
+  margin-bottom: var(--spacing-5);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: color-mix(in srgb, var(--color-primary-600) 4%, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.project-subheader-name {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+.project-subheader-desc {
+  margin: var(--spacing-1) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
 .lang-manager-section { margin-bottom: var(--spacing-5); }
 .label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
 .label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); }
