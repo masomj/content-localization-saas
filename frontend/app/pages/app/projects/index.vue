@@ -285,7 +285,10 @@ watch(selectedProjectId, (id) => id && loadTree(id))
         <h1>Projects</h1>
         <p class="page-subtitle">Manage your translation projects</p>
       </div>
-      <UiButton @click="openCreateProjectForm">New Project</UiButton>
+      <div class="page-header-right">
+        <UiButton v-if="auth.isAdmin.value" @click="openCreateProjectForm">New Project</UiButton>
+        <p v-else class="admin-hint">Contact an admin to create projects</p>
+      </div>
     </header>
 
     <div v-if="isLoading" class="projects-grid">
@@ -298,7 +301,8 @@ watch(selectedProjectId, (id) => id && loadTree(id))
       description="Create your first project to start managing translations"
     >
       <template #action>
-        <UiButton @click="openCreateProjectForm">Create Project</UiButton>
+        <UiButton v-if="auth.isAdmin.value" @click="openCreateProjectForm">Create Project</UiButton>
+        <p v-else class="admin-hint">Contact an admin to create projects</p>
       </template>
     </AppEmptyState>
 
@@ -440,6 +444,8 @@ watch(selectedProjectId, (id) => id && loadTree(id))
 <style scoped>
 .projects-page { max-width: 1200px; }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-6); }
+.page-header-right { display: flex; align-items: center; }
+.admin-hint { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); font-style: italic; }
 .page-subtitle { color: var(--color-text-muted); margin: 0; }
 .projects-layout { display: grid; gap: var(--spacing-6); }
 .section-title { margin: 0 0 var(--spacing-3); }

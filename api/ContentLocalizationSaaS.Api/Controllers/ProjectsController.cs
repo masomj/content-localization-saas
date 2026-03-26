@@ -17,7 +17,7 @@ public sealed class ProjectsController(IProjectService projects) : ControllerBas
     }
 
     [HttpPost]
-    [RequireAppRole(AppRole.Editor)]
+    [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Create([FromBody] CreateProjectRequest request, CancellationToken cancellationToken)
     {
         var project = await projects.CreateAsync(request, cancellationToken);
@@ -32,7 +32,7 @@ public sealed class ProjectsController(IProjectService projects) : ControllerBas
     }
 
     [HttpPut("{id:guid}")]
-    [RequireAppRole(AppRole.Editor)]
+    [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectRequest request, CancellationToken cancellationToken)
     {
         var project = await projects.UpdateAsync(id, request, cancellationToken);
