@@ -33,6 +33,18 @@ const showNewFolderForm = ref(false)
 const newFolderName = ref('')
 const newFolderError = ref('')
 
+// Delete confirmation modal
+const showDeleteConfirm = ref(false)
+const deleteTarget = ref<Pick<ContentItem, 'id' | 'key'> | null>(null)
+const deleteError = ref('')
+
+// Edit content modal
+const showEditForm = ref(false)
+const editTarget = ref<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'> | null>(null)
+const editSource = ref('')
+const editStatus = ref('')
+const editError = ref('')
+
 const selectedProject = computed(() =>
   projects.value.find(p => p.id === selectedProjectId.value) ?? null,
 )
@@ -352,6 +364,71 @@ async function createFolder() {
 }
 
 // ---------------------------------------------------------------------------
+// Delete content item
+// ---------------------------------------------------------------------------
+function openDeleteConfirm(item: Pick<ContentItem, 'id' | 'key'>, event: Event) {
+  event.stopPropagation()
+  deleteTarget.value = item
+  deleteError.value = ''
+  showDeleteConfirm.value = true
+}
+
+function closeDeleteConfirm() {
+  showDeleteConfirm.value = false
+  deleteTarget.value = null
+  deleteError.value = ''
+}
+
+async function confirmDelete() {
+  if (!deleteTarget.value) return
+  try {
+    await contentClient.delete(deleteTarget.value.id)
+    await loadContent()
+    reloadGridIfVisible()
+    closeDeleteConfirm()
+  } catch (error: any) {
+    deleteError.value = error?.message || 'Failed to delete content item'
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Edit content item
+// ---------------------------------------------------------------------------
+function openEditForm(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>, event: Event) {
+  event.stopPropagation()
+  editTarget.value = item
+  editSource.value = item.source
+  editStatus.value = item.status
+  editError.value = ''
+  showEditForm.value = true
+}
+
+function closeEditForm() {
+  showEditForm.value = false
+  editTarget.value = null
+  editSource.value = ''
+  editStatus.value = ''
+  editError.value = ''
+}
+
+async function saveEdit() {
+  if (!editTarget.value) return
+  const source = editSource.value.trim()
+  if (!source) {
+    editError.value = 'Source text is required'
+    return
+  }
+  try {
+    await contentClient.update(editTarget.value.id, source, editStatus.value)
+    await loadContent()
+    reloadGridIfVisible()
+    closeEditForm()
+  } catch (error: any) {
+    editError.value = error?.message || 'Failed to update content item'
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Status badge helper
 // ---------------------------------------------------------------------------
 function statusBadgeClass(status: string): string {
@@ -592,6 +669,22 @@ watch(selectedProjectId, async () => {
               <span class="content-badge" :class="statusBadgeClass(item.status)">
                 {{ item.status }}
               </span>
+              <div class="content-row-actions">
+                <button
+                  class="row-action-btn row-action-btn--edit"
+                  title="Edit content"
+                  @click="openEditForm(item, $event)"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                </button>
+                <button
+                  class="row-action-btn row-action-btn--delete"
+                  title="Delete content"
+                  @click="openDeleteConfirm(item, $event)"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                </button>
+              </div>
             </button>
 
             <!-- Empty folder state -->
@@ -698,6 +791,56 @@ watch(selectedProjectId, async () => {
       :project-id="selectedProjectId"
       @close="showExport = false"
     />
+
+    <!-- ============================================================ -->
+    <!-- Delete confirmation modal                                     -->
+    <!-- ============================================================ -->
+    <div v-if="showDeleteConfirm" class="content-form-overlay" @click.self="closeDeleteConfirm">
+      <div class="content-form">
+        <h2>Delete content item</h2>
+        <p class="delete-confirm-text">
+          Delete key <strong class="delete-key">{{ deleteTarget?.key }}</strong>? This action cannot be undone.
+        </p>
+        <p v-if="deleteError" class="field-error">{{ deleteError }}</p>
+        <div class="content-form-actions">
+          <UiButton type="button" variant="secondary" @click="closeDeleteConfirm">Cancel</UiButton>
+          <UiButton type="button" variant="danger" @click="confirmDelete">Delete</UiButton>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Edit content modal                                            -->
+    <!-- ============================================================ -->
+    <div v-if="showEditForm" class="content-form-overlay" @click.self="closeEditForm">
+      <form class="content-form" @submit.prevent="saveEdit">
+        <h2>Edit content item</h2>
+        <p class="edit-key-heading">{{ editTarget?.key }}</p>
+
+        <label for="editSource" class="label-with-hint">
+          <span>Source text</span>
+          <span class="label-hint">The default text in the source language</span>
+        </label>
+        <textarea id="editSource" v-model="editSource" rows="4" />
+
+        <label for="editStatus" class="label-with-hint">
+          <span>Status</span>
+          <span class="label-hint">Content lifecycle status</span>
+        </label>
+        <select id="editStatus" v-model="editStatus" class="edit-status-select">
+          <option value="draft">Draft</option>
+          <option value="in_review">In Review</option>
+          <option value="approved">Approved</option>
+        </select>
+
+        <p v-if="editError" class="field-error">{{ editError }}</p>
+
+        <div class="content-form-actions">
+          <UiButton type="button" variant="secondary" @click="closeEditForm">Cancel</UiButton>
+          <UiButton type="submit">Save</UiButton>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -969,4 +1112,77 @@ watch(selectedProjectId, async () => {
   color: var(--color-text-secondary);
 }
 .no-target-lang-banner p { margin: 0; }
+
+/* Row action buttons */
+.content-row-actions {
+  display: flex;
+  gap: var(--spacing-1);
+  flex-shrink: 0;
+  margin-left: var(--spacing-2);
+}
+.row-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.row-action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.row-action-btn--edit:hover {
+  background: color-mix(in srgb, var(--color-primary-600) 10%, transparent);
+  color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+}
+.row-action-btn--delete:hover {
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+/* Delete confirmation modal */
+.delete-confirm-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+.delete-key {
+  font-family: monospace;
+  color: var(--color-text-primary);
+}
+
+/* Edit content modal */
+.edit-key-heading {
+  margin: 0;
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: color-mix(in srgb, var(--color-primary-600) 6%, transparent);
+  border-radius: var(--radius-md);
+}
+.edit-status-select {
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+.edit-status-select:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
 </style>

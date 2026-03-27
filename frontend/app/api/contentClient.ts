@@ -17,4 +17,15 @@ export const contentClient = {
       body: JSON.stringify(payload),
     })
   },
+  update(id: string, source: string, status: string) {
+    return apiRequest<ContentItem>(`/content-items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ source, status }),
+    })
+  },
+  delete(id: string) {
+    return apiRequest<void>(`/content-items/${id}`, {
+      method: 'DELETE',
+    })
+  },
 }
