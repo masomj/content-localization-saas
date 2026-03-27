@@ -2,7 +2,6 @@
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import ExportPanel from '~/components/projects/ExportPanel.vue'
-import LanguageManager from '~/components/projects/LanguageManager.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
@@ -18,7 +17,6 @@ const projects = ref<Array<{ id: string; name: string; description?: string }>>(
 const selectedProjectId = ref('')
 const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>>>([])
 
-const showLanguages = ref(false)
 const showExport = ref(false)
 const showAddContentForm = ref(false)
 const newContentKey = ref('')
@@ -265,10 +263,6 @@ async function deleteSidePanelItem() {
   }
 }
 
-function onLanguagesUpdated() {
-  loadContent()
-}
-
 // ---------------------------------------------------------------------------
 // Data loading
 // ---------------------------------------------------------------------------
@@ -473,9 +467,9 @@ watch(selectedProjectId, async () => {
         <p class="page-subtitle">Content is attached to a project</p>
       </div>
       <div class="page-header-actions">
-        <UiButton :disabled="!selectedProjectId" variant="secondary" @click="showLanguages = !showLanguages">
+        <NuxtLink to="/app/content/languages" class="header-link-btn">
           Languages
-        </UiButton>
+        </NuxtLink>
         <UiButton :disabled="!selectedProjectId" variant="secondary" @click="showExport = true">
           Export
         </UiButton>
@@ -511,13 +505,6 @@ watch(selectedProjectId, async () => {
       <p class="project-subheader-name">{{ selectedProject.name }}</p>
       <p v-if="selectedProject.description" class="project-subheader-desc">{{ selectedProject.description }}</p>
     </div>
-
-    <LanguageManager
-      v-if="showLanguages && selectedProjectId"
-      :project-id="selectedProjectId"
-      class="lang-manager-section"
-      @updated="onLanguagesUpdated"
-    />
 
     <AppEmptyState
       v-if="projects.length === 0"
@@ -804,6 +791,23 @@ watch(selectedProjectId, async () => {
 .page-header h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--spacing-1) 0; }
 .page-subtitle { color: var(--color-text-muted); margin: 0; }
 .page-header-actions { display: flex; gap: var(--spacing-2); align-items: center; }
+.header-link-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+}
+.header-link-btn:hover {
+  background: var(--color-gray-100);
+  color: var(--color-text-primary);
+  border-color: var(--color-gray-300);
+}
 .btn-icon { width: 1em; height: 1em; flex-shrink: 0; }
 .project-picker { margin-bottom: var(--spacing-5); display: flex; flex-direction: column; gap: var(--spacing-2); max-width: 420px; }
 .project-subheader {
