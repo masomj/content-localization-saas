@@ -9,6 +9,30 @@ public sealed record PluginPullRequest(Guid ProjectId, string DesignFileId, stri
 public sealed record PluginPushItem(string LayerId, string BaseSourceText, string NewText);
 public sealed record PluginPushRequest(Guid ProjectId, string DesignFileId, PluginPushItem[] Items);
 
+public sealed record PluginPushComponentTextField(
+    string FigmaLayerId,
+    string FigmaLayerName,
+    string CurrentText,
+    double X,
+    double Y,
+    double Width,
+    double Height,
+    string FontFamily,
+    double FontSize,
+    string FontWeight,
+    string TextAlign,
+    string Color);
+
+public sealed record PluginPushComponentRequest(
+    Guid ProjectId,
+    string FigmaFileId,
+    string FigmaFrameId,
+    string FigmaFrameName,
+    string ThumbnailUrl,
+    int FrameWidth,
+    int FrameHeight,
+    PluginPushComponentTextField[] TextFields);
+
 [ApiController]
 [Route("api/plugin-sync")]
 public sealed class PluginSyncController(AppDbContext db) : ControllerBase
@@ -119,6 +143,195 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
             updates,
             conflicts,
             requiresConflictResolution = conflicts.Count > 0
+        });
+    }
+
+    [HttpPost("push-component")]
+    public async Task<IActionResult> PushComponent([FromBody] PluginPushComponentRequest request, CancellationToken cancellationToken)
+    {
+        // Check if component already exists (same fileId + frameId within project)
+        var existing = await db.DesignComponents.FirstOrDefaultAsync(
+            c => c.ProjectId == request.ProjectId
+                && c.FigmaFileId == request.FigmaFileId
+                && c.FigmaFrameId == request.FigmaFrameId,
+            cancellationToken);
+
+        if (existing is not null)
+        {
+            // Update metadata
+            existing.FigmaFrameName = request.FigmaFrameName;
+            existing.ThumbnailUrl = request.ThumbnailUrl;
+            existing.FrameWidth = request.FrameWidth;
+            existing.FrameHeight = request.FrameHeight;
+            existing.UpdatedUtc = DateTime.UtcNow;
+
+            // Update or create text fields
+            var existingFields = await db.DesignComponentTextFields
+                .Where(tf => tf.DesignComponentId == existing.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var incoming in request.TextFields ?? [])
+            {
+                var field = existingFields.FirstOrDefault(f => f.FigmaLayerId == incoming.FigmaLayerId);
+                if (field is not null)
+                {
+                    var previousText = field.CurrentText;
+                    field.FigmaLayerName = incoming.FigmaLayerName;
+                    field.CurrentText = incoming.CurrentText;
+                    field.X = incoming.X;
+                    field.Y = incoming.Y;
+                    field.Width = incoming.Width;
+                    field.Height = incoming.Height;
+                    field.FontFamily = incoming.FontFamily;
+                    field.FontSize = incoming.FontSize;
+                    field.FontWeight = incoming.FontWeight;
+                    field.TextAlign = incoming.TextAlign;
+                    field.Color = incoming.Color;
+                    field.UpdatedUtc = DateTime.UtcNow;
+
+                    // If linked to content item and text changed, update linked item
+                    if (field.ContentItemId.HasValue && !string.Equals(previousText, incoming.CurrentText, StringComparison.Ordinal))
+                    {
+                        var linkedItem = await db.ContentItems.FirstOrDefaultAsync(ci => ci.Id == field.ContentItemId.Value, cancellationToken);
+                        if (linkedItem is not null)
+                        {
+                            var prevSource = linkedItem.Source;
+                            var prevStatus = linkedItem.Status;
+                            linkedItem.Source = incoming.CurrentText;
+                            linkedItem.Status = "draft";
+
+                            db.ContentItemRevisions.Add(new ContentItemRevision
+                            {
+                                ContentItemId = linkedItem.Id,
+                                ActorEmail = "plugin@figma",
+                                PreviousSource = prevSource,
+                                NewSource = incoming.CurrentText,
+                                PreviousStatus = prevStatus,
+                                NewStatus = "draft",
+                                DiffSummary = "plugin component push update",
+                                EventType = "plugin_push"
+                            });
+                        }
+                    }
+                }
+                else
+                {
+                    db.DesignComponentTextFields.Add(new DesignComponentTextField
+                    {
+                        DesignComponentId = existing.Id,
+                        FigmaLayerId = incoming.FigmaLayerId,
+                        FigmaLayerName = incoming.FigmaLayerName,
+                        CurrentText = incoming.CurrentText,
+                        X = incoming.X,
+                        Y = incoming.Y,
+                        Width = incoming.Width,
+                        Height = incoming.Height,
+                        FontFamily = incoming.FontFamily,
+                        FontSize = incoming.FontSize,
+                        FontWeight = incoming.FontWeight,
+                        TextAlign = incoming.TextAlign,
+                        Color = incoming.Color
+                    });
+                }
+            }
+
+            // Remove fields no longer present in the push
+            var incomingLayerIds = (request.TextFields ?? []).Select(tf => tf.FigmaLayerId).ToHashSet();
+            var removedFields = existingFields.Where(f => !incomingLayerIds.Contains(f.FigmaLayerId)).ToList();
+            db.DesignComponentTextFields.RemoveRange(removedFields);
+
+            await db.SaveChangesAsync(cancellationToken);
+
+            var updatedFields = await db.DesignComponentTextFields
+                .Where(tf => tf.DesignComponentId == existing.Id)
+                .OrderBy(tf => tf.Y).ThenBy(tf => tf.X)
+                .ToListAsync(cancellationToken);
+
+            return Ok(new { component = existing, textFields = updatedFields });
+        }
+
+        // Create new component
+        var component = new DesignComponent
+        {
+            ProjectId = request.ProjectId,
+            FigmaFileId = request.FigmaFileId,
+            FigmaFrameId = request.FigmaFrameId,
+            FigmaFrameName = request.FigmaFrameName,
+            ThumbnailUrl = request.ThumbnailUrl,
+            FrameWidth = request.FrameWidth,
+            FrameHeight = request.FrameHeight,
+            CreatedByEmail = "plugin@figma",
+            Status = "draft"
+        };
+        db.DesignComponents.Add(component);
+
+        var newFields = new List<DesignComponentTextField>();
+        foreach (var tf in request.TextFields ?? [])
+        {
+            var field = new DesignComponentTextField
+            {
+                DesignComponentId = component.Id,
+                FigmaLayerId = tf.FigmaLayerId,
+                FigmaLayerName = tf.FigmaLayerName,
+                CurrentText = tf.CurrentText,
+                X = tf.X,
+                Y = tf.Y,
+                Width = tf.Width,
+                Height = tf.Height,
+                FontFamily = tf.FontFamily,
+                FontSize = tf.FontSize,
+                FontWeight = tf.FontWeight,
+                TextAlign = tf.TextAlign,
+                Color = tf.Color
+            };
+            db.DesignComponentTextFields.Add(field);
+            newFields.Add(field);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(new { component, textFields = newFields });
+    }
+
+    [HttpPost("pull-component/{componentId:guid}")]
+    public async Task<IActionResult> PullComponent(Guid componentId, CancellationToken cancellationToken)
+    {
+        var component = await db.DesignComponents.FirstOrDefaultAsync(c => c.Id == componentId, cancellationToken);
+        if (component is null) return NotFound();
+
+        var textFields = await db.DesignComponentTextFields
+            .Where(tf => tf.DesignComponentId == componentId)
+            .OrderBy(tf => tf.Y).ThenBy(tf => tf.X)
+            .Select(tf => new
+            {
+                tf.Id,
+                tf.FigmaLayerId,
+                tf.FigmaLayerName,
+                tf.CurrentText,
+                tf.ContentItemId,
+                tf.X,
+                tf.Y,
+                tf.Width,
+                tf.Height,
+                tf.FontFamily,
+                tf.FontSize,
+                tf.FontWeight,
+                tf.TextAlign,
+                tf.Color,
+                tf.UpdatedUtc
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(new
+        {
+            component.Id,
+            component.FigmaFileId,
+            component.FigmaFrameId,
+            component.FigmaFrameName,
+            component.FrameWidth,
+            component.FrameHeight,
+            component.Status,
+            component.UpdatedUtc,
+            textFields
         });
     }
 }
