@@ -3,14 +3,11 @@ import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import ExportPanel from '~/components/projects/ExportPanel.vue'
 import LanguageManager from '~/components/projects/LanguageManager.vue'
-import LocalizationGrid from '~/components/projects/LocalizationGrid.vue'
-import TranslationEditor from '~/components/projects/TranslationEditor.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
-import { languagesClient } from '~/api/languagesClient'
 import { projectsClient } from '~/api/projectsClient'
-import type { ContentItem, Project, ProjectLanguage, ProjectTreeNode } from '~/api/types'
+import type { ContentItem, Project, ProjectTreeNode } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Content - LocFlow' })
@@ -23,7 +20,6 @@ const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' 
 
 const showLanguages = ref(false)
 const showExport = ref(false)
-const viewMode = ref<'list' | 'grid'>('list')
 const showAddContentForm = ref(false)
 const newContentKey = ref('')
 const newContentSource = ref('')
@@ -38,20 +34,57 @@ const showDeleteConfirm = ref(false)
 const deleteTarget = ref<Pick<ContentItem, 'id' | 'key'> | null>(null)
 const deleteError = ref('')
 
-// Edit content modal
-const showEditForm = ref(false)
-const editTarget = ref<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'> | null>(null)
-const editSource = ref('')
-const editStatus = ref('')
-const editError = ref('')
+// Side panel
+const selectedItem = ref<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'> | null>(null)
+const panelSource = ref('')
+const panelStatus = ref('')
+const panelCollectionId = ref<string | null>(null)
+const panelError = ref('')
 
 const selectedProject = computed(() =>
   projects.value.find(p => p.id === selectedProjectId.value) ?? null,
 )
 
-const editingCell = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
-const gridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
-const noTargetLangMessage = ref('')
+// ---------------------------------------------------------------------------
+// Drag-and-drop state
+// ---------------------------------------------------------------------------
+const draggingItemId = ref<string | null>(null)
+const dragOverFolderId = ref<string | null | '__parent__'>(null)
+
+function onDragStart(itemId: string) {
+  draggingItemId.value = itemId
+}
+
+function onDragEnd() {
+  draggingItemId.value = null
+  dragOverFolderId.value = null
+}
+
+function onFolderDragEnter(folderId: string | '__parent__') {
+  dragOverFolderId.value = folderId
+}
+
+function onFolderDragLeave(folderId: string | '__parent__', event: DragEvent) {
+  const related = event.relatedTarget as HTMLElement | null
+  const target = event.currentTarget as HTMLElement
+  if (related && target.contains(related)) return
+  if (dragOverFolderId.value === folderId) {
+    dragOverFolderId.value = null
+  }
+}
+
+async function onDropOnFolder(collectionId: string | null) {
+  if (!draggingItemId.value) return
+  try {
+    await contentClient.move(draggingItemId.value, { collectionId, sortOrder: 0 })
+    await loadContent()
+  } catch (error: any) {
+    // silently fail — user can retry
+  } finally {
+    draggingItemId.value = null
+    dragOverFolderId.value = null
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Folder navigation state
@@ -113,14 +146,25 @@ const currentFolders = computed(() =>
   currentChildren.value.filter(n => n.nodeType === 'folder'),
 )
 
-const currentContentKeys = computed(() =>
-  currentChildren.value.filter(n => n.nodeType === 'contentKey'),
-)
-
 /** Content items in the current folder (matched from the flat contents list) */
 const folderContentItems = computed(() => {
   // Match content items whose collectionId equals currentFolderId
   return contents.value.filter(c => (c.collectionId ?? null) === currentFolderId.value)
+})
+
+/** Flatten all folders in the tree for the side panel folder dropdown */
+const folderOptions = computed(() => {
+  const options: Array<{ value: string; label: string }> = [{ value: '__root__', label: 'Project Root' }]
+  function walk(nodes: ProjectTreeNode[], prefix: string) {
+    for (const node of nodes) {
+      if (node.nodeType === 'folder') {
+        options.push({ value: node.id, label: prefix + node.name })
+        walk(node.children, prefix + node.name + ' / ')
+      }
+    }
+  }
+  walk(treeNodes.value, '')
+  return options
 })
 
 // ---------------------------------------------------------------------------
@@ -136,17 +180,6 @@ const listTotalPages = computed(() =>
 const paginatedContentItems = computed(() => {
   const start = (listPage.value - 1) * listPageSize.value
   return folderContentItems.value.slice(start, start + listPageSize.value)
-})
-
-// ---------------------------------------------------------------------------
-// Grid: build item→collection mapping for client-side filtering
-// ---------------------------------------------------------------------------
-const itemCollectionMap = computed(() => {
-  const map: Record<string, string | null> = {}
-  for (const c of contents.value) {
-    map[c.id] = c.collectionId ?? null
-  }
-  return map
 })
 
 // ---------------------------------------------------------------------------
@@ -179,57 +212,62 @@ function navigateUp() {
 }
 
 // ---------------------------------------------------------------------------
-// Translation editor
+// Side panel (replaces TranslationEditor row click)
 // ---------------------------------------------------------------------------
-function openEditor(payload: { itemId: string; itemKey: string; source: string; language: string }) {
-  editingCell.value = payload
+function openSidePanel(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>) {
+  selectedItem.value = item
+  panelSource.value = item.source
+  panelStatus.value = item.status
+  panelCollectionId.value = item.collectionId ?? null
+  panelError.value = ''
 }
 
-async function handleContentRowClick(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>) {
-  if (!selectedProjectId.value) return
-  noTargetLangMessage.value = ''
+function closeSidePanel() {
+  selectedItem.value = null
+  panelSource.value = ''
+  panelStatus.value = ''
+  panelCollectionId.value = null
+  panelError.value = ''
+}
 
+async function saveSidePanel() {
+  if (!selectedItem.value) return
+  const source = panelSource.value.trim()
+  if (!source) {
+    panelError.value = 'Source text is required'
+    return
+  }
   try {
-    const langs: ProjectLanguage[] = await languagesClient.list(selectedProjectId.value)
-    const targets = (Array.isArray(langs) ? langs : []).filter(l => !l.isSource && l.isActive)
+    await contentClient.update(selectedItem.value.id, source, panelStatus.value)
 
-    if (targets.length === 0) {
-      noTargetLangMessage.value = 'No target languages configured. Add languages via the Languages panel to start translating.'
-      return
+    // Move if folder changed
+    const originalCollectionId = selectedItem.value.collectionId ?? null
+    const newCollectionId = panelCollectionId.value === '__root__' ? null : panelCollectionId.value
+    if (newCollectionId !== originalCollectionId) {
+      await contentClient.move(selectedItem.value.id, { collectionId: newCollectionId, sortOrder: 0 })
     }
 
-    editingCell.value = {
-      itemId: item.id,
-      itemKey: item.key,
-      source: item.source,
-      language: targets[0]!.bcp47Code,
-    }
-  } catch {
-    noTargetLangMessage.value = 'Failed to load project languages.'
+    await loadContent()
+    closeSidePanel()
+  } catch (error: any) {
+    panelError.value = error?.message || 'Failed to save changes'
   }
 }
 
-function closeEditor() {
-  editingCell.value = null
-}
-
-function onTranslationSaved() {
-  editingCell.value = null
-  reloadGridIfVisible()
-}
-
-function reloadGridIfVisible() {
-  if (viewMode.value === 'grid' && gridRef.value) {
-    gridRef.value.reload()
+async function deleteSidePanelItem() {
+  if (!selectedItem.value) return
+  try {
+    await contentClient.delete(selectedItem.value.id)
+    await loadContent()
+    closeSidePanel()
+  } catch (error: any) {
+    panelError.value = error?.message || 'Failed to delete content item'
   }
 }
 
 function onLanguagesUpdated() {
   loadContent()
-  reloadGridIfVisible()
 }
-
-const gridReloadKey = ref(0)
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -315,7 +353,6 @@ async function addContent() {
     })
 
     await loadContent()
-    reloadGridIfVisible()
     closeAddContentForm()
   } catch (error: any) {
     addContentError.value = error?.message || 'Failed to add content'
@@ -356,7 +393,6 @@ async function createFolder() {
     })
 
     await loadContent()
-    reloadGridIfVisible()
     closeNewFolderForm()
   } catch (error: any) {
     newFolderError.value = error?.message || 'Failed to create folder'
@@ -384,47 +420,9 @@ async function confirmDelete() {
   try {
     await contentClient.delete(deleteTarget.value.id)
     await loadContent()
-    reloadGridIfVisible()
     closeDeleteConfirm()
   } catch (error: any) {
     deleteError.value = error?.message || 'Failed to delete content item'
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Edit content item
-// ---------------------------------------------------------------------------
-function openEditForm(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>, event: Event) {
-  event.stopPropagation()
-  editTarget.value = item
-  editSource.value = item.source
-  editStatus.value = item.status
-  editError.value = ''
-  showEditForm.value = true
-}
-
-function closeEditForm() {
-  showEditForm.value = false
-  editTarget.value = null
-  editSource.value = ''
-  editStatus.value = ''
-  editError.value = ''
-}
-
-async function saveEdit() {
-  if (!editTarget.value) return
-  const source = editSource.value.trim()
-  if (!source) {
-    editError.value = 'Source text is required'
-    return
-  }
-  try {
-    await contentClient.update(editTarget.value.id, source, editStatus.value)
-    await loadContent()
-    reloadGridIfVisible()
-    closeEditForm()
-  } catch (error: any) {
-    editError.value = error?.message || 'Failed to update content item'
   }
 }
 
@@ -475,23 +473,6 @@ watch(selectedProjectId, async () => {
         <p class="page-subtitle">Content is attached to a project</p>
       </div>
       <div class="page-header-actions">
-        <div class="view-toggle">
-          <UiButton
-            size="sm"
-            :variant="viewMode === 'list' ? 'primary' : 'secondary'"
-            @click="viewMode = 'list'"
-          >
-            List
-          </UiButton>
-          <UiButton
-            size="sm"
-            :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
-            :disabled="!selectedProjectId"
-            @click="viewMode = 'grid'"
-          >
-            Grid
-          </UiButton>
-        </div>
         <UiButton :disabled="!selectedProjectId" variant="secondary" @click="showLanguages = !showLanguages">
           Languages
         </UiButton>
@@ -563,52 +544,8 @@ watch(selectedProjectId, async () => {
       </nav>
 
       <!-- ============================================================ -->
-      <!-- GRID VIEW                                                    -->
-      <!-- ============================================================ -->
-      <template v-if="viewMode === 'grid'">
-        <!-- Folder rows above the grid -->
-        <div v-if="currentFolderId !== null || currentFolders.length > 0" class="folder-list">
-          <button
-            v-if="currentFolderId !== null"
-            class="folder-row folder-row--parent"
-            @click="navigateUp"
-          >
-            <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-            </svg>
-            <span class="folder-name">..</span>
-          </button>
-          <button
-            v-for="folder in currentFolders"
-            :key="folder.id"
-            class="folder-row"
-            @click="navigateToFolder(folder.id)"
-          >
-            <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-            </svg>
-            <span class="folder-name">{{ folder.name }}</span>
-            <span class="folder-count">{{ folderChildCount(folder) }} items</span>
-            <svg class="folder-chevron" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-            </svg>
-          </button>
-        </div>
-
-        <LocalizationGrid
-          :key="gridReloadKey"
-          ref="gridRef"
-          :project-id="selectedProjectId"
-          :collection-id="currentFolderId"
-          :item-collection-map="itemCollectionMap"
-          @edit-cell="openEditor"
-        />
-      </template>
-
-      <!-- ============================================================ -->
       <!-- LIST VIEW                                                    -->
       <!-- ============================================================ -->
-      <template v-else>
         <div v-if="isLoading" class="content-list">
           <div v-for="i in 3" :key="i" class="content-item"><AppSkeleton lines="2" height="1rem" /></div>
         </div>
@@ -629,7 +566,12 @@ watch(selectedProjectId, async () => {
             <button
               v-if="currentFolderId !== null"
               class="folder-row folder-row--parent"
+              :class="{ 'folder-row--drag-over': dragOverFolderId === '__parent__' }"
               @click="navigateUp"
+              @dragover.prevent
+              @dragenter="onFolderDragEnter('__parent__')"
+              @dragleave="onFolderDragLeave('__parent__', $event)"
+              @drop.prevent="onDropOnFolder(breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2]!.id : null)"
             >
               <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -642,7 +584,12 @@ watch(selectedProjectId, async () => {
               v-for="folder in currentFolders"
               :key="folder.id"
               class="folder-row"
+              :class="{ 'folder-row--drag-over': dragOverFolderId === folder.id }"
               @click="navigateToFolder(folder.id)"
+              @dragover.prevent
+              @dragenter="onFolderDragEnter(folder.id)"
+              @dragleave="onFolderDragLeave(folder.id, $event)"
+              @drop.prevent="onDropOnFolder(folder.id)"
             >
               <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
@@ -660,7 +607,10 @@ watch(selectedProjectId, async () => {
               :key="item.id"
               class="content-row content-row--clickable"
               :class="{ 'content-row--alt': idx % 2 === 1 }"
-              @click="handleContentRowClick(item)"
+              draggable="true"
+              @dragstart="onDragStart(item.id)"
+              @dragend="onDragEnd"
+              @click="openSidePanel(item)"
             >
               <div class="content-row-main">
                 <span class="content-key">{{ item.key }}</span>
@@ -673,7 +623,7 @@ watch(selectedProjectId, async () => {
                 <button
                   class="row-action-btn row-action-btn--edit"
                   title="Edit content"
-                  @click="openEditForm(item, $event)"
+                  @click.stop="openSidePanel(item)"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
                 </button>
@@ -709,7 +659,6 @@ watch(selectedProjectId, async () => {
             </div>
           </div>
         </template>
-      </template>
     </template>
 
     <!-- ============================================================ -->
@@ -770,22 +719,6 @@ watch(selectedProjectId, async () => {
       </form>
     </div>
 
-    <!-- No target languages message -->
-    <div v-if="noTargetLangMessage" class="no-target-lang-banner">
-      <p>{{ noTargetLangMessage }}</p>
-      <UiButton size="sm" variant="secondary" @click="noTargetLangMessage = ''">Dismiss</UiButton>
-    </div>
-
-    <TranslationEditor
-      v-if="editingCell"
-      :item-id="editingCell.itemId"
-      :item-key="editingCell.itemKey"
-      :source="editingCell.source"
-      :language="editingCell.language"
-      @close="closeEditor"
-      @saved="onTranslationSaved"
-    />
-
     <ExportPanel
       v-if="showExport && selectedProjectId"
       :project-id="selectedProjectId"
@@ -810,37 +743,58 @@ watch(selectedProjectId, async () => {
     </div>
 
     <!-- ============================================================ -->
-    <!-- Edit content modal                                            -->
+    <!-- Side panel for editing content                                -->
     <!-- ============================================================ -->
-    <div v-if="showEditForm" class="content-form-overlay" @click.self="closeEditForm">
-      <form class="content-form" @submit.prevent="saveEdit">
-        <h2>Edit content item</h2>
-        <p class="edit-key-heading">{{ editTarget?.key }}</p>
+    <Transition name="side-panel">
+      <div v-if="selectedItem" class="side-panel-overlay" @click.self="closeSidePanel">
+        <aside class="side-panel">
+          <div class="side-panel-header">
+            <h2>Edit Content</h2>
+            <button class="side-panel-close" @click="closeSidePanel">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+            </button>
+          </div>
 
-        <label for="editSource" class="label-with-hint">
-          <span>Source text</span>
-          <span class="label-hint">The default text in the source language</span>
-        </label>
-        <textarea id="editSource" v-model="editSource" rows="4" />
+          <p class="edit-key-heading">{{ selectedItem.key }}</p>
 
-        <label for="editStatus" class="label-with-hint">
-          <span>Status</span>
-          <span class="label-hint">Content lifecycle status</span>
-        </label>
-        <select id="editStatus" v-model="editStatus" class="edit-status-select">
-          <option value="draft">Draft</option>
-          <option value="in_review">In Review</option>
-          <option value="approved">Approved</option>
-        </select>
+          <label for="panelSource" class="label-with-hint">
+            <span>Source text</span>
+            <span class="label-hint">The default text in the source language</span>
+          </label>
+          <textarea id="panelSource" v-model="panelSource" rows="6" class="side-panel-textarea" />
 
-        <p v-if="editError" class="field-error">{{ editError }}</p>
+          <label for="panelStatus" class="label-with-hint">
+            <span>Status</span>
+            <span class="label-hint">Content lifecycle status</span>
+          </label>
+          <select id="panelStatus" v-model="panelStatus" class="edit-status-select">
+            <option value="draft">Draft</option>
+            <option value="in_review">In Review</option>
+            <option value="approved">Approved</option>
+          </select>
 
-        <div class="content-form-actions">
-          <UiButton type="button" variant="secondary" @click="closeEditForm">Cancel</UiButton>
-          <UiButton type="submit">Save</UiButton>
-        </div>
-      </form>
-    </div>
+          <label for="panelFolder" class="label-with-hint">
+            <span>Folder</span>
+            <span class="label-hint">Move to a different folder</span>
+          </label>
+          <select id="panelFolder" v-model="panelCollectionId" class="edit-status-select">
+            <option v-for="opt in folderOptions" :key="opt.value" :value="opt.value === '__root__' ? null : opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+
+          <p v-if="panelError" class="field-error">{{ panelError }}</p>
+
+          <div class="side-panel-actions">
+            <UiButton variant="danger" size="sm" @click="deleteSidePanelItem">Delete</UiButton>
+            <div class="side-panel-actions-right">
+              <UiButton variant="secondary" size="sm" @click="closeSidePanel">Cancel</UiButton>
+              <UiButton size="sm" @click="saveSidePanel">Save</UiButton>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -850,7 +804,6 @@ watch(selectedProjectId, async () => {
 .page-header h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--spacing-1) 0; }
 .page-subtitle { color: var(--color-text-muted); margin: 0; }
 .page-header-actions { display: flex; gap: var(--spacing-2); align-items: center; }
-.view-toggle { display: flex; gap: 1px; background: var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
 .btn-icon { width: 1em; height: 1em; flex-shrink: 0; }
 .project-picker { margin-bottom: var(--spacing-5); display: flex; flex-direction: column; gap: var(--spacing-2); max-width: 420px; }
 .project-subheader {
@@ -914,12 +867,7 @@ watch(selectedProjectId, async () => {
   padding: var(--spacing-1) var(--spacing-2);
 }
 
-/* Folder list (shared between list and grid views) */
-.folder-list {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: var(--spacing-4);
-}
+/* Folder rows (shared between list and grid views) */
 .folder-row {
   display: flex;
   align-items: center;
@@ -950,6 +898,10 @@ watch(selectedProjectId, async () => {
 .folder-row--parent {
   color: var(--color-text-muted);
   font-weight: var(--font-weight-medium);
+}
+.folder-row--drag-over {
+  border: 2px dashed var(--color-primary-500);
+  background: color-mix(in srgb, var(--color-primary-600) 10%, transparent);
 }
 .folder-icon {
   width: 1.25rem;
@@ -1093,26 +1045,6 @@ watch(selectedProjectId, async () => {
 .field-error { margin: 0; color: var(--color-error); font-size: var(--font-size-xs); }
 .content-form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); }
 
-/* No target languages banner */
-.no-target-lang-banner {
-  position: fixed;
-  bottom: var(--spacing-6);
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  padding: var(--spacing-3) var(--spacing-5);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-  z-index: var(--z-modal);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-.no-target-lang-banner p { margin: 0; }
-
 /* Row action buttons */
 .content-row-actions {
   display: flex;
@@ -1184,5 +1116,100 @@ watch(selectedProjectId, async () => {
   outline: none;
   border-color: var(--color-primary-500);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Side panel */
+.side-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-black) 30%, transparent);
+  z-index: var(--z-modal);
+  display: flex;
+  justify-content: flex-end;
+}
+.side-panel {
+  width: min(480px, 92vw);
+  height: 100%;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  padding: var(--spacing-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  overflow-y: auto;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+}
+.side-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.side-panel-header h2 {
+  margin: 0;
+  color: var(--color-text-primary);
+}
+.side-panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.side-panel-close:hover {
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  color: var(--color-error);
+}
+.side-panel-close svg {
+  width: 16px;
+  height: 16px;
+}
+.side-panel-textarea {
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  resize: vertical;
+}
+.side-panel-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.side-panel-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--spacing-3);
+}
+.side-panel-actions-right {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+/* Side panel transition */
+.side-panel-enter-active,
+.side-panel-leave-active {
+  transition: opacity 0.2s ease;
+}
+.side-panel-enter-active .side-panel,
+.side-panel-leave-active .side-panel {
+  transition: transform 0.2s ease;
+}
+.side-panel-enter-from,
+.side-panel-leave-to {
+  opacity: 0;
+}
+.side-panel-enter-from .side-panel,
+.side-panel-leave-to .side-panel {
+  transform: translateX(100%);
 }
 </style>
