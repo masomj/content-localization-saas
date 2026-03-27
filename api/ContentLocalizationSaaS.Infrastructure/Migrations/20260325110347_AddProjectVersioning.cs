@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -84,7 +84,7 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                 table: "project_versions",
                 columns: new[] { "ProjectId", "IsLive" },
                 unique: true,
-                filter: "\"is_live\" = true");
+                filter: "\"IsLive\" = true");
 
             migrationBuilder.CreateIndex(
                 name: "IX_project_versions_ProjectId_Tag",
@@ -104,3 +104,4 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
         }
     }
 }
+

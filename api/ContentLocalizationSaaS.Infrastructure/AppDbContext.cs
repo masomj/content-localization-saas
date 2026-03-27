@@ -84,7 +84,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.IsRoot).HasDefaultValue(false);
             e.HasIndex(x => new { x.ProjectId, x.ParentId, x.SortOrder });
             e.HasIndex(x => new { x.ProjectId, x.ParentId, x.Name }).IsUnique();
-            e.HasIndex(x => new { x.ProjectId, x.IsRoot }).IsUnique().HasFilter("\"is_root\" = true");
+            e.HasIndex(x => new { x.ProjectId, x.IsRoot }).IsUnique().HasFilter("\"IsRoot\" = true");
         });
 
         builder.Entity<WorkspaceInvite>(e =>
@@ -383,7 +383,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.CreatedByEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.CreatedUtc });
             e.HasIndex(x => new { x.ProjectId, x.Tag }).IsUnique();
-            e.HasIndex(x => new { x.ProjectId, x.IsLive }).IsUnique().HasFilter("\"is_live\" = true");
+            e.HasIndex(x => new { x.ProjectId, x.IsLive }).IsUnique().HasFilter("\"IsLive\" = true");
         });
 
         builder.Entity<ProjectVersionSnapshot>(e =>
