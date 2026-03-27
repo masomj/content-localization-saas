@@ -45,6 +45,8 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ContentReview> ContentReviews => Set<ContentReview>();
     public DbSet<ProjectVersion> ProjectVersions => Set<ProjectVersion>();
     public DbSet<ProjectVersionSnapshot> ProjectVersionSnapshots => Set<ProjectVersionSnapshot>();
+    public DbSet<DesignComponent> DesignComponents => Set<DesignComponent>();
+    public DbSet<DesignComponentTextField> DesignComponentTextFields => Set<DesignComponentTextField>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -399,6 +401,35 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => new { x.VersionId, x.Key });
         });
 
+        builder.Entity<DesignComponent>(e =>
+        {
+            e.ToTable("design_components");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FigmaFileId).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FigmaFrameId).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FigmaFrameName).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.ThumbnailUrl).HasMaxLength(2000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue("draft");
+            e.Property(x => x.CreatedByEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ProjectId, x.FigmaFileId, x.FigmaFrameId }).IsUnique();
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<DesignComponentTextField>(e =>
+        {
+            e.ToTable("design_component_text_fields");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FigmaLayerId).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FigmaLayerName).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.CurrentText).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.Property(x => x.FontFamily).HasMaxLength(200).HasDefaultValue(string.Empty);
+            e.Property(x => x.FontWeight).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.Property(x => x.TextAlign).HasMaxLength(32).HasDefaultValue("left");
+            e.Property(x => x.Color).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.DesignComponentId);
+            e.HasIndex(x => x.ContentItemId);
+        });
+
         // Story 8.1: explicit FK constraints for core relations
         builder.Entity<Project>()
             .HasOne<Workspace>()
@@ -561,6 +592,24 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .WithMany()
             .HasForeignKey(x => x.VersionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DesignComponent>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DesignComponentTextField>()
+            .HasOne<DesignComponent>()
+            .WithMany()
+            .HasForeignKey(x => x.DesignComponentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DesignComponentTextField>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 

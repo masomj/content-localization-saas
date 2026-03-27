@@ -348,3 +348,40 @@ public sealed class ProjectVersionSnapshot
     public string TranslationsJson { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class DesignComponent
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public string FigmaFileId { get; set; } = string.Empty;
+    public string FigmaFrameId { get; set; } = string.Empty;
+    public string FigmaFrameName { get; set; } = string.Empty;
+    public string ThumbnailUrl { get; set; } = string.Empty;
+    public int FrameWidth { get; set; }
+    public int FrameHeight { get; set; }
+    public string Status { get; set; } = "draft"; // draft | in_review | approved
+    public string CreatedByEmail { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class DesignComponentTextField
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid DesignComponentId { get; set; }
+    public string FigmaLayerId { get; set; } = string.Empty;
+    public string FigmaLayerName { get; set; } = string.Empty;
+    public string CurrentText { get; set; } = string.Empty;
+    public Guid? ContentItemId { get; set; }
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public string FontFamily { get; set; } = string.Empty;
+    public double FontSize { get; set; }
+    public string FontWeight { get; set; } = string.Empty;
+    public string TextAlign { get; set; } = "left";
+    public string Color { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
