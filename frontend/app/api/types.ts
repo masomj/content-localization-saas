@@ -243,3 +243,39 @@ export interface VersionDiff {
   removed: Array<{ key: string; source: string }>
   changed: Array<{ key: string; oldSource: string; newSource: string }>
 }
+
+export interface DesignComponent {
+  id: string
+  projectId: string
+  figmaFileId: string
+  figmaFrameId: string
+  figmaFrameName: string
+  thumbnailUrl: string
+  frameWidth: number
+  frameHeight: number
+  status: string
+  createdByEmail: string
+  createdUtc: string
+  updatedUtc: string
+  textFieldCount?: number
+}
+
+export interface DesignComponentTextField {
+  id: string
+  designComponentId: string
+  figmaLayerId: string
+  figmaLayerName: string
+  currentText: string
+  contentItemId?: string | null
+  x: number
+  y: number
+  width: number
+  height: number
+  fontFamily: string
+  fontSize: number
+  fontWeight: string
+  textAlign: string
+  color: string
+  createdUtc: string
+  updatedUtc: string
+}
