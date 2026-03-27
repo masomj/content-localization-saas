@@ -1,6 +1,5 @@
 // ---------------------------------------------------------------
 // Shared types matching the LocFlow backend API
-// (mirrors DesignComponent + DesignComponentTextField entities)
 // ---------------------------------------------------------------
 
 /** Represents a Figma frame / component pushed to the platform. */
@@ -47,7 +46,7 @@ export interface DesignComponentTextField {
 
 export interface LoginRequest {
   email: string;
-  password: string;
+  workspaceId: string;
 }
 
 export interface LoginResponse {
@@ -89,25 +88,128 @@ export interface PushTextField {
   color: string;
 }
 
-/** Response from pull-component – the current text for every layer. */
+/** Response from pull-component. */
 export interface PullComponentResponse {
   componentId: string;
   textFields: DesignComponentTextField[];
 }
 
 // ---------------------------------------------------------------
-// Messages between Figma main thread ↔ UI iframe
+// Plugin-specific types for multi-tab UI
+// ---------------------------------------------------------------
+
+export type TabName = "activity" | "edit" | "review" | "changes" | "library";
+
+export type SyncStatus = "synced" | "draft" | "modified" | "new" | "unlinked";
+
+/** A text node extracted from the Figma canvas. */
+export interface TextNodeInfo {
+  layerId: string;
+  layerName: string;
+  characters: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: string;
+  textAlign: string;
+  color: string;
+}
+
+/** A frame with its extracted text nodes (sent from main thread). */
+export interface FrameInfo {
+  frameId: string;
+  frameName: string;
+  frameWidth: number;
+  frameHeight: number;
+  textNodes: TextNodeInfo[];
+}
+
+/** Change detection entry for a frame. */
+export interface ChangeEntry {
+  frameId: string;
+  frameName: string;
+  /** Whether the frame has ever been synced. */
+  isNew: boolean;
+  /** Text nodes that differ from the synced version (or all, if new). */
+  changedTexts: ChangedTextField[];
+  /** The remote component ID if synced before, null if new. */
+  componentId: string | null;
+}
+
+export interface ChangedTextField {
+  layerId: string;
+  layerName: string;
+  localText: string;
+  remoteText: string | null;
+}
+
+/** Activity feed entry. */
+export interface ActivityEntry {
+  id: string;
+  action: "connected_frame" | "submitted_changes" | "synced" | "pulled" | "edited_text";
+  description: string;
+  timestamp: string; // ISO
+  frameCount?: number;
+  textCount?: number;
+}
+
+/** Review queue entry. */
+export interface ReviewEntry {
+  layerId: string;
+  layerName: string;
+  text: string;
+  frameName: string;
+  frameId: string;
+  addedAt: string; // ISO
+}
+
+/** Edit tab text field with local status tracking. */
+export interface EditableTextField {
+  layerId: string;
+  layerName: string;
+  characters: string;
+  originalCharacters: string;
+  syncedCharacters: string | null;
+  status: SyncStatus;
+}
+
+/** Library component (reusable copy). */
+export interface LibraryComponent {
+  id: string;
+  name: string;
+  textCount: number;
+  status: string;
+}
+
+// ---------------------------------------------------------------
+// Messages between Figma main thread <-> UI iframe
 // ---------------------------------------------------------------
 
 export type UIMessage =
   | { type: "push-frame"; projectId: string }
+  | { type: "push-frames"; projectId: string; frameIds: string[] }
   | { type: "pull-component"; componentId: string }
-  | { type: "login"; email: string; password: string }
-  | { type: "get-projects" };
+  | { type: "login"; email: string; workspaceId: string }
+  | { type: "get-projects" }
+  | { type: "update-text"; layerId: string; newText: string }
+  | { type: "scan-all-frames" }
+  | { type: "get-selection" }
+  | { type: "apply-pull"; textFields: DesignComponentTextField[] }
+  | { type: "get-file-key" }
+  | { type: "resize"; width: number; height: number };
 
 export type MainMessage =
   | { type: "frame-data"; payload: PushComponentPayload }
+  | { type: "multi-frame-data"; frames: FrameInfo[] }
   | { type: "pull-text"; textFields: DesignComponentTextField[] }
   | { type: "error"; message: string }
   | { type: "notify"; message: string }
-  | { type: "selection-info"; hasFrame: boolean; frameName: string };
+  | { type: "selection-changed"; frames: FrameInfo[] }
+  | { type: "selection-empty" }
+  | { type: "all-frames"; frames: FrameInfo[] }
+  | { type: "text-updated"; layerId: string; newText: string }
+  | { type: "file-key"; fileKey: string }
+  | { type: "current-user"; name: string; email: string };
