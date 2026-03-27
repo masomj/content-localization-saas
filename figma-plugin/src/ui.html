@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    /* ---- Base ---- */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: #e0e0e0;
+      background: #2c2c2c;
+      padding: 12px;
+      line-height: 1.5;
+    }
+
+    /* ---- Inputs ---- */
+    input, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #383838;
+      color: #e0e0e0;
+      font-size: 12px;
+      outline: none;
+      margin-bottom: 8px;
+    }
+    input:focus, select:focus {
+      border-color: #0d99ff;
+    }
+
+    /* ---- Buttons ---- */
+    button {
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: #0d99ff;
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #0b85e0;
+    }
+    .btn-secondary {
+      background: #444;
+      color: #e0e0e0;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #555;
+    }
+    .btn-danger {
+      background: transparent;
+      color: #999;
+      font-weight: 400;
+      font-size: 11px;
+      padding: 4px 0;
+      text-align: right;
+    }
+    .btn-danger:hover {
+      color: #ff4d4d;
+    }
+
+    /* ---- Layout ---- */
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+    .field-label {
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .field-group {
+      margin-bottom: 8px;
+    }
+    .divider {
+      height: 1px;
+      background: #444;
+      margin: 16px 0;
+    }
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .button-row button {
+      flex: 1;
+    }
+
+    /* ---- Selection label ---- */
+    .selection-label {
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+    .selection-label.has-frame {
+      background: rgba(13, 153, 255, 0.1);
+      color: #0d99ff;
+      border: 1px solid rgba(13, 153, 255, 0.3);
+    }
+    .selection-label.no-frame {
+      background: rgba(255, 255, 255, 0.05);
+      color: #777;
+      border: 1px solid #444;
+    }
+
+    /* ---- Status ---- */
+    .status-area {
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+    .status-info {
+      background: rgba(13, 153, 255, 0.1);
+      color: #6db8f2;
+    }
+    .status-success {
+      background: rgba(52, 199, 89, 0.1);
+      color: #34c759;
+    }
+    .status-error {
+      background: rgba(255, 69, 58, 0.1);
+      color: #ff453a;
+    }
+
+    /* ---- Login error ---- */
+    #login-error {
+      color: #ff453a;
+      font-size: 11px;
+      margin-bottom: 8px;
+      min-height: 16px;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    #user-label {
+      font-size: 11px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== Login Section ==================== -->
+  <div id="login-section">
+    <div class="section-title">LocFlow</div>
+
+    <div class="field-group">
+      <label class="field-label" for="server-url">Server URL</label>
+      <input type="text" id="server-url" placeholder="https://app.locflow.io" />
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="email">Email</label>
+      <input type="email" id="email" placeholder="you@company.com" />
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="password">Password</label>
+      <input type="password" id="password" placeholder="Password" />
+    </div>
+
+    <div id="login-error"></div>
+
+    <button id="login-btn" class="btn-primary">Log in</button>
+  </div>
+
+  <!-- ==================== Main Section ==================== -->
+  <div id="main-section" style="display:none;">
+    <div class="header">
+      <span class="header-title">LocFlow</span>
+      <span id="user-label"></span>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="project-select">Project</label>
+      <select id="project-select">
+        <option disabled selected>Loading projects...</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="selection-label" class="selection-label no-frame">No frame selected</div>
+
+    <div class="button-row">
+      <button id="push-btn" class="btn-primary">Push frame</button>
+      <button id="pull-btn" class="btn-secondary">Pull latest</button>
+    </div>
+
+    <div id="status-area" class="status-area"></div>
+
+    <div class="divider"></div>
+
+    <button id="logout-btn" class="btn-danger">Log out</button>
+  </div>
+
+  <script>
+    // Injected at build time — the bundled ui.js will be inlined here
+  </script>
+</body>
+</html>
