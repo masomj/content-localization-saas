@@ -11,7 +11,7 @@ public sealed class AuthOptions
 
 public sealed class OidcOptions
 {
-    public string Issuer { get; set; } = "http://localhost:8080/realms/locflow";
-    public string Audience { get; set; } = "locflow-web";
+    public string Issuer { get; set; } = "http://localhost:8080/realms/InterCopy";
+    public string Audience { get; set; } = "InterCopy-web";
     public bool RequireHttpsMetadata { get; set; } = false;
 }

@@ -1,4 +1,4 @@
-import { LocFlowApi, decodeJwt } from "./api";
+import { InterCopyApi, decodeJwt } from "./api";
 import type {
   MainMessage,
   UIMessage,
@@ -17,16 +17,16 @@ import type {
 } from "./types";
 
 // ---------------------------------------------------------------
-// LocFlow Plugin UI — Full multi-tab Frontitude-style interface
+// InterCopy Plugin UI — Full multi-tab Frontitude-style interface
 // ---------------------------------------------------------------
 
-const DEFAULT_BASE_URL = "https://app.locflow.io";
+const DEFAULT_BASE_URL = "https://app.InterCopy.io";
 
 // ---------------------------------------------------------------
 // State
 // ---------------------------------------------------------------
 
-let api: LocFlowApi;
+let api: InterCopyApi;
 let projects: Project[] = [];
 let selectedProjectId = "";
 let currentTab: TabName = "activity";
@@ -67,12 +67,12 @@ let showNotifications = true;
 // ---------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
-  const savedAccessToken = localStorage.getItem("locflow_access_token");
-  const savedRefreshToken = localStorage.getItem("locflow_refresh_token");
-  const savedUrl = localStorage.getItem("locflow_url") || DEFAULT_BASE_URL;
-  const savedProject = localStorage.getItem("locflow_project") || "";
-  const savedActivity = localStorage.getItem("locflow_activity");
-  const savedReview = localStorage.getItem("locflow_review");
+  const savedAccessToken = localStorage.getItem("InterCopy_access_token");
+  const savedRefreshToken = localStorage.getItem("InterCopy_refresh_token");
+  const savedUrl = localStorage.getItem("InterCopy_url") || DEFAULT_BASE_URL;
+  const savedProject = localStorage.getItem("InterCopy_project") || "";
+  const savedActivity = localStorage.getItem("InterCopy_activity");
+  const savedReview = localStorage.getItem("InterCopy_review");
 
   // Restore activity and review from localStorage
   if (savedActivity) {
@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const serverUrlInput = $<HTMLInputElement>("server-url");
   serverUrlInput.value = savedUrl;
-  api = new LocFlowApi(savedUrl);
+  api = new InterCopyApi(savedUrl);
 
   if (savedAccessToken && savedRefreshToken) {
     api.setToken(savedAccessToken);
@@ -103,8 +103,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Load settings
-  autoSync = localStorage.getItem("locflow_autosync") === "true";
-  showNotifications = localStorage.getItem("locflow_notifications") !== "false";
+  autoSync = localStorage.getItem("InterCopy_autosync") === "true";
+  showNotifications = localStorage.getItem("InterCopy_notifications") !== "false";
 
   bindEvents();
 });
@@ -140,25 +140,25 @@ function bindEvents(): void {
   $("toggle-autosync").addEventListener("click", () => {
     autoSync = !autoSync;
     $("toggle-autosync").classList.toggle("on", autoSync);
-    localStorage.setItem("locflow_autosync", String(autoSync));
+    localStorage.setItem("InterCopy_autosync", String(autoSync));
   });
   $("toggle-notifications").addEventListener("click", () => {
     showNotifications = !showNotifications;
     $("toggle-notifications").classList.toggle("on", showNotifications);
-    localStorage.setItem("locflow_notifications", String(showNotifications));
+    localStorage.setItem("InterCopy_notifications", String(showNotifications));
   });
 
   // Project select
   $<HTMLSelectElement>("project-select").addEventListener("change", (e) => {
     selectedProjectId = (e.target as HTMLSelectElement).value;
-    localStorage.setItem("locflow_project", selectedProjectId);
+    localStorage.setItem("InterCopy_project", selectedProjectId);
     updateProjectDisplay();
     refreshChangesTab();
   });
 
-  // Settings open in locflow
-  $("settings-open-locflow").addEventListener("click", () => {
-    const url = localStorage.getItem("locflow_url") || DEFAULT_BASE_URL;
+  // Settings open in InterCopy
+  $("settings-open-InterCopy").addEventListener("click", () => {
+    const url = localStorage.getItem("InterCopy_url") || DEFAULT_BASE_URL;
     window.open(`${url}/projects/${selectedProjectId}`, "_blank");
   });
 
@@ -278,11 +278,11 @@ async function handleStartDeviceAuth(): Promise<void> {
   btn.textContent = "Connecting...";
 
   try {
-    api = new LocFlowApi(serverUrl);
+    api = new InterCopyApi(serverUrl);
     const res = await api.startDeviceAuth();
 
     // Save URL immediately
-    localStorage.setItem("locflow_url", serverUrl);
+    localStorage.setItem("InterCopy_url", serverUrl);
 
     // Show the device code screen
     currentDeviceCode = res.deviceCode;
@@ -301,7 +301,7 @@ async function handleStartDeviceAuth(): Promise<void> {
     $("login-error").textContent = err instanceof Error ? err.message : "Failed to start device auth";
   } finally {
     btn.disabled = false;
-    btn.textContent = "Connect to LocFlow";
+    btn.textContent = "Connect to InterCopy";
   }
 }
 
@@ -319,9 +319,9 @@ async function pollDeviceAuth(): Promise<void> {
       api.setToken(res.accessToken);
       if (res.refreshToken) {
         api.setRefreshToken(res.refreshToken);
-        localStorage.setItem("locflow_refresh_token", res.refreshToken);
+        localStorage.setItem("InterCopy_refresh_token", res.refreshToken);
       }
-      localStorage.setItem("locflow_access_token", res.accessToken);
+      localStorage.setItem("InterCopy_access_token", res.accessToken);
 
       // Extract user info
       userEmail = res.user?.email || "";
@@ -372,15 +372,15 @@ function handleCopyCode(): void {
 /** Persist current API tokens to localStorage after refresh. */
 function persistTokens(): void {
   if (api.token) {
-    localStorage.setItem("locflow_access_token", api.token);
+    localStorage.setItem("InterCopy_access_token", api.token);
   }
 }
 
 function handleLogout(): void {
   api.clearToken();
-  localStorage.removeItem("locflow_access_token");
-  localStorage.removeItem("locflow_refresh_token");
-  localStorage.removeItem("locflow_project");
+  localStorage.removeItem("InterCopy_access_token");
+  localStorage.removeItem("InterCopy_refresh_token");
+  localStorage.removeItem("InterCopy_project");
   projects = [];
   selectedProjectId = "";
   activityLog = [];
@@ -418,7 +418,7 @@ async function loadProjects(): Promise<void> {
     } else {
       selectedProjectId = projects[0].id;
       select.value = selectedProjectId;
-      localStorage.setItem("locflow_project", selectedProjectId);
+      localStorage.setItem("InterCopy_project", selectedProjectId);
     }
 
     updateProjectDisplay();
@@ -434,7 +434,7 @@ async function loadProjects(): Promise<void> {
 
 function updateProjectDisplay(): void {
   const project = projects.find((p) => p.id === selectedProjectId);
-  $("project-name-display").textContent = project?.name || "LocFlow";
+  $("project-name-display").textContent = project?.name || "InterCopy";
   $("settings-project-name").textContent = project?.name || "—";
 }
 
@@ -625,7 +625,7 @@ function handleAddToReview(): void {
     added++;
   }
 
-  localStorage.setItem("locflow_review", JSON.stringify(reviewQueue));
+  localStorage.setItem("InterCopy_review", JSON.stringify(reviewQueue));
 
   if (added > 0) {
     showToast(`Added ${added} text${added !== 1 ? "s" : ""} to review`, "success");
@@ -957,7 +957,7 @@ async function handleSync(): Promise<void> {
   if (syncedCount > 0) {
     addActivity(
       "synced",
-      `You synced ${syncedCount} frame${syncedCount !== 1 ? "s" : ""} to LocFlow`,
+      `You synced ${syncedCount} frame${syncedCount !== 1 ? "s" : ""} to InterCopy`,
       syncedCount
     );
     $("settings-frame-count").textContent = String(
@@ -1024,7 +1024,7 @@ function addActivity(
   activityLog.unshift(entry);
   // Keep last 50
   if (activityLog.length > 50) activityLog = activityLog.slice(0, 50);
-  localStorage.setItem("locflow_activity", JSON.stringify(activityLog));
+  localStorage.setItem("InterCopy_activity", JSON.stringify(activityLog));
 
   if (currentTab === "activity") {
     renderActivity();

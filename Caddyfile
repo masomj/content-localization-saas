@@ -1,0 +1,14 @@
+# Frontend
+{$DOMAIN} {
+    reverse_proxy frontend:3000
+}
+
+# API
+{$API_DOMAIN} {
+    reverse_proxy api:5135
+}
+
+# Keycloak auth
+{$AUTH_DOMAIN} {
+    reverse_proxy keycloak:8080
+}

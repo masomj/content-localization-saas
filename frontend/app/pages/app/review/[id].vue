@@ -21,7 +21,7 @@ const auth = useAuth()
 const contentItemId = computed(() => route.params.id as string)
 
 useSeoMeta({
-  title: () => `Review ${itemKey.value || ''} - LocFlow`,
+  title: () => `Review ${itemKey.value || ''} - InterCopy`,
 })
 
 /* ------------------------------------------------------------------ */

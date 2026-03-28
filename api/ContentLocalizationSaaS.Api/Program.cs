@@ -30,7 +30,7 @@ var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<
 
 builder.Services.AddHttpClient("Keycloak", client =>
 {
-    // Base address is the Keycloak issuer URL (e.g. http://localhost:8080/realms/locflow)
+    // Base address is the Keycloak issuer URL (e.g. http://localhost:8080/realms/InterCopy)
     // Endpoints are relative to the realm.
     client.BaseAddress = new Uri(authOptions.Oidc.Issuer.TrimEnd('/') + "/");
 });
@@ -58,7 +58,7 @@ builder.Services
                 var azp = principal?.FindFirst("azp")?.Value;
 
                 // Accept tokens from the web client and the device-auth (Figma plugin) client
-                var validClients = new[] { expectedAudience, "locflow-device" };
+                var validClients = new[] { expectedAudience, "InterCopy-device" };
                 var audienceMatch = audClaims.Any(a => validClients.Contains(a, StringComparer.OrdinalIgnoreCase))
                                     || validClients.Contains(azp, StringComparer.OrdinalIgnoreCase);
 

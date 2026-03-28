@@ -1,46 +1,46 @@
 <#import "template.ftl" as layout>
 <@layout.registrationLayout displayMessage=!messagesPerField.existsError('firstName','lastName','email','username','password','password-confirm') displayInfo=true; section>
   <#if section = "header">
-    Create your LocFlow account
+    Create your InterCopy account
   <#elseif section = "form">
     <#if message?has_content>
-      <div class="locflow-alert locflow-alert-${message.type}">${kcSanitize(message.summary)?no_esc}</div>
+      <div class="InterCopy-alert InterCopy-alert-${message.type}">${kcSanitize(message.summary)?no_esc}</div>
     </#if>
-    <form id="kc-register-form" class="locflow-form" action="${url.registrationAction}" method="post">
-      <div class="locflow-form-group">
-        <label for="firstName" class="locflow-label">First name</label>
+    <form id="kc-register-form" class="InterCopy-form" action="${url.registrationAction}" method="post">
+      <div class="InterCopy-form-group">
+        <label for="firstName" class="InterCopy-label">First name</label>
         <input type="text" id="firstName" class="pf-c-form-control" name="firstName" value="${(register.formData.firstName!'')}" autocomplete="given-name" required />
       </div>
 
-      <div class="locflow-form-group">
-        <label for="lastName" class="locflow-label">Last name</label>
+      <div class="InterCopy-form-group">
+        <label for="lastName" class="InterCopy-label">Last name</label>
         <input type="text" id="lastName" class="pf-c-form-control" name="lastName" value="${(register.formData.lastName!'')}" autocomplete="family-name" required />
       </div>
 
-      <div class="locflow-form-group">
-        <label for="email" class="locflow-label">Email</label>
+      <div class="InterCopy-form-group">
+        <label for="email" class="InterCopy-label">Email</label>
         <input type="email" id="email" class="pf-c-form-control" name="email" value="${(register.formData.email!'')}" autocomplete="email" required />
       </div>
 
       <input type="hidden" id="username" name="username" value="${(register.formData.username!'')}" />
 
-      <div class="locflow-form-group">
-        <label for="password" class="locflow-label">Password</label>
-        <div class="locflow-password-row">
+      <div class="InterCopy-form-group">
+        <label for="password" class="InterCopy-label">Password</label>
+        <div class="InterCopy-password-row">
           <input type="password" id="password" class="pf-c-form-control" name="password" autocomplete="new-password" required />
-          <button type="button" class="locflow-password-toggle" data-toggle-password="password" aria-label="Show password">Show</button>
+          <button type="button" class="InterCopy-password-toggle" data-toggle-password="password" aria-label="Show password">Show</button>
         </div>
       </div>
 
-      <div class="locflow-form-group">
-        <label for="password-confirm" class="locflow-label">Confirm password</label>
-        <div class="locflow-password-row">
+      <div class="InterCopy-form-group">
+        <label for="password-confirm" class="InterCopy-label">Confirm password</label>
+        <div class="InterCopy-password-row">
           <input type="password" id="password-confirm" class="pf-c-form-control" name="password-confirm" autocomplete="new-password" required />
-          <button type="button" class="locflow-password-toggle" data-toggle-password="password-confirm" aria-label="Show confirm password">Show</button>
+          <button type="button" class="InterCopy-password-toggle" data-toggle-password="password-confirm" aria-label="Show confirm password">Show</button>
         </div>
       </div>
 
-      <div class="locflow-form-group">
+      <div class="InterCopy-form-group">
         <input class="pf-c-button pf-m-primary pf-m-block" id="kc-register" type="submit" value="Create account" />
       </div>
     </form>
@@ -82,7 +82,7 @@
       })
     </script>
   <#elseif section = "info">
-    <div class="locflow-register-cta">
+    <div class="InterCopy-register-cta">
       <span>Already have an account?</span>
       <a href="${url.loginUrl}">Back to sign in</a>
     </div>

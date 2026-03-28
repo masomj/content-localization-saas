@@ -4,8 +4,8 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Create Organisation - LocFlow',
-  description: 'Create your organisation or workspace to get started with LocFlow.',
+  title: 'Create Organisation - InterCopy',
+  description: 'Create your organisation or workspace to get started with InterCopy.',
 })
 
 const auth = useAuth()

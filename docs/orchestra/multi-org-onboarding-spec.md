@@ -6,7 +6,7 @@ After OIDC sign-in, users must establish an org context before entering the app.
 ## Implemented Decisions
 
 1. **Org context is claimless and client-selected**
-   - Active org is stored client-side (`locflow_organization`), sent on API calls as `X-Workspace-Id`.
+   - Active org is stored client-side (`InterCopy_organization`), sent on API calls as `X-Workspace-Id`.
    - Backend validates membership against this context for admin membership endpoints.
 
 2. **First org bootstrap grants Admin**

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 useSeoMeta({
-  title: 'LocFlow - Translate Your Content. Scale Globally.',
+  title: 'InterCopy - Translate Your Content. Scale Globally.',
   description: 'The all-in-one localization platform that helps teams manage translations, collaborate with reviewers, and deliver localized content to every market.',
-  ogTitle: 'LocFlow - Translate Your Content. Scale Globally.',
+  ogTitle: 'InterCopy - Translate Your Content. Scale Globally.',
   ogDescription: 'The all-in-one localization platform that helps teams manage translations, collaborate with reviewers, and deliver localized content to every market.',
   ogImage: '/og-image.png',
   twitterCard: 'summary_large_image',

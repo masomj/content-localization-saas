@@ -1,8 +1,8 @@
 {
-  "realm": "locflow",
+  "realm": "InterCopy",
   "enabled": true,
-  "displayName": "LocFlow",
-  "loginTheme": "locflow",
+  "displayName": "InterCopy",
+  "loginTheme": "InterCopy",
   "accountTheme": "keycloak.v3",
   "adminTheme": "keycloak.v2",
   "emailTheme": "keycloak",
@@ -24,8 +24,8 @@
   },
   "clients": [
     {
-      "clientId": "locflow-web",
-      "name": "LocFlow Web",
+      "clientId": "InterCopy-web",
+      "name": "InterCopy Web",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
@@ -41,8 +41,8 @@
       "defaultClientScopes": ["web-origins", "profile", "roles", "email", "openId", "offline_access"]
     },
     {
-      "clientId": "locflow-device",
-      "name": "LocFlow Device Auth (Figma Plugin)",
+      "clientId": "InterCopy-device",
+      "name": "InterCopy Device Auth (Figma Plugin)",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": false,

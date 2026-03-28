@@ -35,8 +35,8 @@ test.describe('Onboarding Flow', () => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
     await page.addInitScript(() => {
-      localStorage.setItem('locflow_auth_token', 'test_token')
-      localStorage.setItem('locflow_user', JSON.stringify({ 
+      localStorage.setItem('InterCopy_auth_token', 'test_token')
+      localStorage.setItem('InterCopy_user', JSON.stringify({ 
         id: '1', 
         email: 'test@example.com', 
         name: 'Test User',
@@ -52,8 +52,8 @@ test.describe('Onboarding Flow', () => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
     await page.addInitScript(() => {
-      localStorage.setItem('locflow_auth_token', 'test_token')
-      localStorage.setItem('locflow_user', JSON.stringify({ 
+      localStorage.setItem('InterCopy_auth_token', 'test_token')
+      localStorage.setItem('InterCopy_user', JSON.stringify({ 
         id: '1', 
         email: 'test@example.com', 
         name: 'Test User',
@@ -76,8 +76,8 @@ test.describe('App Dashboard', () => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
     await page.addInitScript(() => {
-      localStorage.setItem('locflow_auth_token', 'test_token')
-      localStorage.setItem('locflow_user', JSON.stringify({ 
+      localStorage.setItem('InterCopy_auth_token', 'test_token')
+      localStorage.setItem('InterCopy_user', JSON.stringify({ 
         id: '1', 
         email: 'test@example.com', 
         name: 'Test User',
@@ -101,8 +101,8 @@ test.describe('Members Management', () => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
     await page.addInitScript(() => {
-      localStorage.setItem('locflow_auth_token', 'test_token')
-      localStorage.setItem('locflow_user', JSON.stringify({ 
+      localStorage.setItem('InterCopy_auth_token', 'test_token')
+      localStorage.setItem('InterCopy_user', JSON.stringify({ 
         id: '1', 
         email: 'test@example.com', 
         name: 'Test User',

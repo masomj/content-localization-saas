@@ -9,7 +9,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Settings - LocFlow',
+  title: 'Settings - InterCopy',
 })
 
 const auth = useAuth()

@@ -15,7 +15,7 @@ Plugin                          API                         Keycloak            
   |<-- user_code + verify_url ---|                            |                          |
   |                              |                            |                          |
   | (shows: "Enter code ABCD    |                            |                          |
-  |  at locflow.app/device")     |                            |                          |
+  |  at InterCopy.app/device")     |                            |                          |
   |                              |                            |   User opens browser      |
   |                              |                            |<--- enters code + login --|
   |                              |                            |--- approves + returns --->|
@@ -32,9 +32,9 @@ Plugin                          API                         Keycloak            
 
 ## Phase 1: Keycloak — Device Auth Client
 
-### New Keycloak client: `locflow-device`
-Add to `keycloak/realm/locflow-realm.json`:
-- clientId: `locflow-device`
+### New Keycloak client: `InterCopy-device`
+Add to `keycloak/realm/InterCopy-realm.json`:
+- clientId: `InterCopy-device`
 - publicClient: true
 - oauth2DeviceAuthorizationGrantEnabled: true
 - standardFlowEnabled: false
@@ -43,7 +43,7 @@ Add to `keycloak/realm/locflow-realm.json`:
 
 ### Verification URI
 Keycloak provides the device verification endpoint at:
-`{keycloak-url}/realms/locflow/device`
+`{keycloak-url}/realms/InterCopy/device`
 
 ## Phase 2: Backend — Device Auth Proxy Endpoints
 
@@ -55,16 +55,16 @@ The plugin can't call Keycloak directly (CORS restrictions in Figma's iframe san
 **`POST /api/device-auth/start`**
 - No auth required (public endpoint)
 - Body: `{ }`
-- Server calls Keycloak: `POST {keycloak}/realms/locflow/protocol/openid-connect/auth/device`
-  - Form params: `client_id=locflow-device`
+- Server calls Keycloak: `POST {keycloak}/realms/InterCopy/protocol/openid-connect/auth/device`
+  - Form params: `client_id=InterCopy-device`
 - Returns to plugin: `{ userCode, verificationUri, verificationUriComplete, deviceCode, expiresIn, interval }`
 - Stores `deviceCode` in a short-lived cache (memory or DB) mapped to a session ID
 
 **`POST /api/device-auth/poll`**
 - No auth required
 - Body: `{ deviceCode }`
-- Server calls Keycloak: `POST {keycloak}/realms/locflow/protocol/openid-connect/token`
-  - Form params: `client_id=locflow-device`, `grant_type=urn:ietf:params:oauth:grant-type:device_code`, `device_code={deviceCode}`
+- Server calls Keycloak: `POST {keycloak}/realms/InterCopy/protocol/openid-connect/token`
+  - Form params: `client_id=InterCopy-device`, `grant_type=urn:ietf:params:oauth:grant-type:device_code`, `device_code={deviceCode}`
 - If pending: returns `{ status: "pending" }`
 - If expired: returns `{ status: "expired" }`
 - If success: Keycloak returns access_token + refresh_token
@@ -86,10 +86,10 @@ The plugin can't call Keycloak directly (CORS restrictions in Figma's iframe san
 ## Phase 3: Plugin — Device Auth UI
 
 ### Login flow
-1. Plugin shows "Connect to LocFlow" button + API base URL input
+1. Plugin shows "Connect to InterCopy" button + API base URL input
 2. User clicks "Connect"
 3. Plugin calls `POST /api/device-auth/start`
-4. Plugin shows: "Enter code **ABCD-EFGH** at **locflow.app/device**" with a "Copy code" button and "Open browser" link
+4. Plugin shows: "Enter code **ABCD-EFGH** at **InterCopy.app/device**" with a "Copy code" button and "Open browser" link
 5. User opens browser, logs into Keycloak, enters the code
 6. Plugin polls `POST /api/device-auth/poll` every 5 seconds
 7. When complete: stores access_token + refresh_token in localStorage
@@ -118,7 +118,7 @@ The plugin can't call Keycloak directly (CORS restrictions in Figma's iframe san
 
 ## Delivery Order
 
-1. Phase 1: Keycloak realm JSON update (add locflow-device client)
+1. Phase 1: Keycloak realm JSON update (add InterCopy-device client)
 2. Phase 2: Backend DeviceAuthController (3 endpoints)
 3. Phase 3: Plugin UI rewrite for device auth flow
 4. Phase 4: Deprecate old plugin auth

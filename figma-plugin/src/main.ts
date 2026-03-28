@@ -9,7 +9,7 @@ import type {
 } from "./types";
 
 // ---------------------------------------------------------------
-// LocFlow Figma Plugin — Main thread (sandbox)
+// InterCopy Figma Plugin — Main thread (sandbox)
 // Runs in the Figma plugin sandbox with access to figma.* API.
 // ---------------------------------------------------------------
 

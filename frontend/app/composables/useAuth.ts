@@ -18,8 +18,8 @@ interface AuthState {
   isAdmin: boolean
 }
 
-const USER_STORAGE_KEY = 'locflow_user'
-const ORG_STORAGE_KEY = 'locflow_organization'
+const USER_STORAGE_KEY = 'InterCopy_user'
+const ORG_STORAGE_KEY = 'InterCopy_organization'
 
 const authState = reactive<AuthState>({
   user: null,
@@ -151,7 +151,7 @@ function resolveUiTheme(): 'light' | 'dark' {
   const fromDom = document.documentElement.getAttribute('data-theme')
   if (fromDom === 'light' || fromDom === 'dark') return fromDom
 
-  const pref = window.localStorage.getItem('locflow-theme')
+  const pref = window.localStorage.getItem('InterCopy-theme')
   if (pref === 'light' || pref === 'dark') return pref
 
   const systemDark = typeof window.matchMedia === 'function'

@@ -14,7 +14,7 @@ function nowEpoch(): number {
   return Math.floor(Date.now() / 1000)
 }
 
-const AUTH_STORAGE_KEY = 'locflow_auth_token'
+const AUTH_STORAGE_KEY = 'InterCopy_auth_token'
 
 let localStore: Record<string, string>
 let sessionStore: Record<string, string>
@@ -39,8 +39,8 @@ describe('Auth Token Refresh – client.ts', () => {
     vi.stubGlobal('useRuntimeConfig', () => ({
       public: {
         keycloakUrl: 'http://localhost:8080',
-        keycloakRealm: 'locflow',
-        keycloakClientId: 'locflow-web',
+        keycloakRealm: 'InterCopy',
+        keycloakClientId: 'InterCopy-web',
       },
     }))
   })

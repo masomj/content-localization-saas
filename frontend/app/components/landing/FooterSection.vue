@@ -6,9 +6,9 @@ const currentYear = new Date().getFullYear()
   <footer class="footer" role="contentinfo">
     <div class="footer-container">
       <div class="footer-main">
-        <NuxtLink to="/" class="brand" aria-label="LocFlow Home">
+        <NuxtLink to="/" class="brand" aria-label="InterCopy Home">
           <span class="brand-icon" aria-hidden="true">◈</span>
-          <span class="brand-text">LocFlow</span>
+          <span class="brand-text">InterCopy</span>
         </NuxtLink>
         <p class="brand-description">
           The all-in-one localization platform for modern teams.
@@ -17,7 +17,7 @@ const currentYear = new Date().getFullYear()
 
       <div class="footer-bottom">
         <p class="copyright">
-          &copy; {{ currentYear }} LocFlow. All rights reserved.
+          &copy; {{ currentYear }} InterCopy. All rights reserved.
         </p>
       </div>
     </div>

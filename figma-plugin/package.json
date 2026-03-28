@@ -1,7 +1,7 @@
 {
-  "name": "locflow-figma-plugin",
+  "name": "InterCopy-figma-plugin",
   "version": "1.0.0",
-  "description": "LocFlow Figma plugin — push/pull design component text layers to the LocFlow platform",
+  "description": "InterCopy Figma plugin — push/pull design component text layers to the InterCopy platform",
   "private": true,
   "scripts": {
     "build": "npm run build:main && npm run build:ui && npm run build:html",

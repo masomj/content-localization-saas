@@ -31,7 +31,7 @@
 ## `ui_theme` handling
 
 - preserved through `signinRedirect({ extraQueryParams: { ui_theme } })`
-- theme source remains identical (`data-theme` -> `locflow-theme` -> system preference)
+- theme source remains identical (`data-theme` -> `InterCopy-theme` -> system preference)
 
 ## Migration impacts
 

@@ -19,7 +19,7 @@ const benefits = [
 
 const testimonials = [
   {
-    quote: 'LocFlow transformed how we handle translations. Our team ships localized content 3x faster.',
+    quote: 'InterCopy transformed how we handle translations. Our team ships localized content 3x faster.',
     author: 'Sarah Chen',
     role: 'Product Lead at TechCorp'
   },
@@ -37,7 +37,7 @@ const trustedBy = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Stark Industri
   <section id="benefits" class="benefits" aria-labelledby="benefits-heading">
     <div class="benefits-container">
       <div class="benefits-header">
-        <h2 id="benefits-heading" class="benefits-title">Why teams choose LocFlow</h2>
+        <h2 id="benefits-heading" class="benefits-title">Why teams choose InterCopy</h2>
         <p class="benefits-subtitle">
           Join hundreds of companies scaling their global content.
         </p>

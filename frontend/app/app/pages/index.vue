@@ -5,8 +5,8 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Dashboard - LocFlow',
-  description: 'Your LocFlow dashboard',
+  title: 'Dashboard - InterCopy',
+  description: 'Your InterCopy dashboard',
 })
 
 const auth = useAuth()

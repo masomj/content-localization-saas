@@ -6,7 +6,7 @@ import type {
 } from "./types";
 
 // ---------------------------------------------------------------
-// LocFlow API client — used from the plugin UI iframe
+// InterCopy API client — used from the plugin UI iframe
 // Uses Keycloak OIDC Device Authorization Flow for auth.
 // ---------------------------------------------------------------
 
@@ -47,7 +47,7 @@ export interface JwtPayload {
   iat?: number;
 }
 
-export class LocFlowApi {
+export class InterCopyApi {
   private baseUrl: string;
   private accessToken: string | null = null;
   private refreshTokenValue: string | null = null;

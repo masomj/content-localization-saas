@@ -9,7 +9,7 @@ import { contentClient } from '~/api/contentClient'
 import type { ProjectVersion, VersionDiff } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Releases - LocFlow' })
+useSeoMeta({ title: 'Releases - InterCopy' })
 
 const route = useRoute()
 const auth = useAuth()

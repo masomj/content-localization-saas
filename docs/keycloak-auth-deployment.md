@@ -1,11 +1,11 @@
 # Keycloak OAuth/OIDC rollout strategy
 
 ## What changed
-- LocFlow API now validates bearer JWTs issued by Keycloak (`Auth:Oidc:*` config).
+- InterCopy API now validates bearer JWTs issued by Keycloak (`Auth:Oidc:*` config).
 - Aspire AppHost now runs Keycloak plus realm/theme import.
 - Keycloak uses the same Aspire Postgres server as the app, but a separate database (`keycloak`).
 - Frontend login now starts OIDC Authorization Code + PKCE flow and stores access/refresh tokens in cookies.
-- Custom Keycloak login theme added at `keycloak/themes/locflow`.
+- Custom Keycloak login theme added at `keycloak/themes/InterCopy`.
 
 ## Local dev runbook (Aspire)
 1. Set admin password secret (user-secrets or env):
@@ -16,9 +16,9 @@
    - Frontend: `http://localhost:3000`
    - Keycloak admin: `http://localhost:8080/admin`
 4. Realm import:
-   - `keycloak/realm/locflow-realm.json` is imported automatically on start.
+   - `keycloak/realm/InterCopy-realm.json` is imported automatically on start.
 5. Theme wiring:
-   - Realm sets `loginTheme=locflow`.
+   - Realm sets `loginTheme=InterCopy`.
    - Theme files are bind-mounted from `keycloak/themes`.
 
 ## Dev compatibility/migration notes
@@ -36,14 +36,14 @@
 
 ### Required prod env vars (examples)
 API:
-- `Auth__Oidc__Issuer=https://auth.example.com/realms/locflow`
-- `Auth__Oidc__Audience=locflow-web`
+- `Auth__Oidc__Issuer=https://auth.example.com/realms/InterCopy`
+- `Auth__Oidc__Audience=InterCopy-web`
 - `Auth__Oidc__RequireHttpsMetadata=true`
 
 Frontend:
 - `NUXT_PUBLIC_KEYCLOAK_URL=https://auth.example.com`
-- `NUXT_PUBLIC_KEYCLOAK_REALM=locflow`
-- `NUXT_PUBLIC_KEYCLOAK_CLIENT_ID=locflow-web`
+- `NUXT_PUBLIC_KEYCLOAK_REALM=InterCopy`
+- `NUXT_PUBLIC_KEYCLOAK_CLIENT_ID=InterCopy-web`
 
 Keycloak:
 - `KC_DB=postgres`
@@ -57,11 +57,11 @@ Keycloak:
 - `KC_HTTP_ENABLED=false`
 
 ## CI/CD and rollback
-- Keep realm config (`keycloak/realm/locflow-realm.json`) versioned.
+- Keep realm config (`keycloak/realm/InterCopy-realm.json`) versioned.
 - Validate on CI:
   1. backend build
   2. frontend unit tests + build
-- Theme rollout: publish image/artifact including `keycloak/themes/locflow`.
+- Theme rollout: publish image/artifact including `keycloak/themes/InterCopy`.
 - Rollback plan:
   1. redeploy previous API/frontend artifact,
   2. keep Keycloak realm backward-compatible (do not remove existing roles/clients abruptly),

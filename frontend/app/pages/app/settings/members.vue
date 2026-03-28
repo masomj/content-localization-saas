@@ -9,7 +9,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Team Members - LocFlow',
+  title: 'Team Members - InterCopy',
 })
 
 const auth = useAuth()

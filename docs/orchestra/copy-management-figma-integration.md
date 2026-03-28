@@ -181,7 +181,7 @@ public sealed class DesignComponentTextField
 - Communicates with backend via REST API (plugin auth flow)
 
 ### Plugin features
-1. **Auth**: Login via LocFlow credentials (uses existing `/api/plugin/login`)
+1. **Auth**: Login via InterCopy credentials (uses existing `/api/plugin/login`)
 2. **Push frame**: Select a frame → extract all text layers with positions → push to API
 3. **Pull latest**: Select a component → pull latest text from webapp → update Figma text layers
 4. **Link indicator**: Show which text layers are synced (badge/icon)
@@ -195,7 +195,7 @@ figma-plugin/
     main.ts          // Plugin main thread (Figma API access)
     ui.html          // Plugin UI (iframe)
     ui.ts            // UI logic
-    api.ts           // API client for LocFlow backend
+    api.ts           // API client for InterCopy backend
     types.ts         // Shared types
   package.json
   tsconfig.json

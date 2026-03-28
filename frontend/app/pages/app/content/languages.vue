@@ -6,7 +6,7 @@ import { projectsClient } from '~/api/projectsClient'
 import type { Project } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Languages - LocFlow' })
+useSeoMeta({ title: 'Languages - InterCopy' })
 
 const auth = useAuth()
 const projects = ref<Array<{ id: string; name: string }>>([])

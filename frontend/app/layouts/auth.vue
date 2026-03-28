@@ -1,9 +1,9 @@
 <template>
   <div class="auth-page">
     <header class="auth-header">
-      <NuxtLink to="/" class="brand" aria-label="LocFlow Home">
+      <NuxtLink to="/" class="brand" aria-label="InterCopy Home">
         <span class="brand-icon" aria-hidden="true">◈</span>
-        <span class="brand-text">LocFlow</span>
+        <span class="brand-text">InterCopy</span>
       </NuxtLink>
       <ClientOnly><UiThemeToggle /></ClientOnly>
     </header>

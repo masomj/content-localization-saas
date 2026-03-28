@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------
-// Shared types matching the LocFlow backend API
+// Shared types matching the InterCopy backend API
 // ---------------------------------------------------------------
 
 /** Represents a Figma frame / component pushed to the platform. */

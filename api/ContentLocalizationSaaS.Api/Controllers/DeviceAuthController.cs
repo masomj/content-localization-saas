@@ -39,12 +39,12 @@ public sealed record DeviceAuthRefreshResponse(
 [Route("api/device-auth")]
 public sealed class DeviceAuthController(IHttpClientFactory httpClientFactory, IConfiguration configuration) : ControllerBase
 {
-    private const string KeycloakClientId = "locflow-device";
+    private const string KeycloakClientId = "InterCopy-device";
 
     private string GetKeycloakBaseUrl()
     {
-        // Auth__Oidc__Issuer = http://localhost:8080/realms/locflow
-        var issuer = configuration["Auth:Oidc:Issuer"] ?? "http://localhost:8080/realms/locflow";
+        // Auth__Oidc__Issuer = http://localhost:8080/realms/InterCopy
+        var issuer = configuration["Auth:Oidc:Issuer"] ?? "http://localhost:8080/realms/InterCopy";
         return issuer.TrimEnd('/');
     }
 

@@ -4,7 +4,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder
     .AddPostgres("postgres")
-    .WithDataVolume("locflow-postgres-data")
+    .WithDataVolume("InterCopy-postgres-data")
     .WithPgAdmin();
 
 var contentDb = postgres.AddDatabase("contentdb", "content_localization");
@@ -17,7 +17,7 @@ if (string.IsNullOrWhiteSpace(keycloakAdminPassword))
 {
     if (builder.Environment.IsDevelopment())
     {
-        keycloakAdminPassword = "locflow-dev-admin";
+        keycloakAdminPassword = "InterCopy-dev-admin";
     }
     else
     {
@@ -52,8 +52,8 @@ var api = builder
     .WaitFor(contentDb)
     .WaitFor(keycloak)
     .WithReference(contentDb)
-    .WithEnvironment("Auth__Oidc__Issuer", $"{keycloak.GetEndpoint("http")}/realms/locflow")
-    .WithEnvironment("Auth__Oidc__Audience", "locflow-web")
+    .WithEnvironment("Auth__Oidc__Issuer", $"{keycloak.GetEndpoint("http")}/realms/InterCopy")
+    .WithEnvironment("Auth__Oidc__Audience", "InterCopy-web")
     .WithEnvironment("Auth__Oidc__RequireHttpsMetadata", "false");
 
 var frontend = builder.AddJavaScriptApp("frontend", "..\\..\\frontend", "dev")
@@ -61,8 +61,8 @@ var frontend = builder.AddJavaScriptApp("frontend", "..\\..\\frontend", "dev")
     .WaitFor(api)
     .WithReference(api)
     .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
-    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_REALM", "locflow")
-    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_CLIENT_ID", "locflow-web");
+    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_REALM", "InterCopy")
+    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_CLIENT_ID", "InterCopy-web");
 
 builder.Build().Run();
 

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 async function setDarkMode(page: any) {
   await page.addInitScript(() => {
-    localStorage.setItem('locflow-theme', 'dark')
+    localStorage.setItem('InterCopy-theme', 'dark')
   })
 }
 

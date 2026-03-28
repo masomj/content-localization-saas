@@ -1,7 +1,7 @@
 import { refreshOidcUser } from '~/lib/oidc'
 
-const AUTH_STORAGE_KEY = 'locflow_auth_token'
-const ORG_STORAGE_KEY = 'locflow_organization'
+const AUTH_STORAGE_KEY = 'InterCopy_auth_token'
+const ORG_STORAGE_KEY = 'InterCopy_organization'
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60
 
 function parseCookie(name: string): string | null {

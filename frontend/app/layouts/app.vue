@@ -50,7 +50,7 @@ const breadcrumbs = computed(() => {
       <div class="layout-app__sidebar-header">
         <NuxtLink to="/app/dashboard" class="layout-app__brand">
           <span class="layout-app__brand-icon">◈</span>
-          <span v-if="!sidebarCollapsed" class="layout-app__brand-text">LocFlow</span>
+          <span v-if="!sidebarCollapsed" class="layout-app__brand-text">InterCopy</span>
         </NuxtLink>
         <button class="layout-app__sidebar-toggle" @click="toggleSidebar" aria-label="Toggle sidebar">
           <svg viewBox="0 0 20 20" fill="currentColor">

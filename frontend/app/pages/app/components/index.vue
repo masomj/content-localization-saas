@@ -7,7 +7,7 @@ import { projectsClient } from '~/api/projectsClient'
 import type { DesignComponent, Project } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Components - LocFlow' })
+useSeoMeta({ title: 'Components - InterCopy' })
 
 const auth = useAuth()
 const router = useRouter()

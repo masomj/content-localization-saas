@@ -13,7 +13,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const cookieHeader = useRequestHeaders(['cookie']).cookie || ''
     const hasToken = cookieHeader.split('; ').some(c => {
       const [key, ...rest] = c.split('=')
-      return key === 'locflow_auth_token' && rest.join('=').length > 0
+      return key === 'InterCopy_auth_token' && rest.join('=').length > 0
     })
     if (!hasToken) return navigateTo('/login')
     return

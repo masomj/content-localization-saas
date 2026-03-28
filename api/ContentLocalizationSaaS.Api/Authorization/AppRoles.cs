@@ -90,9 +90,9 @@ public static class AppRoleResolver
             return true;
         }
 
-        if (raw.StartsWith("locflow-", StringComparison.OrdinalIgnoreCase))
+        if (raw.StartsWith("InterCopy-", StringComparison.OrdinalIgnoreCase))
         {
-            raw = raw["locflow-".Length..];
+            raw = raw["InterCopy-".Length..];
         }
 
         return Enum.TryParse(raw, true, out role);

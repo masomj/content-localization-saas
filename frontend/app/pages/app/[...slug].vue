@@ -6,7 +6,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Page Not Found - LocFlow',
+  title: 'Page Not Found - InterCopy',
 })
 </script>
 

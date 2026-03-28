@@ -15,7 +15,7 @@ function closeMenu() {
     <nav class="navbar-container" role="navigation" aria-label="Main navigation">
       <NuxtLink to="/" class="brand" aria-label="Content Localization SaaS Home">
         <span class="brand-icon" aria-hidden="true">◈</span>
-        <span class="brand-text">LocFlow</span>
+        <span class="brand-text">InterCopy</span>
       </NuxtLink>
 
       <button 

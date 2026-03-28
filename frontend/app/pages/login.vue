@@ -4,8 +4,8 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Login - LocFlow',
-  description: 'Sign in to your LocFlow account to manage translations and collaborate with your team.',
+  title: 'Login - InterCopy',
+  description: 'Sign in to your InterCopy account to manage translations and collaborate with your team.',
 })
 
 const auth = useAuth()

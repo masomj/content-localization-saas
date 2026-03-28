@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Sign Up - LocFlow',
+  title: 'Sign Up - InterCopy',
   description: 'Start your free trial. No credit card required. Join thousands of teams shipping localized content faster.',
 })
 

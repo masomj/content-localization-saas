@@ -82,9 +82,9 @@ await auth.refreshUser()
 
 #### Storage
 
-- `locflow_auth_token`: JWT token
-- `locflow_user`: Serialized user info
-- `locflow_organization`: Workspace info
+- `InterCopy_auth_token`: JWT token
+- `InterCopy_user`: Serialized user info
+- `InterCopy_organization`: Workspace info
 
 #### Session Bootstrap
 

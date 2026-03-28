@@ -13,8 +13,8 @@ export default defineNuxtConfig({
     public: {
       apiBase: '/api',
       keycloakUrl: process.env.NUXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080',
-      keycloakRealm: process.env.NUXT_PUBLIC_KEYCLOAK_REALM || 'locflow',
-      keycloakClientId: process.env.NUXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'locflow-web',
+      keycloakRealm: process.env.NUXT_PUBLIC_KEYCLOAK_REALM || 'InterCopy',
+      keycloakClientId: process.env.NUXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'InterCopy-web',
     },
   },
   nitro: {
@@ -28,13 +28,13 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'en' },
-      title: 'LocFlow - Translate Your Content. Scale Globally.',
+      title: 'InterCopy - Translate Your Content. Scale Globally.',
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
       meta: [
         { name: 'description', content: 'The all-in-one localization platform that helps teams manage translations, collaborate with reviewers, and deliver localized content to every market.' },
         { name: 'theme-color', content: '#4f46e5' },
-        { property: 'og:title', content: 'LocFlow - Translate Your Content. Scale Globally.' },
+        { property: 'og:title', content: 'InterCopy - Translate Your Content. Scale Globally.' },
         { property: 'og:description', content: 'The all-in-one localization platform that helps teams manage translations, collaborate with reviewers, and deliver localized content to every market.' },
         { property: 'og:type', content: 'website' },
         { name: 'twitter:card', content: 'summary_large_image' },
@@ -45,7 +45,7 @@ export default defineNuxtConfig({
       script: [
         {
           id: 'theme-bootstrap',
-          innerHTML: "(function(){try{var key='locflow-theme';var stored=localStorage.getItem(key);var pref=(stored==='light'||stored==='dark'||stored==='system')?stored:'system';var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;var theme=pref==='system'?(dark?'dark':'light'):pref;document.documentElement.setAttribute('data-theme',theme);document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();",
+          innerHTML: "(function(){try{var key='InterCopy-theme';var stored=localStorage.getItem(key);var pref=(stored==='light'||stored==='dark'||stored==='system')?stored:'system';var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;var theme=pref==='system'?(dark?'dark':'light'):pref;document.documentElement.setAttribute('data-theme',theme);document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();",
         },
       ],
     },

@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Forgot password - LocFlow',
+  title: 'Forgot password - InterCopy',
 })
 
 const auth = useAuth()

@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Dashboard - LocFlow',
+  title: 'Dashboard - InterCopy',
 })
 
 const auth = useAuth()
@@ -12,7 +12,7 @@ const auth = useAuth()
 
 <template>
   <div class="dashboard">
-    <h1>Welcome to LocFlow</h1>
+    <h1>Welcome to InterCopy</h1>
     <template v-if="!auth.isLoading.value">
       <p>Logged in as: {{ auth.user.value?.email }}</p>
       <p>Organization: {{ auth.organization.value?.name }}</p>

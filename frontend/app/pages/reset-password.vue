@@ -2,7 +2,7 @@
 import { authClient } from '~/api/authClient'
 
 definePageMeta({ layout: 'auth' })
-useSeoMeta({ title: 'Reset password - LocFlow' })
+useSeoMeta({ title: 'Reset password - InterCopy' })
 
 const route = useRoute()
 

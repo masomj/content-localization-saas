@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const AUTH_STORAGE_KEY = 'locflow_auth_token'
-const USER_STORAGE_KEY = 'locflow_user'
-const ORG_STORAGE_KEY = 'locflow_organization'
+const AUTH_STORAGE_KEY = 'InterCopy_auth_token'
+const USER_STORAGE_KEY = 'InterCopy_user'
+const ORG_STORAGE_KEY = 'InterCopy_organization'
 
 describe('Auth Storage Utilities', () => {
   let localStorageMock: Record<string, string>

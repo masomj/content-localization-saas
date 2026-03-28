@@ -9,7 +9,7 @@ import { projectsClient } from '~/api/projectsClient'
 import type { ContentItem, Project, ProjectTreeNode } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Content - LocFlow' })
+useSeoMeta({ title: 'Content - InterCopy' })
 
 const auth = useAuth()
 const isLoading = ref(false)

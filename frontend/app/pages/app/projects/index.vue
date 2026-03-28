@@ -6,7 +6,7 @@ import { projectsClient } from '~/api/projectsClient'
 import type { Project } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Projects - LocFlow' })
+useSeoMeta({ title: 'Projects - InterCopy' })
 
 // Redirect non-admins away from projects page
 const auth = useAuth()

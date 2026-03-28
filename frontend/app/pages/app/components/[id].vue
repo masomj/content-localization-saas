@@ -7,7 +7,7 @@ import { contentClient } from '~/api/contentClient'
 import type { ContentItem, DesignComponentTextField } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Component Detail - LocFlow' })
+useSeoMeta({ title: 'Component Detail - InterCopy' })
 
 const route = useRoute()
 const router = useRouter()
