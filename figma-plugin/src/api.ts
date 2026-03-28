@@ -121,7 +121,7 @@ export class LocFlowApi {
       return await this.get<{ items: ActivityFeedItem[] }>(
         `/api/activity-feed?projectId=${projectId}`
       );
-    } catch {
+    } catch (_) {
       return { items: [] };
     }
   }
@@ -181,3 +181,4 @@ interface ActivityFeedItem {
   createdUtc: string;
   metadata?: Record<string, unknown>;
 }
+

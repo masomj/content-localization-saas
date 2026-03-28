@@ -5,12 +5,12 @@
   "private": true,
   "scripts": {
     "build": "npm run build:main && npm run build:ui && npm run build:html",
-    "build:main": "esbuild src/main.ts --bundle --outfile=dist/main.js --target=es2020 --format=iife",
-    "build:ui": "esbuild src/ui.ts --bundle --outfile=dist/ui.js --target=es2020 --format=iife",
+    "build:main": "esbuild src/main.ts --bundle --outfile=dist/main.js --target=es2017 --format=iife",
+    "build:ui": "esbuild src/ui.ts --bundle --outfile=dist/ui.js --target=es2017 --format=iife",
     "build:html": "node scripts/build-ui-html.js",
     "watch": "concurrently \"npm run watch:main\" \"npm run watch:ui\"",
-    "watch:main": "esbuild src/main.ts --bundle --outfile=dist/main.js --target=es2020 --format=iife --watch",
-    "watch:ui": "esbuild src/ui.ts --bundle --outfile=dist/ui.js --target=es2020 --format=iife --watch",
+    "watch:main": "esbuild src/main.ts --bundle --outfile=dist/main.js --target=es2017 --format=iife --watch",
+    "watch:ui": "esbuild src/ui.ts --bundle --outfile=dist/ui.js --target=es2017 --format=iife --watch",
     "dev": "npm run build && npm run watch"
   },
   "devDependencies": {
@@ -20,3 +20,4 @@
     "concurrently": "^8.2.0"
   }
 }
+

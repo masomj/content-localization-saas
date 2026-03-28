@@ -72,10 +72,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Restore activity and review from localStorage
   if (savedActivity) {
-    try { activityLog = JSON.parse(savedActivity); } catch { activityLog = []; }
+    try { activityLog = JSON.parse(savedActivity); } catch (_) { activityLog = []; }
   }
   if (savedReview) {
-    try { reviewQueue = JSON.parse(savedReview); } catch { reviewQueue = []; }
+    try { reviewQueue = JSON.parse(savedReview); } catch (_) { reviewQueue = []; }
   }
 
   const serverUrlInput = $<HTMLInputElement>("server-url");
@@ -609,7 +609,7 @@ async function refreshChangesTab(): Promise<void> {
   // 1. Fetch remote components for this project
   try {
     remoteComponents = await api.getComponents(selectedProjectId);
-  } catch {
+  } catch (_) {
     remoteComponents = [];
   }
 
@@ -1092,3 +1092,4 @@ function requestSelection(): void {
 function requestFileKey(): void {
   postToMain({ type: "get-file-key" });
 }
+

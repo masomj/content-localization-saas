@@ -313,7 +313,7 @@ async function applyPulledText(
       await loadAllFonts(targetNode);
       targetNode.characters = field.currentText;
       updated++;
-    } catch {
+    } catch (_) {
       // Skip nodes that fail font loading
     }
   }
@@ -335,7 +335,7 @@ function sendFileKey(): void {
 function getFileKey(): string {
   try {
     return figma.fileKey ?? "unknown";
-  } catch {
+  } catch (_) {
     return "unknown";
   }
 }
@@ -354,7 +354,7 @@ function sendCurrentUser(): void {
         email: "",
       });
     }
-  } catch {
+  } catch (_) {
     // Ignore if not available
   }
 }
@@ -476,3 +476,4 @@ function rgbToHex(r: number, g: number, b: number): string {
 function postToUI(msg: MainMessage): void {
   figma.ui.postMessage(msg);
 }
+
