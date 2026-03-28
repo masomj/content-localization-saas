@@ -10,6 +10,9 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── Migrate-only mode (for CI/CD) ───────────────────────────
+var migrateOnly = args.Contains("--migrate-only");
+
 builder.AddServiceDefaults();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
@@ -24,6 +27,13 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateContentItemRequestVal
 
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
 var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
+
+builder.Services.AddHttpClient("Keycloak", client =>
+{
+    // Base address is the Keycloak issuer URL (e.g. http://localhost:8080/realms/locflow)
+    // Endpoints are relative to the realm.
+    client.BaseAddress = new Uri(authOptions.Oidc.Issuer.TrimEnd('/') + "/");
+});
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -47,12 +57,14 @@ builder.Services
                 var audClaims = principal?.FindAll("aud").Select(c => c.Value) ?? Enumerable.Empty<string>();
                 var azp = principal?.FindFirst("azp")?.Value;
 
-                var audienceMatch = audClaims.Contains(expectedAudience, StringComparer.OrdinalIgnoreCase)
-                                    || string.Equals(azp, expectedAudience, StringComparison.OrdinalIgnoreCase);
+                // Accept tokens from the web client and the device-auth (Figma plugin) client
+                var validClients = new[] { expectedAudience, "locflow-device" };
+                var audienceMatch = audClaims.Any(a => validClients.Contains(a, StringComparer.OrdinalIgnoreCase))
+                                    || validClients.Contains(azp, StringComparer.OrdinalIgnoreCase);
 
                 if (!audienceMatch)
                 {
-                    context.Fail($"Token audience/azp does not match expected client '{expectedAudience}'.");
+                    context.Fail($"Token audience/azp does not match expected clients '{string.Join(", ", validClients)}'.");
                 }
 
                 return Task.CompletedTask;
@@ -84,19 +96,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-var isDevelopment = app.Environment.IsDevelopment();
-var allowsDebugUserDeletion = DebugEndpointEnvironmentPolicy.AllowsDebugUserDeletion(app.Environment.EnvironmentName);
-
-if (isDevelopment || allowsDebugUserDeletion)
-{
-    app.MapOpenApi();
-    app.MapScalarApiReference(options =>
-    {
-        options.Title = "ContentLocalizationSaaS API";
-    });
-}
-
-if (isDevelopment)
+// ── Run migrations (always in migrate-only mode, dev-only otherwise) ──
+if (migrateOnly || app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -131,6 +132,24 @@ if (isDevelopment)
 
         logger.LogInformation("Created missing identity role: {Role}", appRole);
     }
+
+    if (migrateOnly)
+    {
+        logger.LogInformation("Migrations complete. Exiting (--migrate-only).");
+        return;
+    }
+}
+
+var isDevelopment = app.Environment.IsDevelopment();
+var allowsDebugUserDeletion = DebugEndpointEnvironmentPolicy.AllowsDebugUserDeletion(app.Environment.EnvironmentName);
+
+if (isDevelopment || allowsDebugUserDeletion)
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "ContentLocalizationSaaS API";
+    });
 }
 
 app.MapDefaultEndpoints();

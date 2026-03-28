@@ -672,24 +672,33 @@
       LocFlow
     </div>
 
-    <div class="field-group">
-      <label class="field-label" for="server-url">Server URL</label>
-      <input type="text" id="server-url" placeholder="https://app.locflow.io" />
+    <!-- Step 1: Server URL + Connect button -->
+    <div id="login-form-area" style="display:flex; flex-direction:column; gap:10px;">
+      <div class="field-group">
+        <label class="field-label" for="server-url">Server URL</label>
+        <input type="text" id="server-url" placeholder="https://app.locflow.io" />
+      </div>
+
+      <div id="login-error"></div>
+
+      <button id="login-btn" class="btn-primary btn-full">Connect to LocFlow</button>
     </div>
 
-    <div class="field-group">
-      <label class="field-label" for="email">Email</label>
-      <input type="email" id="email" placeholder="you@company.com" />
+    <!-- Step 2: Device code display (hidden initially) -->
+    <div id="device-code-area" style="display:none; flex-direction:column; gap:12px; align-items:center; text-align:center; padding-top:12px;">
+      <div style="font-size:11px; color:#888;">Enter this code in your browser to sign in:</div>
+      <div id="device-user-code" style="font-size:24px; font-weight:700; color:#fff; letter-spacing:2px; padding:12px 0;">----</div>
+      <button id="device-copy-btn" class="btn-secondary btn-sm">Copy code</button>
+      <div style="font-size:11px; color:#666; margin-top:4px;">
+        Open in your browser:
+        <a id="device-verify-url" href="#" style="color:#0d99ff; word-break:break-all;">—</a>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; margin-top:8px; color:#888; font-size:10px;">
+        <div class="spinner"></div>
+        Waiting for authorization...
+      </div>
+      <button id="device-cancel-btn" class="btn-ghost btn-sm" style="margin-top:4px;">Cancel</button>
     </div>
-
-    <div class="field-group">
-      <label class="field-label" for="workspace-id">Workspace ID</label>
-      <input type="text" id="workspace-id" placeholder="workspace-uuid" />
-    </div>
-
-    <div id="login-error"></div>
-
-    <button id="login-btn" class="btn-primary btn-full">Log in</button>
   </div>
 
   <!-- ==================== MAIN APP ==================== -->

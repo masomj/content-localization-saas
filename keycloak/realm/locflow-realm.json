@@ -39,6 +39,20 @@
         "http://localhost:3000"
       ],
       "defaultClientScopes": ["web-origins", "profile", "roles", "email", "openId", "offline_access"]
+    },
+    {
+      "clientId": "locflow-device",
+      "name": "LocFlow Device Auth (Figma Plugin)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "true"
+      },
+      "defaultClientScopes": ["openid", "email", "profile"]
     }
   ]
 }

@@ -1,3 +1,5 @@
+// DEPRECATED: ASP.NET Identity auth. All new auth uses Keycloak OIDC.
+// See DeviceAuthController for the replacement (OAuth 2.0 Device Authorization Grant).
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +14,7 @@ public sealed record PluginSwitchWorkspaceRequest(string Token, Guid WorkspaceId
 [Route("api/plugin-auth")]
 public sealed class PluginAuthController(AppDbContext db) : ControllerBase
 {
+    [Obsolete("Use DeviceAuthController (POST /api/device-auth/start) instead. This endpoint will be removed in a future release.")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] PluginLoginRequest request, CancellationToken cancellationToken)
     {

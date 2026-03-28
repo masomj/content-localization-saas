@@ -1,5 +1,4 @@
 import type {
-  LoginResponse,
   Project,
   PushComponentPayload,
   DesignComponent,
@@ -8,11 +7,50 @@ import type {
 
 // ---------------------------------------------------------------
 // LocFlow API client — used from the plugin UI iframe
+// Uses Keycloak OIDC Device Authorization Flow for auth.
 // ---------------------------------------------------------------
+
+/** Response from POST /api/device-auth/start */
+export interface DeviceAuthStartResponse {
+  userCode: string;
+  verificationUri: string;
+  verificationUriComplete: string | null;
+  deviceCode: string;
+  expiresIn: number;
+  interval: number;
+}
+
+/** Response from POST /api/device-auth/poll */
+export interface DeviceAuthPollResponse {
+  status: "pending" | "expired" | "complete";
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  user?: { sub: string; email: string | null; name: string | null };
+}
+
+/** Response from POST /api/device-auth/refresh */
+export interface DeviceAuthRefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+/** Decoded JWT payload (minimal fields we care about). */
+export interface JwtPayload {
+  sub?: string;
+  email?: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  exp?: number;
+  iat?: number;
+}
 
 export class LocFlowApi {
   private baseUrl: string;
-  private sessionToken: string | null = null;
+  private accessToken: string | null = null;
+  private refreshTokenValue: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
@@ -21,53 +59,118 @@ export class LocFlowApi {
   // -- Auth ---------------------------------------------------
 
   setToken(token: string): void {
-    this.sessionToken = token;
+    this.accessToken = token;
+  }
+
+  setRefreshToken(token: string): void {
+    this.refreshTokenValue = token;
   }
 
   clearToken(): void {
-    this.sessionToken = null;
+    this.accessToken = null;
+    this.refreshTokenValue = null;
   }
 
   get isAuthenticated(): boolean {
-    return this.sessionToken !== null;
+    return this.accessToken !== null;
   }
 
   get token(): string | null {
-    return this.sessionToken;
+    return this.accessToken;
+  }
+
+  // -- Device Auth Flow ----------------------------------------
+
+  /**
+   * Start the device authorization flow.
+   * Returns user_code + verification URI for the user to complete in a browser.
+   */
+  async startDeviceAuth(): Promise<DeviceAuthStartResponse> {
+    return this.post<DeviceAuthStartResponse>(
+      "/api/device-auth/start",
+      {},
+      false
+    );
   }
 
   /**
-   * Authenticate with email + workspaceId.
-   * Backend: POST /api/plugin-auth/login
-   * Returns session token (8h TTL).
+   * Poll for device auth completion.
+   * Call every `interval` seconds until status is "complete" or "expired".
    */
-  async login(email: string, workspaceId: string): Promise<LoginResponse> {
-    const body = { userEmail: email, workspaceId };
-    const res = await this.post<LoginResponse>(
-      "/api/plugin-auth/login",
-      body,
+  async pollDeviceAuth(deviceCode: string): Promise<DeviceAuthPollResponse> {
+    return this.post<DeviceAuthPollResponse>(
+      "/api/device-auth/poll",
+      { deviceCode },
       false
     );
-    this.sessionToken = res.token;
+  }
+
+  /**
+   * Refresh an expired access token using the refresh token.
+   */
+  async refreshToken(): Promise<DeviceAuthRefreshResponse> {
+    if (!this.refreshTokenValue) {
+      throw new Error("SESSION_EXPIRED");
+    }
+    const res = await this.post<DeviceAuthRefreshResponse>(
+      "/api/device-auth/refresh",
+      { refreshToken: this.refreshTokenValue },
+      false
+    );
+    this.accessToken = res.accessToken;
+    this.refreshTokenValue = res.refreshToken;
     return res;
+  }
+
+  // -- Token utilities ----------------------------------------
+
+  /**
+   * Check if the current access token is expired (or about to expire).
+   * Returns true if token is missing or expires within 60 seconds.
+   */
+  isTokenExpired(): boolean {
+    if (!this.accessToken) return true;
+    try {
+      const payload = decodeJwt(this.accessToken);
+      if (!payload.exp) return false;
+      const nowSec = Math.floor(Date.now() / 1000);
+      return payload.exp - nowSec < 60; // 60-second buffer
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /**
+   * Ensure the access token is fresh. If expired, attempt refresh.
+   * Throws SESSION_EXPIRED if refresh also fails.
+   */
+  async ensureFreshToken(): Promise<void> {
+    if (!this.isTokenExpired()) return;
+    try {
+      await this.refreshToken();
+    } catch (_) {
+      this.accessToken = null;
+      this.refreshTokenValue = null;
+      throw new Error("SESSION_EXPIRED");
+    }
   }
 
   // -- Projects -----------------------------------------------
 
   /**
-   * List projects accessible to the current session.
-   * Backend: GET /api/plugin-auth/projects?token=X
+   * List projects accessible to the current user.
+   * Uses the Keycloak-authenticated endpoint.
    */
   async getProjects(): Promise<Project[]> {
-    return this.get<Project[]>(
-      `/api/plugin-auth/projects?token=${encodeURIComponent(this.sessionToken || "")}`
-    );
+    await this.ensureFreshToken();
+    return this.get<Project[]>("/api/projects");
   }
 
   // -- Component sync -----------------------------------------
 
   /** Push a Figma frame structure to the backend. */
   async pushComponent(data: PushComponentPayload): Promise<DesignComponent> {
+    await this.ensureFreshToken();
     return this.post<DesignComponent>(
       "/api/plugin-sync/push-component",
       data
@@ -76,6 +179,7 @@ export class LocFlowApi {
 
   /** Pull latest text fields for a component from the backend. */
   async pullComponent(componentId: string): Promise<PullComponentResponse> {
+    await this.ensureFreshToken();
     return this.post<PullComponentResponse>(
       `/api/plugin-sync/pull-component/${componentId}`,
       {}
@@ -84,24 +188,15 @@ export class LocFlowApi {
 
   // -- Design components (for change detection) ---------------
 
-  /**
-   * List all components for a project.
-   * Backend: GET /api/projects/{projectId}/components
-   */
   async getComponents(projectId: string): Promise<DesignComponent[]> {
+    await this.ensureFreshToken();
     return this.get<DesignComponent[]>(
       `/api/projects/${projectId}/components`
     );
   }
 
-  /**
-   * Get a single component by ID.
-   * Backend: GET /api/projects/{projectId}/components/{id}
-   */
-  async getComponent(
-    projectId: string,
-    componentId: string
-  ): Promise<DesignComponent> {
+  async getComponent(projectId: string, componentId: string): Promise<DesignComponent> {
+    await this.ensureFreshToken();
     return this.get<DesignComponent>(
       `/api/projects/${projectId}/components/${componentId}`
     );
@@ -109,15 +204,9 @@ export class LocFlowApi {
 
   // -- Activity feed ------------------------------------------
 
-  /**
-   * Get activity feed for a project.
-   * Backend: GET /api/activity-feed?projectId={projectId}
-   * Falls back gracefully if endpoint not available.
-   */
-  async getActivity(
-    projectId: string
-  ): Promise<{ items: ActivityFeedItem[] }> {
+  async getActivity(projectId: string): Promise<{ items: ActivityFeedItem[] }> {
     try {
+      await this.ensureFreshToken();
       return await this.get<{ items: ActivityFeedItem[] }>(
         `/api/activity-feed?projectId=${projectId}`
       );
@@ -136,11 +225,7 @@ export class LocFlowApi {
     return this.handleResponse<T>(res);
   }
 
-  private async post<T>(
-    path: string,
-    body: unknown,
-    includeAuth = true
-  ): Promise<T> {
+  private async post<T>(path: string, body: unknown, includeAuth = true): Promise<T> {
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",
       headers: this.headers(includeAuth),
@@ -153,22 +238,45 @@ export class LocFlowApi {
     const h: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (includeAuth && this.sessionToken) {
-      h["Authorization"] = `Bearer ${this.sessionToken}`;
+    if (includeAuth && this.accessToken) {
+      h["Authorization"] = `Bearer ${this.accessToken}`;
     }
     return h;
   }
 
   private async handleResponse<T>(res: Response): Promise<T> {
     if (!res.ok) {
-      const text = await res.text().catch(() => "Unknown error");
+      const text = await res.text().catch((_) => "Unknown error");
       if (res.status === 401) {
-        this.sessionToken = null;
+        this.accessToken = null;
         throw new Error("SESSION_EXPIRED");
       }
       throw new Error(`API ${res.status}: ${text}`);
     }
     return (await res.json()) as T;
+  }
+}
+
+// ---------------------------------------------------------------
+// JWT decoding — simple base64 decode, no library needed.
+// Works in the Figma iframe sandbox.
+// ---------------------------------------------------------------
+
+export function decodeJwt(token: string): JwtPayload {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return {};
+    let payload = parts[1];
+    // base64url → base64
+    payload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    // pad
+    while (payload.length % 4 !== 0) {
+      payload += "=";
+    }
+    const json = atob(payload);
+    return JSON.parse(json) as JwtPayload;
+  } catch (_) {
+    return {};
   }
 }
 
@@ -181,4 +289,3 @@ interface ActivityFeedItem {
   createdUtc: string;
   metadata?: Record<string, unknown>;
 }
-

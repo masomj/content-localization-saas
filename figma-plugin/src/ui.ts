@@ -1,4 +1,4 @@
-import { LocFlowApi } from "./api";
+import { LocFlowApi, decodeJwt } from "./api";
 import type {
   MainMessage,
   UIMessage,
@@ -36,6 +36,10 @@ let fileKey = "unknown";
 let userName = "";
 let userEmail = "";
 
+// Device auth flow state
+let deviceAuthPollTimer: ReturnType<typeof setInterval> | null = null;
+let currentDeviceCode: string | null = null;
+
 // Edit tab
 let selectedFrames: FrameInfo[] = [];
 let editableFields: EditableTextField[] = [];
@@ -63,9 +67,9 @@ let showNotifications = true;
 // ---------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
-  const savedToken = localStorage.getItem("locflow_token");
+  const savedAccessToken = localStorage.getItem("locflow_access_token");
+  const savedRefreshToken = localStorage.getItem("locflow_refresh_token");
   const savedUrl = localStorage.getItem("locflow_url") || DEFAULT_BASE_URL;
-  const savedEmail = localStorage.getItem("locflow_email") || "";
   const savedProject = localStorage.getItem("locflow_project") || "";
   const savedActivity = localStorage.getItem("locflow_activity");
   const savedReview = localStorage.getItem("locflow_review");
@@ -82,9 +86,15 @@ document.addEventListener("DOMContentLoaded", () => {
   serverUrlInput.value = savedUrl;
   api = new LocFlowApi(savedUrl);
 
-  if (savedToken) {
-    api.setToken(savedToken);
-    userEmail = savedEmail;
+  if (savedAccessToken && savedRefreshToken) {
+    api.setToken(savedAccessToken);
+    api.setRefreshToken(savedRefreshToken);
+
+    // Extract user info from JWT
+    const payload = decodeJwt(savedAccessToken);
+    userEmail = payload.email || "";
+    userName = payload.name || payload.given_name || userEmail;
+
     selectedProjectId = savedProject;
     showMainSection();
     loadProjects();
@@ -104,11 +114,14 @@ document.addEventListener("DOMContentLoaded", () => {
 // ---------------------------------------------------------------
 
 function bindEvents(): void {
-  // Login
-  $("login-btn").addEventListener("click", handleLogin);
-  $<HTMLInputElement>("workspace-id").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleLogin();
-  });
+  // Login — device auth flow
+  $("login-btn").addEventListener("click", handleStartDeviceAuth);
+
+  // Device auth code — copy button
+  $("device-copy-btn").addEventListener("click", handleCopyCode);
+
+  // Device auth — cancel button
+  $("device-cancel-btn").addEventListener("click", handleCancelDeviceAuth);
 
   // Tabs
   document.querySelectorAll(".tab-item").forEach((el) => {
@@ -253,56 +266,125 @@ function switchTab(tab: TabName): void {
 }
 
 // ---------------------------------------------------------------
-// AUTH
+// AUTH — Device Authorization Flow (RFC 8628)
 // ---------------------------------------------------------------
 
-async function handleLogin(): Promise<void> {
-  const email = $<HTMLInputElement>("email").value.trim();
-  const workspaceId = $<HTMLInputElement>("workspace-id").value.trim();
+async function handleStartDeviceAuth(): Promise<void> {
   const serverUrl = $<HTMLInputElement>("server-url").value.trim() || DEFAULT_BASE_URL;
-
-  if (!email || !workspaceId) {
-    $("login-error").textContent = "Email and workspace ID are required.";
-    return;
-  }
 
   $("login-error").textContent = "";
   const btn = $<HTMLButtonElement>("login-btn");
   btn.disabled = true;
-  btn.textContent = "Logging in...";
+  btn.textContent = "Connecting...";
 
   try {
     api = new LocFlowApi(serverUrl);
-    const res = await api.login(email, workspaceId);
+    const res = await api.startDeviceAuth();
 
-    localStorage.setItem("locflow_token", res.token);
+    // Save URL immediately
     localStorage.setItem("locflow_url", serverUrl);
-    localStorage.setItem("locflow_email", res.email || email);
-    userEmail = res.email || email;
-    userName = res.displayName || email;
 
-    showMainSection();
-    await loadProjects();
-    requestFileKey();
-    requestSelection();
+    // Show the device code screen
+    currentDeviceCode = res.deviceCode;
+    $("device-user-code").textContent = res.userCode;
+    $("device-verify-url").textContent = res.verificationUri;
+    ($("device-verify-url") as HTMLAnchorElement).href = res.verificationUri;
+
+    // Show device code section, hide login form
+    $("login-form-area").style.display = "none";
+    $("device-code-area").style.display = "flex";
+
+    // Start polling
+    const interval = Math.max(res.interval, 5) * 1000;
+    deviceAuthPollTimer = setInterval(() => pollDeviceAuth(), interval);
   } catch (err: unknown) {
-    $("login-error").textContent = err instanceof Error ? err.message : "Login failed";
+    $("login-error").textContent = err instanceof Error ? err.message : "Failed to start device auth";
   } finally {
     btn.disabled = false;
-    btn.textContent = "Log in";
+    btn.textContent = "Connect to LocFlow";
+  }
+}
+
+async function pollDeviceAuth(): Promise<void> {
+  if (!currentDeviceCode) return;
+
+  try {
+    const res = await api.pollDeviceAuth(currentDeviceCode);
+
+    if (res.status === "complete" && res.accessToken) {
+      // Stop polling
+      stopDeviceAuthPolling();
+
+      // Store tokens
+      api.setToken(res.accessToken);
+      if (res.refreshToken) {
+        api.setRefreshToken(res.refreshToken);
+        localStorage.setItem("locflow_refresh_token", res.refreshToken);
+      }
+      localStorage.setItem("locflow_access_token", res.accessToken);
+
+      // Extract user info
+      userEmail = res.user?.email || "";
+      userName = res.user?.name || userEmail;
+
+      showMainSection();
+      await loadProjects();
+      requestFileKey();
+      requestSelection();
+    } else if (res.status === "expired") {
+      stopDeviceAuthPolling();
+      handleCancelDeviceAuth();
+      $("login-error").textContent = "Code expired. Please try again.";
+    }
+    // "pending" — continue polling
+  } catch (err: unknown) {
+    stopDeviceAuthPolling();
+    handleCancelDeviceAuth();
+    $("login-error").textContent = err instanceof Error ? err.message : "Polling failed";
+  }
+}
+
+function stopDeviceAuthPolling(): void {
+  if (deviceAuthPollTimer !== null) {
+    clearInterval(deviceAuthPollTimer);
+    deviceAuthPollTimer = null;
+  }
+  currentDeviceCode = null;
+}
+
+function handleCancelDeviceAuth(): void {
+  stopDeviceAuthPolling();
+  $("login-form-area").style.display = "flex";
+  $("device-code-area").style.display = "none";
+}
+
+function handleCopyCode(): void {
+  const code = $("device-user-code").textContent || "";
+  try {
+    navigator.clipboard.writeText(code);
+    showToast("Code copied to clipboard", "success");
+  } catch (_) {
+    // Fallback for environments where clipboard API is not available
+    showToast("Code: " + code, "info");
+  }
+}
+
+/** Persist current API tokens to localStorage after refresh. */
+function persistTokens(): void {
+  if (api.token) {
+    localStorage.setItem("locflow_access_token", api.token);
   }
 }
 
 function handleLogout(): void {
   api.clearToken();
-  localStorage.removeItem("locflow_token");
-  localStorage.removeItem("locflow_email");
+  localStorage.removeItem("locflow_access_token");
+  localStorage.removeItem("locflow_refresh_token");
   localStorage.removeItem("locflow_project");
   projects = [];
   selectedProjectId = "";
   activityLog = [];
   reviewQueue = [];
-  changeEntries = [];
   toggleSettings(false);
   showLoginSection();
 }
@@ -314,6 +396,7 @@ function handleLogout(): void {
 async function loadProjects(): Promise<void> {
   try {
     projects = await api.getProjects();
+    persistTokens();
     const select = $<HTMLSelectElement>("project-select");
     select.innerHTML = "";
 
@@ -342,7 +425,7 @@ async function loadProjects(): Promise<void> {
   } catch (err: unknown) {
     if (err instanceof Error && err.message === "SESSION_EXPIRED") {
       handleLogout();
-      $("login-error").textContent = "Session expired. Please log in again.";
+      $("login-error").textContent = "Session expired. Please reconnect.";
     } else {
       showToast(err instanceof Error ? err.message : "Failed to load projects", "error");
     }
@@ -609,6 +692,7 @@ async function refreshChangesTab(): Promise<void> {
   // 1. Fetch remote components for this project
   try {
     remoteComponents = await api.getComponents(selectedProjectId);
+    persistTokens();
   } catch (_) {
     remoteComponents = [];
   }
@@ -859,6 +943,7 @@ async function handleSync(): Promise<void> {
 
     try {
       await api.pushComponent(payload);
+      persistTokens();
       syncedCount++;
     } catch (err) {
       errorCount++;
@@ -897,6 +982,7 @@ async function handleSync(): Promise<void> {
 async function handleFrameData(payload: PushComponentPayload): Promise<void> {
   try {
     const component = await api.pushComponent(payload);
+    persistTokens();
     showToast(
       `Pushed "${payload.figmaFrameName}" — ${payload.textFields.length} text layers`,
       "success"
@@ -1032,6 +1118,8 @@ function updateUserDisplay(): void {
 
 function showLoginSection(): void {
   $("login-section").style.display = "";
+  $("login-form-area").style.display = "flex";
+  $("device-code-area").style.display = "none";
   $("main-section").classList.add("hidden");
   $("main-section").style.display = "none";
 }
