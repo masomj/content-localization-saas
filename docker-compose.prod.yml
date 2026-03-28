@@ -58,7 +58,7 @@ services:
 
   # ── .NET API (pre-built from GHCR) ─────────────
   api:
-    image: ${IMAGE_PREFIX:-ghcr.io/masomj/InterCopy}-api:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-ghcr.io/masomj/intercopy}-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
@@ -74,7 +74,7 @@ services:
 
   # ── Nuxt Frontend (pre-built from GHCR) ────────
   frontend:
-    image: ${IMAGE_PREFIX:-ghcr.io/masomj/InterCopy}-frontend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-ghcr.io/masomj/intercopy}-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       NUXT_PUBLIC_KEYCLOAK_URL: "https://${AUTH_DOMAIN}"
