@@ -20,7 +20,7 @@ import type {
 // InterCopy Plugin UI — Full multi-tab Frontitude-style interface
 // ---------------------------------------------------------------
 
-const DEFAULT_BASE_URL = "https://app.InterCopy.io";
+const DEFAULT_BASE_URL = "https://app.intercopy.co.uk";
 
 // ---------------------------------------------------------------
 // State
