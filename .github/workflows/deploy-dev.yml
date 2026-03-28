@@ -9,7 +9,6 @@ env:
   SERVER_HOST: ${{ secrets.HETZNER_DEV_HOST }}
   SERVER_USER: root
   DEPLOY_PATH: /opt/intercopy
-  REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/intercopy
 
 jobs:
@@ -51,6 +50,9 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-frontend:${{ steps.vars.outputs.sha_short }}
             ${{ env.IMAGE_PREFIX }}-frontend:latest
 
+    outputs:
+      sha_short: ${{ steps.vars.outputs.sha_short }}
+
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
@@ -58,10 +60,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set short SHA
-        id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Copy deployment files to server
         uses: appleboy/scp-action@v0.1.7
@@ -79,32 +77,32 @@ jobs:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: IMAGE_PREFIX,REGISTRY
           script: |
             set -euo pipefail
-            cd ${{ env.DEPLOY_PATH }}
+            cd /opt/intercopy
 
-            # Log in to GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # GHCR is public for reads on public repos; if private, set GHCR_TOKEN secret
+            # echo "$GHCR_TOKEN" | docker login ghcr.io -u masomj --password-stdin
 
-            # Set image tag
-            export IMAGE_TAG=${{ steps.vars.outputs.sha_short }}
+            export IMAGE_TAG=${{ needs.build-and-push.outputs.sha_short }}
+            export IMAGE_PREFIX=${{ env.IMAGE_PREFIX }}
 
-            # Pull new images
-            docker compose -f docker-compose.prod.yml pull api frontend
+            echo "=== Pulling images (tag: $IMAGE_TAG) ==="
+            docker pull ${IMAGE_PREFIX}-api:${IMAGE_TAG}
+            docker pull ${IMAGE_PREFIX}-frontend:${IMAGE_TAG}
 
-            # Run database migrations BEFORE swapping containers
             echo "=== Running EF Core migrations ==="
-            docker compose -f docker-compose.prod.yml run --rm \
-              -e ASPNETCORE_ENVIRONMENT=Production \
-              --entrypoint "" \
-              api \
-              dotnet ContentLocalizationSaaS.Api.dll --migrate-only
+            docker run --rm \
+              --network intercopy_default \
+              --env-file .env \
+              -e ASPNETCORE_ENVIRONMENT=Development \
+              -e "ConnectionStrings__contentdb=Host=intercopy-postgres-1;Port=5432;Database=content_localization;Username=$(grep POSTGRES_USER .env | cut -d= -f2);Password=$(grep POSTGRES_PASSWORD .env | cut -d= -f2)" \
+              ${IMAGE_PREFIX}-api:${IMAGE_TAG} \
+              --migrate-only
 
-            # Deploy with zero-downtime rolling update
+            echo "=== Deploying containers ==="
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-            # Health check
             echo "=== Waiting for health check ==="
             for i in $(seq 1 30); do
               if curl -sf http://localhost:5135/healthz > /dev/null 2>&1; then
@@ -114,7 +112,5 @@ jobs:
               sleep 1
             done
 
-            # Clean up old images
             docker image prune -f
-
-            echo "=== Deployed ${{ steps.vars.outputs.sha_short }} at $(date) ==="
+            echo "=== Deployed ${IMAGE_TAG} at $(date) ==="

@@ -1,14 +1,11 @@
-# Frontend
-{$DOMAIN} {
+intercopy.co.uk {
     reverse_proxy frontend:3000
 }
 
-# API
-{$API_DOMAIN} {
+api.intercopy.co.uk {
     reverse_proxy api:5135
 }
 
-# Keycloak auth
-{$AUTH_DOMAIN} {
+auth.intercopy.co.uk {
     reverse_proxy keycloak:8080
 }
