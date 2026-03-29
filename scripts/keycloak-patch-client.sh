@@ -7,8 +7,8 @@ set -euo pipefail
 
 KCADM="/opt/keycloak/bin/kcadm.sh"
 KC_CONTAINER="intercopy-keycloak-1"
-REALM="InterCopy"
-CLIENT_ID="InterCopy-web"
+REALM="intercopy"
+CLIENT_ID="intercopy-web"
 
 # Source .env for Keycloak admin password
 source /opt/intercopy/.env
