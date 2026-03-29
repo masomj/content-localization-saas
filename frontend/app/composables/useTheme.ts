@@ -1,7 +1,7 @@
 type ThemePreference = 'light' | 'dark' | 'system'
 type ResolvedTheme = 'light' | 'dark'
 
-const STORAGE_KEY = 'InterCopy-theme'
+const STORAGE_KEY = 'intercopy-theme'
 
 const preference = ref<ThemePreference>('system')
 const resolved = ref<ResolvedTheme>('light')

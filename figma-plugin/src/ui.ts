@@ -67,12 +67,12 @@ let showNotifications = true;
 // ---------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
-  const savedAccessToken = localStorage.getItem("InterCopy_access_token");
-  const savedRefreshToken = localStorage.getItem("InterCopy_refresh_token");
-  const savedUrl = localStorage.getItem("InterCopy_url") || DEFAULT_BASE_URL;
-  const savedProject = localStorage.getItem("InterCopy_project") || "";
-  const savedActivity = localStorage.getItem("InterCopy_activity");
-  const savedReview = localStorage.getItem("InterCopy_review");
+  const savedAccessToken = localStorage.getItem("intercopy_access_token");
+  const savedRefreshToken = localStorage.getItem("intercopy_refresh_token");
+  const savedUrl = localStorage.getItem("intercopy_url") || DEFAULT_BASE_URL;
+  const savedProject = localStorage.getItem("intercopy_project") || "";
+  const savedActivity = localStorage.getItem("intercopy_activity");
+  const savedReview = localStorage.getItem("intercopy_review");
 
   // Restore activity and review from localStorage
   if (savedActivity) {
@@ -103,8 +103,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Load settings
-  autoSync = localStorage.getItem("InterCopy_autosync") === "true";
-  showNotifications = localStorage.getItem("InterCopy_notifications") !== "false";
+  autoSync = localStorage.getItem("intercopy_autosync") === "true";
+  showNotifications = localStorage.getItem("intercopy_notifications") !== "false";
 
   bindEvents();
 });
@@ -140,25 +140,25 @@ function bindEvents(): void {
   $("toggle-autosync").addEventListener("click", () => {
     autoSync = !autoSync;
     $("toggle-autosync").classList.toggle("on", autoSync);
-    localStorage.setItem("InterCopy_autosync", String(autoSync));
+    localStorage.setItem("intercopy_autosync", String(autoSync));
   });
   $("toggle-notifications").addEventListener("click", () => {
     showNotifications = !showNotifications;
     $("toggle-notifications").classList.toggle("on", showNotifications);
-    localStorage.setItem("InterCopy_notifications", String(showNotifications));
+    localStorage.setItem("intercopy_notifications", String(showNotifications));
   });
 
   // Project select
   $<HTMLSelectElement>("project-select").addEventListener("change", (e) => {
     selectedProjectId = (e.target as HTMLSelectElement).value;
-    localStorage.setItem("InterCopy_project", selectedProjectId);
+    localStorage.setItem("intercopy_project", selectedProjectId);
     updateProjectDisplay();
     refreshChangesTab();
   });
 
   // Settings open in InterCopy
   $("settings-open-InterCopy").addEventListener("click", () => {
-    const url = localStorage.getItem("InterCopy_url") || DEFAULT_BASE_URL;
+    const url = localStorage.getItem("intercopy_url") || DEFAULT_BASE_URL;
     window.open(`${url}/projects/${selectedProjectId}`, "_blank");
   });
 
@@ -282,7 +282,7 @@ async function handleStartDeviceAuth(): Promise<void> {
     const res = await api.startDeviceAuth();
 
     // Save URL immediately
-    localStorage.setItem("InterCopy_url", serverUrl);
+    localStorage.setItem("intercopy_url", serverUrl);
 
     // Show the device code screen
     currentDeviceCode = res.deviceCode;
@@ -319,9 +319,9 @@ async function pollDeviceAuth(): Promise<void> {
       api.setToken(res.accessToken);
       if (res.refreshToken) {
         api.setRefreshToken(res.refreshToken);
-        localStorage.setItem("InterCopy_refresh_token", res.refreshToken);
+        localStorage.setItem("intercopy_refresh_token", res.refreshToken);
       }
-      localStorage.setItem("InterCopy_access_token", res.accessToken);
+      localStorage.setItem("intercopy_access_token", res.accessToken);
 
       // Extract user info
       userEmail = res.user?.email || "";
@@ -372,15 +372,15 @@ function handleCopyCode(): void {
 /** Persist current API tokens to localStorage after refresh. */
 function persistTokens(): void {
   if (api.token) {
-    localStorage.setItem("InterCopy_access_token", api.token);
+    localStorage.setItem("intercopy_access_token", api.token);
   }
 }
 
 function handleLogout(): void {
   api.clearToken();
-  localStorage.removeItem("InterCopy_access_token");
-  localStorage.removeItem("InterCopy_refresh_token");
-  localStorage.removeItem("InterCopy_project");
+  localStorage.removeItem("intercopy_access_token");
+  localStorage.removeItem("intercopy_refresh_token");
+  localStorage.removeItem("intercopy_project");
   projects = [];
   selectedProjectId = "";
   activityLog = [];
@@ -418,7 +418,7 @@ async function loadProjects(): Promise<void> {
     } else {
       selectedProjectId = projects[0].id;
       select.value = selectedProjectId;
-      localStorage.setItem("InterCopy_project", selectedProjectId);
+      localStorage.setItem("intercopy_project", selectedProjectId);
     }
 
     updateProjectDisplay();
@@ -625,7 +625,7 @@ function handleAddToReview(): void {
     added++;
   }
 
-  localStorage.setItem("InterCopy_review", JSON.stringify(reviewQueue));
+  localStorage.setItem("intercopy_review", JSON.stringify(reviewQueue));
 
   if (added > 0) {
     showToast(`Added ${added} text${added !== 1 ? "s" : ""} to review`, "success");
@@ -1024,7 +1024,7 @@ function addActivity(
   activityLog.unshift(entry);
   // Keep last 50
   if (activityLog.length > 50) activityLog = activityLog.slice(0, 50);
-  localStorage.setItem("InterCopy_activity", JSON.stringify(activityLog));
+  localStorage.setItem("intercopy_activity", JSON.stringify(activityLog));
 
   if (currentTab === "activity") {
     renderActivity();

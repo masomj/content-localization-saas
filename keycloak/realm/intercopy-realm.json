@@ -1,8 +1,8 @@
 {
-  "realm": "InterCopy",
+  "realm": "intercopy",
   "enabled": true,
   "displayName": "InterCopy",
-  "loginTheme": "InterCopy",
+  "loginTheme": "intercopy",
   "accountTheme": "keycloak.v3",
   "adminTheme": "keycloak.v2",
   "emailTheme": "keycloak",
@@ -24,7 +24,7 @@
   },
   "clients": [
     {
-      "clientId": "InterCopy-web",
+      "clientId": "intercopy-web",
       "name": "InterCopy Web",
       "enabled": true,
       "publicClient": true,
@@ -41,7 +41,7 @@
       "defaultClientScopes": ["web-origins", "profile", "roles", "email", "openId", "offline_access"]
     },
     {
-      "clientId": "InterCopy-device",
+      "clientId": "intercopy-device",
       "name": "InterCopy Device Auth (Figma Plugin)",
       "enabled": true,
       "publicClient": true,

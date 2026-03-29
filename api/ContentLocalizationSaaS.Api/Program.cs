@@ -58,7 +58,7 @@ builder.Services
                 var azp = principal?.FindFirst("azp")?.Value;
 
                 // Accept tokens from the web client and the device-auth (Figma plugin) client
-                var validClients = new[] { expectedAudience, "InterCopy-device" };
+                var validClients = new[] { expectedAudience, "intercopy-device" };
                 var audienceMatch = audClaims.Any(a => validClients.Contains(a, StringComparer.OrdinalIgnoreCase))
                                     || validClients.Contains(azp, StringComparer.OrdinalIgnoreCase);
 

@@ -29,7 +29,7 @@ function buildSettings(config: OidcConfig): UserManagerSettings {
     scope: 'openid profile email offline_access',
     userStore: new WebStorageStateStore({
       store: window.localStorage,
-      prefix: 'InterCopy.oidc.',
+      prefix: 'intercopy.oidc.',
     }),
     automaticSilentRenew: false,
     monitorSession: false,

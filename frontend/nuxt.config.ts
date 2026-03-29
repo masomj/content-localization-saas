@@ -13,8 +13,8 @@ export default defineNuxtConfig({
     public: {
       apiBase: '/api',
       keycloakUrl: process.env.NUXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080',
-      keycloakRealm: process.env.NUXT_PUBLIC_KEYCLOAK_REALM || 'InterCopy',
-      keycloakClientId: process.env.NUXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'InterCopy-web',
+      keycloakRealm: process.env.NUXT_PUBLIC_KEYCLOAK_REALM || 'intercopy',
+      keycloakClientId: process.env.NUXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'intercopy-web',
     },
   },
   nitro: {
@@ -45,7 +45,7 @@ export default defineNuxtConfig({
       script: [
         {
           id: 'theme-bootstrap',
-          innerHTML: "(function(){try{var key='InterCopy-theme';var stored=localStorage.getItem(key);var pref=(stored==='light'||stored==='dark'||stored==='system')?stored:'system';var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;var theme=pref==='system'?(dark?'dark':'light'):pref;document.documentElement.setAttribute('data-theme',theme);document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();",
+          innerHTML: "(function(){try{var key='intercopy-theme';var stored=localStorage.getItem(key);var pref=(stored==='light'||stored==='dark'||stored==='system')?stored:'system';var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;var theme=pref==='system'?(dark?'dark':'light'):pref;document.documentElement.setAttribute('data-theme',theme);document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();",
         },
       ],
     },

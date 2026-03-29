@@ -26,6 +26,15 @@
         </div>
       </#if>
 
+      <#if realm.rememberMe && !usernameEditDisabled??>
+        <div class="InterCopy-form-group InterCopy-remember-me">
+          <label class="InterCopy-checkbox-label">
+            <input tabindex="3" id="rememberMe" name="rememberMe" type="checkbox" <#if login.rememberMe??>checked</#if>>
+            <span>Remember me</span>
+          </label>
+        </div>
+      </#if>
+
       <div class="InterCopy-form-group">
         <input tabindex="4" class="pf-c-button pf-m-primary pf-m-block" name="login" id="kc-login" type="submit" value="Sign in"/>
       </div>

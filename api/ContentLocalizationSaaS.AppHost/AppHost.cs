@@ -17,7 +17,7 @@ if (string.IsNullOrWhiteSpace(keycloakAdminPassword))
 {
     if (builder.Environment.IsDevelopment())
     {
-        keycloakAdminPassword = "InterCopy-dev-admin";
+        keycloakAdminPassword = "intercopy-dev-admin";
     }
     else
     {
@@ -52,8 +52,8 @@ var api = builder
     .WaitFor(contentDb)
     .WaitFor(keycloak)
     .WithReference(contentDb)
-    .WithEnvironment("Auth__Oidc__Issuer", $"{keycloak.GetEndpoint("http")}/realms/InterCopy")
-    .WithEnvironment("Auth__Oidc__Audience", "InterCopy-web")
+    .WithEnvironment("Auth__Oidc__Issuer", $"{keycloak.GetEndpoint("http")}/realms/intercopy")
+    .WithEnvironment("Auth__Oidc__Audience", "intercopy-web")
     .WithEnvironment("Auth__Oidc__RequireHttpsMetadata", "false");
 
 var frontend = builder.AddJavaScriptApp("frontend", "..\\..\\frontend", "dev")
@@ -61,8 +61,8 @@ var frontend = builder.AddJavaScriptApp("frontend", "..\\..\\frontend", "dev")
     .WaitFor(api)
     .WithReference(api)
     .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
-    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_REALM", "InterCopy")
-    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_CLIENT_ID", "InterCopy-web");
+    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_REALM", "intercopy")
+    .WithEnvironment("NUXT_PUBLIC_KEYCLOAK_CLIENT_ID", "intercopy-web");
 
 builder.Build().Run();
 
