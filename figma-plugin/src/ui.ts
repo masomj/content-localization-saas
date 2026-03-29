@@ -23,6 +23,47 @@ import type {
 const DEFAULT_BASE_URL = "https://app.intercopy.co.uk";
 
 // ---------------------------------------------------------------
+// Safe storage — Figma plugin iframes block localStorage (data: URI
+// sandbox), so we fall back to an in-memory Map.
+// ---------------------------------------------------------------
+
+const memoryStore = new Map<string, string>();
+let storageAvailable = false;
+try {
+  // Test if localStorage is accessible
+  const testKey = "__intercopy_test__";
+  window.localStorage.setItem(testKey, "1");
+  window.localStorage.removeItem(testKey);
+  storageAvailable = true;
+} catch (_) {
+  storageAvailable = false;
+}
+
+const storage = {
+  getItem(key: string): string | null {
+    if (storageAvailable) {
+      try { return window.localStorage.getItem(key); } catch (_) { /* fall through */ }
+    }
+    return memoryStore.get(key) ?? null;
+  },
+  setItem(key: string, value: string): void {
+    if (storageAvailable) {
+      try { window.localStorage.setItem(key, value); return; } catch (_) { /* fall through */ }
+    }
+    memoryStore.set(key, value);
+    // Persist to main.ts via figma.clientStorage
+    parent.postMessage({ pluginMessage: { type: "storage-set", key, value } }, "*");
+  },
+  removeItem(key: string): void {
+    if (storageAvailable) {
+      try { window.localStorage.removeItem(key); return; } catch (_) { /* fall through */ }
+    }
+    memoryStore.delete(key);
+    parent.postMessage({ pluginMessage: { type: "storage-remove", key } }, "*");
+  },
+};
+
+// ---------------------------------------------------------------
 // State
 // ---------------------------------------------------------------
 
@@ -66,15 +107,37 @@ let showNotifications = true;
 // DOM init
 // ---------------------------------------------------------------
 
-document.addEventListener("DOMContentLoaded", () => {
-  const savedAccessToken = localStorage.getItem("intercopy_access_token");
-  const savedRefreshToken = localStorage.getItem("intercopy_refresh_token");
-  const savedUrl = localStorage.getItem("intercopy_url") || DEFAULT_BASE_URL;
-  const savedProject = localStorage.getItem("intercopy_project") || "";
-  const savedActivity = localStorage.getItem("intercopy_activity");
-  const savedReview = localStorage.getItem("intercopy_review");
+let initialized = false;
 
-  // Restore activity and review from localStorage
+document.addEventListener("DOMContentLoaded", () => {
+  // Set up initial API with default URL (will be overridden by storage-data)
+  const serverUrlInput = $<HTMLInputElement>("server-url");
+  serverUrlInput.value = DEFAULT_BASE_URL;
+  api = new InterCopyApi(DEFAULT_BASE_URL);
+
+  bindEvents();
+
+  // Request stored values from main.ts (figma.clientStorage)
+  // This will trigger handleStorageData which calls initFromStorage
+  parent.postMessage({ pluginMessage: { type: "storage-request" } }, "*");
+
+  // Also try from in-memory/local storage immediately (may work if localStorage available)
+  if (storageAvailable) {
+    initFromStorage();
+  }
+});
+
+function initFromStorage(): void {
+  if (initialized) return;
+
+  const savedAccessToken = storage.getItem("intercopy_access_token");
+  const savedRefreshToken = storage.getItem("intercopy_refresh_token");
+  const savedUrl = storage.getItem("intercopy_url") || DEFAULT_BASE_URL;
+  const savedProject = storage.getItem("intercopy_project") || "";
+  const savedActivity = storage.getItem("intercopy_activity");
+  const savedReview = storage.getItem("intercopy_review");
+
+  // Restore activity and review
   if (savedActivity) {
     try { activityLog = JSON.parse(savedActivity); } catch (_) { activityLog = []; }
   }
@@ -87,6 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
   api = new InterCopyApi(savedUrl);
 
   if (savedAccessToken && savedRefreshToken) {
+    initialized = true;
     api.setToken(savedAccessToken);
     api.setRefreshToken(savedRefreshToken);
 
@@ -103,11 +167,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Load settings
-  autoSync = localStorage.getItem("intercopy_autosync") === "true";
-  showNotifications = localStorage.getItem("intercopy_notifications") !== "false";
+  autoSync = storage.getItem("intercopy_autosync") === "true";
+  showNotifications = storage.getItem("intercopy_notifications") !== "false";
+}
 
-  bindEvents();
-});
+function handleStorageData(entries: Record<string, string | null>): void {
+  // Hydrate in-memory store with values from figma.clientStorage
+  for (const [key, value] of Object.entries(entries)) {
+    if (value !== null) {
+      memoryStore.set(key, value);
+    }
+  }
+  // Now re-init with the hydrated values
+  initFromStorage();
+}
 
 // ---------------------------------------------------------------
 // Event bindings
@@ -140,25 +213,25 @@ function bindEvents(): void {
   $("toggle-autosync").addEventListener("click", () => {
     autoSync = !autoSync;
     $("toggle-autosync").classList.toggle("on", autoSync);
-    localStorage.setItem("intercopy_autosync", String(autoSync));
+    storage.setItem("intercopy_autosync", String(autoSync));
   });
   $("toggle-notifications").addEventListener("click", () => {
     showNotifications = !showNotifications;
     $("toggle-notifications").classList.toggle("on", showNotifications);
-    localStorage.setItem("intercopy_notifications", String(showNotifications));
+    storage.setItem("intercopy_notifications", String(showNotifications));
   });
 
   // Project select
   $<HTMLSelectElement>("project-select").addEventListener("change", (e) => {
     selectedProjectId = (e.target as HTMLSelectElement).value;
-    localStorage.setItem("intercopy_project", selectedProjectId);
+    storage.setItem("intercopy_project", selectedProjectId);
     updateProjectDisplay();
     refreshChangesTab();
   });
 
   // Settings open in InterCopy
   $("settings-open-InterCopy").addEventListener("click", () => {
-    const url = localStorage.getItem("intercopy_url") || DEFAULT_BASE_URL;
+    const url = storage.getItem("intercopy_url") || DEFAULT_BASE_URL;
     window.open(`${url}/projects/${selectedProjectId}`, "_blank");
   });
 
@@ -225,6 +298,12 @@ window.onmessage = (event: MessageEvent) => {
     case "notify":
       showToast(msg.message, "success");
       break;
+
+    case "storage-data": {
+      const sd = msg as MainMessage & { type: "storage-data" };
+      handleStorageData(sd.entries);
+      break;
+    }
   }
 };
 
@@ -282,7 +361,7 @@ async function handleStartDeviceAuth(): Promise<void> {
     const res = await api.startDeviceAuth();
 
     // Save URL immediately
-    localStorage.setItem("intercopy_url", serverUrl);
+    storage.setItem("intercopy_url", serverUrl);
 
     // Show the device code screen
     currentDeviceCode = res.deviceCode;
@@ -319,9 +398,9 @@ async function pollDeviceAuth(): Promise<void> {
       api.setToken(res.accessToken);
       if (res.refreshToken) {
         api.setRefreshToken(res.refreshToken);
-        localStorage.setItem("intercopy_refresh_token", res.refreshToken);
+        storage.setItem("intercopy_refresh_token", res.refreshToken);
       }
-      localStorage.setItem("intercopy_access_token", res.accessToken);
+      storage.setItem("intercopy_access_token", res.accessToken);
 
       // Extract user info
       userEmail = res.user?.email || "";
@@ -372,15 +451,15 @@ function handleCopyCode(): void {
 /** Persist current API tokens to localStorage after refresh. */
 function persistTokens(): void {
   if (api.token) {
-    localStorage.setItem("intercopy_access_token", api.token);
+    storage.setItem("intercopy_access_token", api.token);
   }
 }
 
 function handleLogout(): void {
   api.clearToken();
-  localStorage.removeItem("intercopy_access_token");
-  localStorage.removeItem("intercopy_refresh_token");
-  localStorage.removeItem("intercopy_project");
+  storage.removeItem("intercopy_access_token");
+  storage.removeItem("intercopy_refresh_token");
+  storage.removeItem("intercopy_project");
   projects = [];
   selectedProjectId = "";
   activityLog = [];
@@ -418,7 +497,7 @@ async function loadProjects(): Promise<void> {
     } else {
       selectedProjectId = projects[0].id;
       select.value = selectedProjectId;
-      localStorage.setItem("intercopy_project", selectedProjectId);
+      storage.setItem("intercopy_project", selectedProjectId);
     }
 
     updateProjectDisplay();
@@ -625,7 +704,7 @@ function handleAddToReview(): void {
     added++;
   }
 
-  localStorage.setItem("intercopy_review", JSON.stringify(reviewQueue));
+  storage.setItem("intercopy_review", JSON.stringify(reviewQueue));
 
   if (added > 0) {
     showToast(`Added ${added} text${added !== 1 ? "s" : ""} to review`, "success");
@@ -1024,7 +1103,7 @@ function addActivity(
   activityLog.unshift(entry);
   // Keep last 50
   if (activityLog.length > 50) activityLog = activityLog.slice(0, 50);
-  localStorage.setItem("intercopy_activity", JSON.stringify(activityLog));
+  storage.setItem("intercopy_activity", JSON.stringify(activityLog));
 
   if (currentTab === "activity") {
     renderActivity();

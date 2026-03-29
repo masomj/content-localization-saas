@@ -199,7 +199,10 @@ export type UIMessage =
   | { type: "get-selection" }
   | { type: "apply-pull"; textFields: DesignComponentTextField[] }
   | { type: "get-file-key" }
-  | { type: "resize"; width: number; height: number };
+  | { type: "resize"; width: number; height: number }
+  | { type: "storage-request" }
+  | { type: "storage-set"; key: string; value: string }
+  | { type: "storage-remove"; key: string };
 
 export type MainMessage =
   | { type: "frame-data"; payload: PushComponentPayload }
@@ -212,4 +215,5 @@ export type MainMessage =
   | { type: "all-frames"; frames: FrameInfo[] }
   | { type: "text-updated"; layerId: string; newText: string }
   | { type: "file-key"; fileKey: string }
-  | { type: "current-user"; name: string; email: string };
+  | { type: "current-user"; name: string; email: string }
+  | { type: "storage-data"; entries: Record<string, string | null> };

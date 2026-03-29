@@ -25,9 +25,34 @@ figma.on("selectionchange", () => {
 
 // Send initial state after a brief delay for UI to initialize
 setTimeout(() => {
+  sendStoredValues();
   sendSelectionData();
   sendCurrentUser();
 }, 200);
+
+// ---------------------------------------------------------------
+// Client storage bridge — Figma clientStorage <-> UI iframe
+// ---------------------------------------------------------------
+
+const STORAGE_KEYS = [
+  "intercopy_access_token",
+  "intercopy_refresh_token",
+  "intercopy_url",
+  "intercopy_project",
+  "intercopy_autosync",
+  "intercopy_notifications",
+  "intercopy_activity",
+  "intercopy_review",
+];
+
+async function sendStoredValues(): Promise<void> {
+  const entries: Record<string, string | null> = {};
+  for (const key of STORAGE_KEYS) {
+    const val = await figma.clientStorage.getAsync(key);
+    entries[key] = val ?? null;
+  }
+  postToUI({ type: "storage-data", entries } as any);
+}
 
 // ---------------------------------------------------------------
 // Message handler from UI iframe
@@ -65,6 +90,22 @@ figma.ui.onmessage = async (msg: UIMessage) => {
 
     case "resize":
       figma.ui.resize(msg.width, msg.height);
+      break;
+
+    case "storage-set": {
+      const sm = msg as UIMessage & { type: "storage-set" };
+      await figma.clientStorage.setAsync(sm.key, sm.value);
+      break;
+    }
+
+    case "storage-remove": {
+      const rm = msg as UIMessage & { type: "storage-remove" };
+      await figma.clientStorage.deleteAsync(rm.key);
+      break;
+    }
+
+    case "storage-request":
+      await sendStoredValues();
       break;
   }
 };

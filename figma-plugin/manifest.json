@@ -7,13 +7,7 @@
   "editorType": ["figma"],
   "permissions": ["currentuser"],
   "networkAccess": {
-    "allowedDomains": [
-      "https://app.intercopy.co.uk",
-      "https://localhost:*",
-      "http://localhost:*",
-      "https://127.0.0.1:*",
-      "http://127.0.0.1:*"
-    ],
-    "reasoning": "Connect to InterCopy API for authentication and content sync"
+    "allowedDomains": ["*"],
+    "reasoning": "Connect to InterCopy API (production + localhost dev) for authentication and content sync"
   }
 }
