@@ -11,7 +11,7 @@ public sealed class AuthOptions
 
 public sealed class OidcOptions
 {
-    public string Issuer { get; set; } = "http://localhost:8080/realms/InterCopy";
-    public string Audience { get; set; } = "InterCopy-web";
+    public string Issuer { get; set; } = "http://localhost:8080/realms/intercopy";
+    public string Audience { get; set; } = "intercopy-web";
     public bool RequireHttpsMetadata { get; set; } = false;
 }

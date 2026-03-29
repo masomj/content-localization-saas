@@ -30,7 +30,7 @@ var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<
 
 builder.Services.AddHttpClient("Keycloak", client =>
 {
-    // Base address is the Keycloak issuer URL (e.g. http://localhost:8080/realms/InterCopy)
+    // Base address is the Keycloak issuer URL (e.g. http://localhost:8080/realms/intercopy)
     // Endpoints are relative to the realm.
     client.BaseAddress = new Uri(authOptions.Oidc.Issuer.TrimEnd('/') + "/");
 });

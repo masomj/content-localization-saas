@@ -90,9 +90,9 @@ public static class AppRoleResolver
             return true;
         }
 
-        if (raw.StartsWith("InterCopy-", StringComparison.OrdinalIgnoreCase))
+        if (raw.StartsWith("intercopy-", StringComparison.OrdinalIgnoreCase))
         {
-            raw = raw["InterCopy-".Length..];
+            raw = raw["intercopy-".Length..];
         }
 
         return Enum.TryParse(raw, true, out role);

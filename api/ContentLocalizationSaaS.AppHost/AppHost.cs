@@ -4,7 +4,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder
     .AddPostgres("postgres")
-    .WithDataVolume("InterCopy-postgres-data")
+    .WithDataVolume("intercopy-postgres-data")
     .WithPgAdmin();
 
 var contentDb = postgres.AddDatabase("contentdb", "content_localization");
