@@ -67,7 +67,7 @@ jobs:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: "docker-compose.prod.yml,Caddyfile,init-databases.sql,keycloak/"
+          source: "docker-compose.prod.yml,Caddyfile,init-databases.sql,keycloak/,scripts/"
           target: ${{ env.DEPLOY_PATH }}
           overwrite: true
 
@@ -114,3 +114,13 @@ jobs:
 
             docker image prune -f
             echo "=== Deployed ${IMAGE_TAG} at $(date) ==="
+
+      - name: Patch Keycloak client config
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            chmod +x /opt/intercopy/scripts/keycloak-patch-client.sh
+            bash /opt/intercopy/scripts/keycloak-patch-client.sh
