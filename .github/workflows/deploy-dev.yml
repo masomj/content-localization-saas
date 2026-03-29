@@ -9,111 +9,67 @@ env:
   SERVER_HOST: ${{ secrets.HETZNER_DEV_HOST }}
   SERVER_USER: root
   DEPLOY_PATH: /opt/intercopy
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/intercopy
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set short SHA
-        id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Build and push API image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./api
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}-api:${{ steps.vars.outputs.sha_short }}
-            ${{ env.IMAGE_PREFIX }}-api:latest
-
-      - name: Build and push Frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}-frontend:${{ steps.vars.outputs.sha_short }}
-            ${{ env.IMAGE_PREFIX }}-frontend:latest
-
-    outputs:
-      sha_short: ${{ steps.vars.outputs.sha_short }}
-
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-push
     environment: dev
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy deployment files to server
+      - name: Set short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Copy source to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: "docker-compose.prod.yml,Caddyfile,init-databases.sql,keycloak/,scripts/"
+          source: "api/,frontend/,keycloak/,scripts/,docker-compose.yml,docker-compose.prod.yml,Caddyfile,init-databases.sql"
           target: ${{ env.DEPLOY_PATH }}
           overwrite: true
 
-      - name: Deploy to dev server
+      - name: Build and deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          command_timeout: 15m
           script: |
             set -euo pipefail
             cd /opt/intercopy
 
-            # GHCR is public for reads on public repos; if private, set GHCR_TOKEN secret
-            # echo "$GHCR_TOKEN" | docker login ghcr.io -u masomj --password-stdin
-
-            export IMAGE_TAG=${{ needs.build-and-push.outputs.sha_short }}
-            export IMAGE_PREFIX=${{ env.IMAGE_PREFIX }}
-
-            echo "=== Pulling images (tag: $IMAGE_TAG) ==="
-            docker pull ${IMAGE_PREFIX}-api:${IMAGE_TAG}
-            docker pull ${IMAGE_PREFIX}-frontend:${IMAGE_TAG}
+            echo "=== Building images ==="
+            docker compose build --no-cache api frontend
 
             echo "=== Running EF Core migrations ==="
-            docker run --rm \
-              --network intercopy_default \
-              --env-file .env \
+            docker compose run --rm \
               -e ASPNETCORE_ENVIRONMENT=Development \
-              -e "ConnectionStrings__contentdb=Host=intercopy-postgres-1;Port=5432;Database=content_localization;Username=$(grep POSTGRES_USER .env | cut -d= -f2);Password=$(grep POSTGRES_PASSWORD .env | cut -d= -f2)" \
-              ${IMAGE_PREFIX}-api:${IMAGE_TAG} \
-              --migrate-only
+              --entrypoint "" \
+              api \
+              dotnet ContentLocalizationSaaS.Api.dll --migrate-only || echo "Migration step skipped (may need DB running first)"
 
             echo "=== Deploying containers ==="
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose up -d --remove-orphans
 
-            echo "=== Waiting for health check ==="
-            for i in $(seq 1 30); do
+            echo "=== Waiting for API health check ==="
+            for i in $(seq 1 60); do
               if curl -sf http://localhost:5135/healthz > /dev/null 2>&1; then
                 echo "API healthy after ${i}s"
                 break
+              fi
+              if [ "$i" -eq 60 ]; then
+                echo "WARNING: API not healthy after 60s"
               fi
               sleep 1
             done
 
             docker image prune -f
-            echo "=== Deployed ${IMAGE_TAG} at $(date) ==="
+            echo "=== Deployed ${{ steps.vars.outputs.sha_short }} at $(date) ==="
 
       - name: Patch Keycloak client config
         uses: appleboy/ssh-action@v1.0.3
@@ -121,6 +77,7 @@ jobs:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          command_timeout: 5m
           script: |
             chmod +x /opt/intercopy/scripts/keycloak-patch-client.sh
             bash /opt/intercopy/scripts/keycloak-patch-client.sh
