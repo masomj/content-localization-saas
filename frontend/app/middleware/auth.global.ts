@@ -6,6 +6,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const isPublicPath = publicPaths.includes(to.path)
   if (isPublicPath) return
 
+  const isDocsPath = to.path.startsWith('/docs')
+  if (isDocsPath) return
+
   const isOnboardingPath = to.path.startsWith('/onboarding')
   if (isOnboardingPath) return
 
