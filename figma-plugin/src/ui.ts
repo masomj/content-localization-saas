@@ -20,7 +20,7 @@ import type {
 // InterCopy Plugin UI — Full multi-tab Frontitude-style interface
 // ---------------------------------------------------------------
 
-const DEFAULT_BASE_URL = "https://app.intercopy.co.uk";
+const DEFAULT_BASE_URL = "https://intercopy.co.uk";
 
 // ---------------------------------------------------------------
 // Safe storage — Figma plugin iframes block localStorage (data: URI
