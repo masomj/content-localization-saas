@@ -7,6 +7,7 @@ namespace ContentLocalizationSaaS.Api.Controllers;
 
 [ApiController]
 [Route("api/projects")]
+[Microsoft.AspNetCore.Cors.EnableCors("PluginCors")]
 public sealed class ProjectsController(IProjectService projects) : ControllerBase
 {
     [HttpGet]

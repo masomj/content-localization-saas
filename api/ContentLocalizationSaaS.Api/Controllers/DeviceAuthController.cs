@@ -37,6 +37,7 @@ public sealed record DeviceAuthRefreshResponse(
 
 [ApiController]
 [Route("api/device-auth")]
+[Microsoft.AspNetCore.Cors.EnableCors("PluginCors")]
 public sealed class DeviceAuthController(IHttpClientFactory httpClientFactory, IConfiguration configuration) : ControllerBase
 {
     private const string KeycloakClientId = "intercopy-device";

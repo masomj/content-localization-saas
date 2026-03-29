@@ -35,6 +35,7 @@ public sealed record PluginPushComponentRequest(
 
 [ApiController]
 [Route("api/plugin-sync")]
+[Microsoft.AspNetCore.Cors.EnableCors("PluginCors")]
 public sealed class PluginSyncController(AppDbContext db) : ControllerBase
 {
     [HttpPost("pull")]

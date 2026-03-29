@@ -92,6 +92,16 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials();
     });
+
+    // Figma plugin runs in a data: URI iframe → Origin is "null".
+    // Also covers production web + localhost dev.
+    options.AddPolicy("PluginCors", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(_ => true)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
 });
 
 var app = builder.Build();
