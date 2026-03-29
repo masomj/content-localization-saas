@@ -33,10 +33,12 @@
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "http://localhost:3000/*"
+        "http://localhost:3000/*",
+        "https://intercopy.co.uk/*"
       ],
       "webOrigins": [
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "https://intercopy.co.uk"
       ],
       "defaultClientScopes": ["web-origins", "profile", "roles", "email", "openId", "offline_access"]
     },
