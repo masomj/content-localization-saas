@@ -156,12 +156,12 @@ function handleInvited() {
 .members-page__header h1 {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   margin: 0 0 var(--spacing-1) 0;
 }
 
 .members-page__subtitle {
-  color: var(--color-gray-500);
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
