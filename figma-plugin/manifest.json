@@ -5,5 +5,15 @@
   "main": "dist/main.js",
   "ui": "dist/ui.html",
   "editorType": ["figma"],
-  "permissions": ["currentuser"]
+  "permissions": ["currentuser"],
+  "networkAccess": {
+    "allowedDomains": [
+      "https://app.intercopy.co.uk",
+      "https://localhost:*",
+      "http://localhost:*",
+      "https://127.0.0.1:*",
+      "http://127.0.0.1:*"
+    ],
+    "reasoning": "Connect to InterCopy API for authentication and content sync"
+  }
 }
