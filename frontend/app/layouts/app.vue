@@ -23,6 +23,7 @@ async function handleOrgSwitch() {
 const breadcrumbs = computed(() => {
   const pathSegments = route.path.split('/').filter(Boolean)
   const items = [{ label: 'Home', to: '/app/dashboard' }]
+  const uuidPattern = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i
   
   let currentPath = ''
   for (let i = 0; i < pathSegments.length; i++) {
@@ -31,7 +32,13 @@ const breadcrumbs = computed(() => {
     
     if (segment === 'app') continue
     
-    const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+    let label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+    
+    // Replace UUID segments with route meta breadcrumb label if available
+    if (uuidPattern.test(segment) && route.meta.breadcrumbLabel) {
+      label = route.meta.breadcrumbLabel as string
+    }
+    
     const isLast = i === pathSegments.length - 1
     
     items.push({

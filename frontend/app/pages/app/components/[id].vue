@@ -142,6 +142,10 @@ async function loadComponent() {
   errorMessage.value = ''
   try {
     component.value = await componentsClient.get(projectId.value, componentId.value)
+    // Set breadcrumb label to frame name instead of GUID
+    if (component.value?.figmaFrameName) {
+      route.meta.breadcrumbLabel = component.value.figmaFrameName
+    }
   } catch (err: any) {
     errorMessage.value = err?.message ?? 'Failed to load component'
   } finally {
