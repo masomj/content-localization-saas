@@ -67,8 +67,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ConnectionStrings__contentdb: "Host=postgres;Port=5432;Database=${CONTENT_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
-      Auth__Oidc__Issuer: "https://${AUTH_DOMAIN}/realms/InterCopy"
-      Auth__Oidc__Audience: "InterCopy-web"
+      Auth__Oidc__Issuer: "https://${AUTH_DOMAIN}/realms/intercopy"
+      Auth__Oidc__Audience: "intercopy-web"
       Auth__Oidc__RequireHttpsMetadata: "true"
     depends_on:
       postgres:
@@ -84,8 +84,8 @@ services:
     restart: unless-stopped
     environment:
       NUXT_PUBLIC_KEYCLOAK_URL: "https://${AUTH_DOMAIN}"
-      NUXT_PUBLIC_KEYCLOAK_REALM: "InterCopy"
-      NUXT_PUBLIC_KEYCLOAK_CLIENT_ID: "InterCopy-web"
+      NUXT_PUBLIC_KEYCLOAK_REALM: "intercopy"
+      NUXT_PUBLIC_KEYCLOAK_CLIENT_ID: "intercopy-web"
     depends_on:
       - api
 
