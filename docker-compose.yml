@@ -46,7 +46,7 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
-      KC_HOSTNAME: ${AUTH_DOMAIN}
+      KC_HOSTNAME: "https://${AUTH_DOMAIN}"
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_RELATIVE_PATH: "/"
       KC_PROXY_HEADERS: xforwarded
