@@ -178,10 +178,11 @@ export class InterCopyApi {
   }
 
   /** Pull latest text fields for a component from the backend. */
-  async pullComponent(componentId: string): Promise<PullComponentResponse> {
+  async pullComponent(componentId: string, language?: string): Promise<PullComponentResponse> {
     await this.ensureFreshToken();
+    const langParam = language ? `?language=${encodeURIComponent(language)}` : "";
     return this.post<PullComponentResponse>(
-      `/api/plugin-sync/pull-component/${componentId}`,
+      `/api/plugin-sync/pull-component/${componentId}${langParam}`,
       {}
     );
   }

@@ -244,8 +244,9 @@ function bindEvents(): void {
   });
 
   // Edit tab buttons
-  $("edit-review-btn").addEventListener("click", handleAddToReview);
-  $("edit-tags-btn").addEventListener("click", () => showToast("Tags feature coming soon", "info"));
+  $("edit-review-btn")?.addEventListener("click", handleAddToReview);
+  $("edit-tags-btn")?.addEventListener("click", () => showToast("Tags feature coming soon", "info"));
+  $("edit-pull-lang-btn")?.addEventListener("click", handlePullLanguage);
 
   // Changes tab
   $("sync-btn").addEventListener("click", handleSync);
@@ -703,6 +704,68 @@ function handleTextUpdated(layerId: string, newText: string): void {
 // ---------------------------------------------------------------
 // REVIEW TAB
 // ---------------------------------------------------------------
+
+async function handlePullLanguage(): Promise<void> {
+  const langSelect = document.getElementById("edit-language-select") as HTMLSelectElement | null;
+  const language = langSelect?.value || "";
+
+  if (!selectedFrames.length) {
+    showToast("No frame selected", "error");
+    return;
+  }
+
+  // Find the component ID for the selected frame by checking synced components
+  const frame = selectedFrames[0];
+  if (!frame) return;
+
+  try {
+    showToast(language ? `Pulling ${language} translations...` : "Pulling source text...", "info");
+    const components = await api.getComponents(selectedProjectId);
+    const comp = components.find((c: any) => c.figmaFrameId === frame.frameId);
+
+    if (!comp) {
+      showToast("Frame not synced yet. Push first.", "error");
+      return;
+    }
+
+    const result = await api.pullComponent(comp.id, language || undefined);
+    // Send text updates to Figma main thread
+    const textFields = result.textFields || [];
+    parent.postMessage({
+      pluginMessage: { type: "apply-pull", textFields }
+    }, "*");
+
+    showToast(
+      language
+        ? `Applied ${language} translations to ${textFields.length} fields`
+        : `Pulled source text for ${textFields.length} fields`,
+      "success"
+    );
+
+    // Populate language dropdown if we got languages back
+    if (result.languages && langSelect) {
+      populateLanguageDropdown(langSelect, result.languages);
+    }
+  } catch (err: unknown) {
+    showToast(err instanceof Error ? err.message : "Pull failed", "error");
+  }
+}
+
+function populateLanguageDropdown(
+  select: HTMLSelectElement,
+  languages: Array<{ bcp47Code: string; isSource: boolean }>
+): void {
+  const current = select.value;
+  select.innerHTML = '<option value="">Source</option>';
+  for (const lang of languages) {
+    if (lang.isSource) continue;
+    const opt = document.createElement("option");
+    opt.value = lang.bcp47Code;
+    opt.textContent = lang.bcp47Code;
+    select.appendChild(opt);
+  }
+  select.value = current;
+}
 
 function handleAddToReview(): void {
   if (editableFields.length === 0) {

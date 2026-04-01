@@ -92,6 +92,8 @@ export interface PushTextField {
 export interface PullComponentResponse {
   componentId: string;
   textFields: DesignComponentTextField[];
+  languages?: Array<{ bcp47Code: string; isSource: boolean }>;
+  requestedLanguage?: string | null;
 }
 
 // ---------------------------------------------------------------

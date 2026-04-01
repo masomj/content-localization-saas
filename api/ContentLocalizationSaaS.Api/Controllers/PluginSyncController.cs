@@ -294,7 +294,7 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
     }
 
     [HttpPost("pull-component/{componentId:guid}")]
-    public async Task<IActionResult> PullComponent(Guid componentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> PullComponent(Guid componentId, [FromQuery] string? language, CancellationToken cancellationToken)
     {
         var component = await db.DesignComponents.FirstOrDefaultAsync(c => c.Id == componentId, cancellationToken);
         if (component is null) return NotFound();
@@ -302,24 +302,61 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
         var textFields = await db.DesignComponentTextFields
             .Where(tf => tf.DesignComponentId == componentId)
             .OrderBy(tf => tf.Y).ThenBy(tf => tf.X)
-            .Select(tf => new
+            .ToListAsync(cancellationToken);
+
+        // If a language is requested, look up translations for linked content items
+        var translationMap = new Dictionary<Guid, string>();
+        if (!string.IsNullOrWhiteSpace(language))
+        {
+            var linkedContentIds = textFields
+                .Where(tf => tf.ContentItemId.HasValue)
+                .Select(tf => tf.ContentItemId!.Value)
+                .Distinct()
+                .ToList();
+
+            if (linkedContentIds.Count > 0)
+            {
+                var translations = await db.ContentItemLanguageTasks
+                    .Where(t => linkedContentIds.Contains(t.ContentItemId)
+                        && t.LanguageCode == language
+                        && !string.IsNullOrEmpty(t.TranslationText))
+                    .ToListAsync(cancellationToken);
+
+                foreach (var t in translations)
+                {
+                    translationMap[t.ContentItemId] = t.TranslationText;
+                }
+            }
+        }
+
+        var result = textFields.Select(tf =>
+        {
+            var text = tf.CurrentText;
+            // If language requested and this field is linked with a translation, use it
+            if (!string.IsNullOrWhiteSpace(language) && tf.ContentItemId.HasValue
+                && translationMap.TryGetValue(tf.ContentItemId.Value, out var translated))
+            {
+                text = translated;
+            }
+
+            return new
             {
                 tf.Id,
                 tf.FigmaLayerId,
                 tf.FigmaLayerName,
-                tf.CurrentText,
+                CurrentText = text,
                 tf.ContentItemId,
-                tf.X,
-                tf.Y,
-                tf.Width,
-                tf.Height,
-                tf.FontFamily,
-                tf.FontSize,
-                tf.FontWeight,
-                tf.TextAlign,
-                tf.Color,
-                tf.UpdatedUtc
-            })
+                tf.X, tf.Y, tf.Width, tf.Height,
+                tf.FontFamily, tf.FontSize, tf.FontWeight, tf.TextAlign, tf.Color,
+                tf.UpdatedUtc,
+                Language = !string.IsNullOrWhiteSpace(language) ? language : null
+            };
+        }).ToList();
+
+        // Also return available languages for the project
+        var projectLanguages = await db.ProjectLanguages
+            .Where(l => l.ProjectId == component.ProjectId && l.IsActive)
+            .Select(l => new { l.Bcp47Code, l.IsSource })
             .ToListAsync(cancellationToken);
 
         return Ok(new
@@ -332,7 +369,9 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
             component.FrameHeight,
             component.Status,
             component.UpdatedUtc,
-            textFields
+            textFields = result,
+            languages = projectLanguages,
+            requestedLanguage = language
         });
     }
 }
