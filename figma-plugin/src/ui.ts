@@ -439,13 +439,32 @@ function handleCancelDeviceAuth(): void {
 
 function handleCopyCode(): void {
   const code = $("device-user-code").textContent || "";
-  try {
-    navigator.clipboard.writeText(code);
-    showToast("Code copied to clipboard", "success");
-  } catch (_) {
-    // Fallback for environments where clipboard API is not available
-    showToast("Code: " + code, "info");
+  // Figma iframe may block clipboard API — use fallback
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(
+      () => showToast("Code copied!", "success"),
+      () => fallbackCopy(code)
+    );
+  } else {
+    fallbackCopy(code);
   }
+}
+
+function fallbackCopy(text: string): void {
+  // Create a temporary input, select it, and use execCommand
+  const input = document.createElement("input");
+  input.value = text;
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  document.body.appendChild(input);
+  input.select();
+  try {
+    document.execCommand("copy");
+    showToast("Code copied!", "success");
+  } catch (_) {
+    showToast("Code: " + text + " (copy manually)", "info");
+  }
+  document.body.removeChild(input);
 }
 
 /** Persist current API tokens to localStorage after refresh. */
