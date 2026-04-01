@@ -8,7 +8,9 @@ import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
 import { projectsClient } from '~/api/projectsClient'
-import type { ContentItem, Project, ProjectTreeNode } from '~/api/types'
+import { translationClient } from '~/api/translationClient'
+import { languagesClient } from '~/api/languagesClient'
+import type { ContentItem, Project, ProjectTreeNode, ProjectLanguage, LanguageTask } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Content - InterCopy' })
@@ -40,6 +42,12 @@ const panelSource = ref('')
 const panelStatus = ref('')
 const panelCollectionId = ref<string | null>(null)
 const panelError = ref('')
+
+// Side panel translations
+const panelLanguages = ref<ProjectLanguage[]>([])
+const panelTasks = ref<LanguageTask[]>([])
+const panelTranslations = ref<Record<string, string>>({})
+const panelTranslationSaving = ref<string | null>(null)
 
 // Translation editor
 const translationTarget = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
@@ -233,6 +241,63 @@ function openSidePanel(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status
   panelStatus.value = item.status
   panelCollectionId.value = item.collectionId ?? null
   panelError.value = ''
+  loadPanelTranslations(item.id)
+}
+
+async function loadPanelTranslations(itemId: string) {
+  panelTasks.value = []
+  panelTranslations.value = {}
+  try {
+    // Load languages if not already loaded
+    if (panelLanguages.value.length === 0 && selectedProjectId.value) {
+      const langs = await languagesClient.list(selectedProjectId.value)
+      panelLanguages.value = Array.isArray(langs) ? langs : []
+    }
+    // Load existing tasks
+    const tasks = await translationClient.getTasks(itemId)
+    panelTasks.value = Array.isArray(tasks) ? tasks : []
+    // Populate translation text map
+    for (const task of panelTasks.value) {
+      panelTranslations.value[task.languageCode] = task.translationText ?? ''
+    }
+    // Ensure all target languages have an entry
+    for (const lang of panelTargetLanguages.value) {
+      if (!(lang.bcp47Code in panelTranslations.value)) {
+        panelTranslations.value[lang.bcp47Code] = ''
+      }
+    }
+  } catch {
+    panelTasks.value = []
+  }
+}
+
+const panelTargetLanguages = computed(() =>
+  panelLanguages.value.filter(l => !l.isSource && l.isActive),
+)
+
+function panelTaskStatus(langCode: string): string {
+  const task = panelTasks.value.find(t => t.languageCode === langCode)
+  return task?.status ?? 'untranslated'
+}
+
+async function savePanelTranslation(langCode: string) {
+  if (!selectedItem.value) return
+  panelTranslationSaving.value = langCode
+  try {
+    await translationClient.upsert({
+      contentItemId: selectedItem.value.id,
+      languageCode: langCode,
+      status: 'draft',
+      translationText: panelTranslations.value[langCode] ?? '',
+    })
+    // Reload tasks to get updated status
+    await loadPanelTranslations(selectedItem.value.id)
+    locGridRef.value?.reload()
+  } catch (error: any) {
+    panelError.value = error?.message || `Failed to save ${langCode} translation`
+  } finally {
+    panelTranslationSaving.value = null
+  }
 }
 
 function closeSidePanel() {
@@ -832,6 +897,45 @@ watch(selectedProjectId, async () => {
             </option>
           </select>
 
+          <!-- Translations per language -->
+          <div v-if="panelTargetLanguages.length > 0" class="panel-translations">
+            <label class="label-with-hint">
+              <span>Translations</span>
+              <span class="label-hint">Add or edit translations for each target language</span>
+            </label>
+            <div
+              v-for="lang in panelTargetLanguages"
+              :key="lang.bcp47Code"
+              class="panel-translation-row"
+            >
+              <div class="panel-translation-header">
+                <span class="panel-translation-lang">{{ lang.bcp47Code }}</span>
+                <span
+                  class="panel-translation-status"
+                  :class="'ts--' + panelTaskStatus(lang.bcp47Code)"
+                >
+                  {{ panelTaskStatus(lang.bcp47Code) }}
+                </span>
+              </div>
+              <div class="panel-translation-input-row">
+                <textarea
+                  v-model="panelTranslations[lang.bcp47Code]"
+                  rows="2"
+                  class="panel-translation-textarea"
+                  :placeholder="`Translation for ${lang.bcp47Code}...`"
+                />
+                <UiButton
+                  size="sm"
+                  variant="secondary"
+                  :disabled="panelTranslationSaving === lang.bcp47Code"
+                  @click="savePanelTranslation(lang.bcp47Code)"
+                >
+                  {{ panelTranslationSaving === lang.bcp47Code ? '...' : 'Save' }}
+                </UiButton>
+              </div>
+            </div>
+          </div>
+
           <p v-if="panelError" class="field-error">{{ panelError }}</p>
 
           <div class="side-panel-actions">
@@ -1273,6 +1377,67 @@ watch(selectedProjectId, async () => {
   justify-content: space-between;
   align-items: center;
   margin-top: var(--spacing-3);
+}
+
+/* Panel inline translations */
+.panel-translations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--color-border);
+}
+.panel-translation-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+.panel-translation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-translation-lang {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.panel-translation-status {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  padding: 1px var(--spacing-2);
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+}
+.ts--approved, .ts--done { background: color-mix(in srgb, #22c55e 15%, transparent); color: #16a34a; }
+.ts--pending_review { background: color-mix(in srgb, #eab308 15%, transparent); color: #a16207; }
+.ts--outdated { background: color-mix(in srgb, #f97316 15%, transparent); color: #c2410c; }
+.ts--draft { background: color-mix(in srgb, #6366f1 12%, transparent); color: #6366f1; }
+.ts--untranslated { background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+.panel-translation-input-row {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: flex-start;
+}
+.panel-translation-textarea {
+  flex: 1;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 36px;
+}
+.panel-translation-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .side-panel-actions-right {
   display: flex;
