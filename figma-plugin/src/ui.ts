@@ -162,6 +162,7 @@ function initFromStorage(): void {
     selectedProjectId = savedProject;
     showMainSection();
     loadProjects();
+    loadProjectLanguages();
     requestFileKey();
     requestSelection();
   }
@@ -235,6 +236,7 @@ function bindEvents(): void {
     storage.setItem("intercopy_project", selectedProjectId);
     updateProjectDisplay();
     refreshChangesTab();
+    loadProjectLanguages();
   });
 
   // Settings open in InterCopy
@@ -416,6 +418,7 @@ async function pollDeviceAuth(): Promise<void> {
 
       showMainSection();
       await loadProjects();
+      loadProjectLanguages();
       requestFileKey();
       requestSelection();
     } else if (res.status === "expired") {
@@ -706,7 +709,7 @@ function handleTextUpdated(layerId: string, newText: string): void {
 // ---------------------------------------------------------------
 
 async function handlePullLanguage(): Promise<void> {
-  const langSelect = document.getElementById("edit-language-select") as HTMLSelectElement | null;
+  const langSelect = document.getElementById("global-language-select") as HTMLSelectElement | null;
   const language = langSelect?.value || "";
 
   if (!selectedFrames.length) {
@@ -765,6 +768,24 @@ function populateLanguageDropdown(
     select.appendChild(opt);
   }
   select.value = current;
+}
+
+/** Load available languages for the selected project and populate the global dropdown */
+async function loadProjectLanguages(): Promise<void> {
+  if (!selectedProjectId) return;
+  try {
+    const components = await api.getComponents(selectedProjectId);
+    if (components.length > 0) {
+      // Pull component to get languages (no language param = just get metadata + languages)
+      const result = await api.pullComponent(components[0].id);
+      const globalSelect = document.getElementById("global-language-select") as HTMLSelectElement | null;
+      if (globalSelect && result.languages) {
+        populateLanguageDropdown(globalSelect, result.languages);
+      }
+    }
+  } catch (_) {
+    // Non-critical — languages just won't populate
+  }
 }
 
 function handleAddToReview(): void {

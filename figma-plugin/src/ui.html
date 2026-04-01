@@ -709,6 +709,9 @@
       <div class="top-bar-left">
         <span class="logo-dot"></span>
         <span id="project-name-display">InterCopy</span>
+        <select id="global-language-select" style="background:var(--bg-secondary);color:var(--fg-primary);border:1px solid var(--border);border-radius:4px;padding:1px 4px;font-size:10px;margin-left:6px;max-width:70px;">
+          <option value="">Source</option>
+        </select>
       </div>
       <div class="top-bar-right">
         <button class="icon-btn" id="settings-btn" title="Settings">
@@ -775,10 +778,7 @@
               Draft
             </div>
             <div class="edit-actions">
-              <select id="edit-language-select" class="btn-sm btn-secondary" style="background:var(--bg-secondary);color:var(--fg-primary);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:11px;">
-                <option value="">Source</option>
-              </select>
-              <button class="btn-sm btn-primary" id="edit-pull-lang-btn">Pull Language</button>
+              <button class="btn-sm btn-primary" id="edit-pull-lang-btn">Apply Language</button>
             </div>
           </div>
         </div>
