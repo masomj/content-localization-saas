@@ -22,27 +22,21 @@ public sealed class RequireAppRoleFilter(AppRole minimumRole, AppDbContext db, I
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var legacyEnabled = options?.Value.LegacyHeaderAuthEnabled ?? true;
-        var isAuthenticated = context.HttpContext.User?.Identity?.IsAuthenticated == true;
 
         AppRole current;
-        if (AppRoleResolver.TryResolveFromClaims(context.HttpContext.User, out var claimsRole))
-        {
-            current = claimsRole;
-        }
-        else if (TryResolveWorkspaceRole(context.HttpContext, db, out var wsRole))
+
+        // Workspace membership takes priority — it's the most specific role source.
+        if (TryResolveWorkspaceRole(context.HttpContext, db, out var wsRole))
         {
             current = await wsRole;
+        }
+        else if (AppRoleResolver.TryResolveFromClaims(context.HttpContext.User, out var claimsRole))
+        {
+            current = claimsRole;
         }
         else if (legacyEnabled)
         {
             current = AppRoleResolver.ResolveFromHeader(context.HttpContext);
-        }
-        else if (isAuthenticated)
-        {
-            // Authenticated via OIDC but no role claim or workspace membership found.
-            // Default to Editor so authenticated users can use the app while role
-            // assignment in Keycloak is being configured.
-            current = AppRole.Editor;
         }
         else
         {

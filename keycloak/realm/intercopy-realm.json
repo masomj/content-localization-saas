@@ -22,7 +22,6 @@
       { "name": "Reader" }
     ]
   },
-  "defaultRoles": ["Editor"],
   "clients": [
     {
       "clientId": "intercopy-web",
