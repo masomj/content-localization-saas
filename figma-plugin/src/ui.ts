@@ -196,6 +196,14 @@ function bindEvents(): void {
   // Device auth — cancel button
   $("device-cancel-btn").addEventListener("click", handleCancelDeviceAuth);
 
+  // Device auth — open verify URL in browser via main thread
+  $("device-verify-url").addEventListener("click", () => {
+    const url = $("device-verify-url").textContent || "";
+    if (url && url !== "—") {
+      parent.postMessage({ pluginMessage: { type: "open-external", url } }, "*");
+    }
+  });
+
   // Tabs
   document.querySelectorAll(".tab-item").forEach((el) => {
     el.addEventListener("click", () => {
@@ -367,7 +375,6 @@ async function handleStartDeviceAuth(): Promise<void> {
     currentDeviceCode = res.deviceCode;
     $("device-user-code").textContent = res.userCode;
     $("device-verify-url").textContent = res.verificationUri;
-    ($("device-verify-url") as HTMLAnchorElement).href = res.verificationUri;
 
     // Show device code section, hide login form
     $("login-form-area").style.display = "none";

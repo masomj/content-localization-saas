@@ -92,6 +92,10 @@ figma.ui.onmessage = async (msg: UIMessage) => {
       figma.ui.resize(msg.width, msg.height);
       break;
 
+    case "open-external":
+      figma.openExternal(msg.url);
+      break;
+
     case "storage-set": {
       const sm = msg as UIMessage & { type: "storage-set" };
       await figma.clientStorage.setAsync(sm.key, sm.value);
