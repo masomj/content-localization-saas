@@ -57,7 +57,13 @@ const canvasScale = computed(() => {
 
 function selectField(field: DesignComponentTextField) {
   selectedFieldId.value = field.id
-  editorText.value = field.currentText
+  // If linked to a content key, show the content key's source text
+  if (field.contentItemId) {
+    const linked = contentItems.value.find(ci => ci.id === field.contentItemId)
+    editorText.value = linked?.source ?? field.currentText
+  } else {
+    editorText.value = field.currentText
+  }
   editorError.value = ''
 }
 
@@ -293,13 +299,19 @@ onMounted(async () => {
           <!-- Current text -->
           <div class="field-editor__section">
             <label for="fieldText" class="field-editor__label">
-              <span>Current text</span>
-              <span class="field-editor__label-hint">Edit the text content for this layer</span>
+              <span>{{ selectedField.contentItemId ? 'Text (set by content key)' : 'Current text' }}</span>
+              <span class="field-editor__label-hint">
+                {{ selectedField.contentItemId
+                  ? 'Unlink the content key to edit directly'
+                  : 'Edit the text content for this layer' }}
+              </span>
             </label>
             <textarea
               id="fieldText"
               v-model="editorText"
               class="field-editor__textarea"
+              :class="{ 'field-editor__textarea--readonly': !!selectedField.contentItemId }"
+              :readonly="!!selectedField.contentItemId"
               rows="4"
             />
           </div>
@@ -364,7 +376,7 @@ onMounted(async () => {
           <!-- Actions -->
           <div class="field-editor__actions">
             <UiButton variant="secondary" size="sm" @click="closeEditor">Close</UiButton>
-            <UiButton size="sm" :disabled="editorSaving" @click="saveTextField">
+            <UiButton v-if="!selectedField?.contentItemId" size="sm" :disabled="editorSaving" @click="saveTextField">
               {{ editorSaving ? 'Saving...' : 'Save' }}
             </UiButton>
           </div>
@@ -717,6 +729,12 @@ onMounted(async () => {
   font-size: var(--font-size-sm);
   resize: vertical;
   font-family: inherit;
+}
+.field-editor__textarea--readonly {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.8;
 }
 
 .field-editor__textarea:focus {
