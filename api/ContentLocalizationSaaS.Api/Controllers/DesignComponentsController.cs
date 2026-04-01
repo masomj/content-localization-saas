@@ -38,6 +38,7 @@ public sealed record UpdateDesignComponentRequest(
 
 [ApiController]
 [Route("api/projects/{projectId:guid}/components")]
+[Microsoft.AspNetCore.Cors.EnableCors("PluginCors")]
 public sealed class DesignComponentsController(AppDbContext db) : ControllerBase
 {
     private string CurrentActor => HttpContext.Request.Headers["X-Actor-Email"].ToString() is { Length: > 0 } raw

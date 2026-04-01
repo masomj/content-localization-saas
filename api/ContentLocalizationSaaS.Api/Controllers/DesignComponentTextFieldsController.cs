@@ -11,6 +11,7 @@ public sealed record LinkContentKeyRequest(Guid ContentItemId);
 
 [ApiController]
 [Route("api/component-text-fields")]
+[Microsoft.AspNetCore.Cors.EnableCors("PluginCors")]
 public sealed class DesignComponentTextFieldsController(AppDbContext db) : ControllerBase
 {
     private string CurrentActor => HttpContext.Request.Headers["X-Actor-Email"].ToString() is { Length: > 0 } raw

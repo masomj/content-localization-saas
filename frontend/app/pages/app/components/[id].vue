@@ -31,6 +31,11 @@ const contentSearch = ref('')
 const contentLoading = ref(false)
 const linkingFieldId = ref<string | null>(null)
 
+// Language display toggle
+const displayLanguage = ref<string>('')  // '' = source, 'fr' = French, etc.
+const projectLanguages = ref<Array<{ bcp47Code: string; isSource: boolean }>>([])
+const translationCache = ref<Record<string, string>>({})  // contentItemId → translated text
+
 const selectedField = computed(() => {
   if (!selectedFieldId.value || !component.value) return null
   return component.value.textFields.find(f => f.id === selectedFieldId.value) ?? null
@@ -176,8 +181,73 @@ function goBack() {
   router.push(`/app/components?projectId=${encodeURIComponent(projectId.value)}`)
 }
 
+/** Resolve displayed text for a text field based on selected language */
+function getDisplayText(field: DesignComponentTextField): string {
+  if (!displayLanguage.value || !field.contentItemId) {
+    // Source mode or unlinked — use content key source or field text
+    if (field.contentItemId) {
+      const linked = contentItems.value.find(ci => ci.id === field.contentItemId)
+      return linked?.source ?? field.currentText
+    }
+    return field.currentText
+  }
+  // Language mode — check translation cache
+  const translated = translationCache.value[field.contentItemId]
+  if (translated) return translated
+  // Fallback to source
+  const linked = contentItems.value.find(ci => ci.id === field.contentItemId)
+  return linked?.source ?? field.currentText
+}
+
+/** Load project languages from the languages API */
+async function loadProjectLanguages() {
+  if (!projectId.value) return
+  try {
+    const { languagesClient } = await import('~/api/languagesClient')
+    const langs = await languagesClient.list(projectId.value)
+    projectLanguages.value = (Array.isArray(langs) ? langs : []).map((l: any) => ({
+      bcp47Code: l.bcp47Code,
+      isSource: l.isSource,
+    }))
+  } catch (_) {
+    projectLanguages.value = []
+  }
+}
+
+/** Load translations for all linked content items in the selected language */
+async function loadTranslations() {
+  if (!displayLanguage.value || !component.value) {
+    translationCache.value = {}
+    return
+  }
+  try {
+    const { translationClient } = await import('~/api/translationClient')
+    const linkedFields = component.value.textFields.filter(f => f.contentItemId)
+    const cache: Record<string, string> = {}
+    for (const field of linkedFields) {
+      if (!field.contentItemId) continue
+      try {
+        const tasks = await translationClient.getTasks(field.contentItemId)
+        const task = (Array.isArray(tasks) ? tasks : []).find(
+          (t: any) => t.languageCode === displayLanguage.value && t.translationText
+        )
+        if (task) cache[field.contentItemId] = task.translationText
+      } catch (_) {
+        // Skip fields that fail
+      }
+    }
+    translationCache.value = cache
+  } catch (_) {
+    translationCache.value = {}
+  }
+}
+
+watch(displayLanguage, () => {
+  loadTranslations()
+})
+
 onMounted(async () => {
-  await Promise.all([loadComponent(), loadContentItems()])
+  await Promise.all([loadComponent(), loadContentItems(), loadProjectLanguages()])
 })
 </script>
 
@@ -213,6 +283,26 @@ onMounted(async () => {
           <span class="layer-nav__count">{{ component.textFields.length }}</span>
         </div>
         <p class="layer-nav__hint">Click a layer to select it on the canvas and open the editor.</p>
+
+        <!-- Language toggle -->
+        <div v-if="projectLanguages.length > 1" class="layer-nav__lang-toggle">
+          <label for="displayLangSelect" class="layer-nav__lang-label">Display language</label>
+          <select
+            id="displayLangSelect"
+            v-model="displayLanguage"
+            class="layer-nav__lang-select"
+          >
+            <option value="">Source</option>
+            <option
+              v-for="lang in projectLanguages.filter(l => !l.isSource)"
+              :key="lang.bcp47Code"
+              :value="lang.bcp47Code"
+            >
+              {{ lang.bcp47Code }}
+            </option>
+          </select>
+        </div>
+
         <div class="layer-nav__list" role="listbox" :aria-label="`Text layers in ${component.figmaFrameName}`">
           <button
             v-for="field in component.textFields"
@@ -233,7 +323,7 @@ onMounted(async () => {
                 linked
               </span>
             </div>
-            <span class="layer-nav__item-text">{{ truncate(field.currentText, 36) }}</span>
+            <span class="layer-nav__item-text">{{ truncate(getDisplayText(field), 36) }}</span>
           </button>
           <div v-if="component.textFields.length === 0" class="layer-nav__empty">
             No text layers found in this component.
@@ -279,7 +369,7 @@ onMounted(async () => {
             :title="field.figmaLayerName"
             @click="selectField(field)"
           >
-            {{ field.currentText }}
+            {{ getDisplayText(field) }}
           </button>
         </div>
       </div>
@@ -484,6 +574,28 @@ onMounted(async () => {
   margin: 0;
   border-bottom: 1px solid var(--color-border);
   line-height: 1.4;
+}
+
+.layer-nav__lang-toggle {
+  padding: var(--spacing-2) var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.layer-nav__lang-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.layer-nav__lang-select {
+  flex: 1;
+  padding: 2px var(--spacing-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
 }
 
 .layer-nav__list {
