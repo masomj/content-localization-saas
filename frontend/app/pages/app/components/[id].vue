@@ -551,9 +551,22 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: var(--spacing-6);
-  background: color-mix(in srgb, var(--color-border) 20%, var(--color-background));
+  /* Light mode: Figma-style grey canvas */
+  background: #e5e5e5;
   overflow: auto;
   min-width: 0;
+}
+
+/* Dark mode: gradient from dark edges to lighter center for smooth
+   transition into the always-white frame */
+:root[data-theme='dark'] .canvas-panel {
+  background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .canvas-panel {
+    background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%);
+  }
 }
 
 .canvas-frame {
@@ -561,7 +574,8 @@ onMounted(async () => {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
-  background: var(--color-white);
+  /* Always white — matches Figma frame background regardless of theme */
+  background: #ffffff;
 }
 
 .canvas-frame__bg {
@@ -576,10 +590,12 @@ onMounted(async () => {
 .canvas-frame__placeholder {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--color-border) 40%, var(--color-background));
+  /* Light placeholder matching Figma's default frame fill */
+  background: #ffffff;
 }
 
-/* Text field overlay */
+/* Text field overlay — sits on the always-white canvas frame,
+   so colours come from the Figma data, not the theme */
 .canvas-text-field {
   position: absolute;
   overflow: hidden;
