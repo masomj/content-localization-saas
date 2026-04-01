@@ -1,5 +1,10 @@
 intercopy.co.uk {
-    reverse_proxy frontend:3000
+    handle /api/* {
+        reverse_proxy api:5135
+    }
+    handle {
+        reverse_proxy frontend:3000
+    }
 }
 
 api.intercopy.co.uk {
