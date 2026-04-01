@@ -215,7 +215,7 @@ function handleScanAllFrames(): void {
 // Push single frame (sends data back to UI for API call)
 // ---------------------------------------------------------------
 
-function handlePushFrame(projectId: string): void {
+async function handlePushFrame(projectId: string): Promise<void> {
   const selection = figma.currentPage.selection;
   if (selection.length === 0) {
     return postToUI({ type: "error", message: "No frame selected." });
@@ -229,7 +229,7 @@ function handlePushFrame(projectId: string): void {
     });
   }
 
-  const payload = buildPushPayload(
+  const payload = await buildPushPayload(
     frame as SceneNode & ChildrenMixin,
     projectId
   );
@@ -259,10 +259,10 @@ function handlePushFrames(projectId: string, frameIds: string[]): void {
 // Build push payload from a frame node
 // ---------------------------------------------------------------
 
-function buildPushPayload(
+async function buildPushPayload(
   frame: SceneNode & ChildrenMixin,
   projectId: string
-): PushComponentPayload {
+): Promise<PushComponentPayload> {
   const textNodes: TextNodeInfo[] = [];
   walkTextNodes(frame, frame, textNodes);
 
@@ -283,11 +283,22 @@ function buildPushPayload(
 
   const fileKey = getFileKey();
 
+  // Export frame as PNG for thumbnail
+  let thumbnailUrl = "";
+  try {
+    const exportSettings: ExportSettings = { format: "PNG", constraint: { type: "SCALE", value: 2 } };
+    const imageBytes = await (frame as SceneNode).exportAsync(exportSettings);
+    const base64 = figma.base64Encode(imageBytes);
+    thumbnailUrl = "data:image/png;base64," + base64;
+  } catch (_) {
+    // Export may fail for some node types — continue without thumbnail
+  }
+
   return {
     figmaFileId: fileKey,
     figmaFrameId: frame.id,
     figmaFrameName: frame.name,
-    thumbnailUrl: "",
+    thumbnailUrl,
     frameWidth: "width" in frame ? (frame as FrameNode).width : 0,
     frameHeight: "height" in frame ? (frame as FrameNode).height : 0,
     projectId,
