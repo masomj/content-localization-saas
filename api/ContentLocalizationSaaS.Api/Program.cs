@@ -167,9 +167,16 @@ app.UseObservabilityMiddleware();
 app.UseApiExceptionMiddleware();
 app.UseHttpsRedirection();
 
+// CORS middleware must always be registered so [EnableCors("PluginCors")] on
+// controllers works in production. In dev we also apply the broad LocalDevCors
+// policy globally; in prod per-controller [EnableCors] attributes take over.
 if (isDevelopment)
 {
     app.UseCors("LocalDevCors");
+}
+else
+{
+    app.UseCors();
 }
 
 app.UseAuthentication();
