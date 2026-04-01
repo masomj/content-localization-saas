@@ -408,7 +408,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.FigmaFileId).HasMaxLength(200).IsRequired();
             e.Property(x => x.FigmaFrameId).HasMaxLength(200).IsRequired();
             e.Property(x => x.FigmaFrameName).HasMaxLength(500).HasDefaultValue(string.Empty);
-            e.Property(x => x.ThumbnailUrl).HasMaxLength(2000).HasDefaultValue(string.Empty);
+            e.Property(x => x.ThumbnailUrl).HasColumnType("text").HasDefaultValue(string.Empty);
             e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue("draft");
             e.Property(x => x.CreatedByEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.FigmaFileId, x.FigmaFrameId }).IsUnique();
