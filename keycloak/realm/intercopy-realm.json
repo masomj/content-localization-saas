@@ -22,6 +22,7 @@
       { "name": "Reader" }
     ]
   },
+  "defaultRoles": ["Editor"],
   "clients": [
     {
       "clientId": "intercopy-web",
@@ -54,7 +55,7 @@
       "attributes": {
         "oauth2.device.authorization.grant.enabled": "true"
       },
-      "defaultClientScopes": ["openid", "email", "profile"]
+      "defaultClientScopes": ["openid", "email", "profile", "roles"]
     }
   ]
 }
