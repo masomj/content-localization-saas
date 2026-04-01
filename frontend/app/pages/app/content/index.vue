@@ -2,6 +2,8 @@
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import ExportPanel from '~/components/projects/ExportPanel.vue'
+import LocalizationGrid from '~/components/projects/LocalizationGrid.vue'
+import TranslationEditor from '~/components/projects/TranslationEditor.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { contentClient } from '~/api/contentClient'
@@ -38,6 +40,21 @@ const panelSource = ref('')
 const panelStatus = ref('')
 const panelCollectionId = ref<string | null>(null)
 const panelError = ref('')
+
+// Translation editor
+const translationTarget = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
+
+// Localization grid ref
+const locGridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
+
+// Item → collection mapping for grid folder filtering
+const itemCollectionMap = computed<Record<string, string | null>>(() => {
+  const map: Record<string, string | null> = {}
+  for (const item of contents.value) {
+    map[item.id] = item.collectionId ?? null
+  }
+  return map
+})
 
 const selectedProject = computed(() =>
   projects.value.find(p => p.id === selectedProjectId.value) ?? null,
@@ -209,9 +226,7 @@ function navigateUp() {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Side panel (replaces TranslationEditor row click)
-// ---------------------------------------------------------------------------
 function openSidePanel(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>) {
   selectedItem.value = item
   panelSource.value = item.source
@@ -246,6 +261,7 @@ async function saveSidePanel() {
     }
 
     await loadContent()
+    locGridRef.value?.reload()
     closeSidePanel()
   } catch (error: any) {
     panelError.value = error?.message || 'Failed to save changes'
@@ -261,6 +277,22 @@ async function deleteSidePanelItem() {
   } catch (error: any) {
     panelError.value = error?.message || 'Failed to delete content item'
   }
+}
+
+// ---------------------------------------------------------------------------
+// Translation grid cell click → open TranslationEditor
+// ---------------------------------------------------------------------------
+function openTranslationEditor(payload: { itemId: string; itemKey: string; source: string; language: string }) {
+  translationTarget.value = payload
+}
+
+function closeTranslationEditor() {
+  translationTarget.value = null
+}
+
+function onTranslationSaved() {
+  translationTarget.value = null
+  locGridRef.value?.reload()
 }
 
 // ---------------------------------------------------------------------------
@@ -649,6 +681,36 @@ watch(selectedProjectId, async () => {
     </template>
 
     <!-- ============================================================ -->
+    <!-- Localization Grid                                            -->
+    <!-- ============================================================ -->
+    <template v-if="selectedProjectId && !isLoading">
+      <div class="loc-grid-section">
+        <h2 class="loc-grid-heading">Translations</h2>
+        <p class="loc-grid-hint">Click a language cell to add or edit translations for each content key.</p>
+        <LocalizationGrid
+          ref="locGridRef"
+          :project-id="selectedProjectId"
+          :collection-id="currentFolderId"
+          :item-collection-map="itemCollectionMap"
+          @edit-cell="openTranslationEditor"
+        />
+      </div>
+    </template>
+
+    <!-- ============================================================ -->
+    <!-- Translation Editor (opened from grid cell click)             -->
+    <!-- ============================================================ -->
+    <TranslationEditor
+      v-if="translationTarget"
+      :item-id="translationTarget.itemId"
+      :item-key="translationTarget.itemKey"
+      :source="translationTarget.source"
+      :language="translationTarget.language"
+      @close="closeTranslationEditor"
+      @saved="onTranslationSaved"
+    />
+
+    <!-- ============================================================ -->
     <!-- Add content modal                                            -->
     <!-- ============================================================ -->
     <div v-if="showAddContentForm" class="content-form-overlay" @click.self="closeAddContentForm">
@@ -787,6 +849,24 @@ watch(selectedProjectId, async () => {
 
 <style scoped>
 .content-page { max-width: 1200px; }
+
+/* Localization grid section */
+.loc-grid-section {
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-6);
+  border-top: 1px solid var(--color-border);
+}
+.loc-grid-heading {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-1) 0;
+}
+.loc-grid-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--spacing-4) 0;
+}
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-6); }
 .page-header h1 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--spacing-1) 0; }
 .page-subtitle { color: var(--color-text-muted); margin: 0; }
