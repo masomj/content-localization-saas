@@ -244,19 +244,21 @@ async function handlePushFrame(projectId: string): Promise<void> {
 // Push multiple specific frames (for sync from Changes tab)
 // ---------------------------------------------------------------
 
-function handlePushFrames(projectId: string, frameIds: string[]): void {
-  const frames: FrameInfo[] = [];
+async function handlePushFrames(projectId: string, frameIds: string[]): Promise<void> {
+  const payloads: PushComponentPayload[] = [];
 
   for (const frameId of frameIds) {
     const node = figma.getNodeById(frameId);
     if (node && isFrameLike(node)) {
-      frames.push(
-        extractFrameInfo(node as SceneNode & ChildrenMixin)
+      const payload = await buildPushPayload(
+        node as SceneNode & ChildrenMixin,
+        projectId
       );
+      payloads.push(payload);
     }
   }
 
-  postToUI({ type: "multi-frame-data", frames });
+  postToUI({ type: "multi-frame-payloads", payloads });
 }
 
 // ---------------------------------------------------------------

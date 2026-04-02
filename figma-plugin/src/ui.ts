@@ -94,6 +94,7 @@ let changeEntries: ChangeEntry[] = [];
 let remoteComponents: DesignComponent[] = [];
 let allLocalFrames: FrameInfo[] = [];
 let isSyncing = false;
+let syncInProgress = false;
 let expandedChangeFrames: Set<string> = new Set();
 
 // Activity tab
@@ -285,6 +286,10 @@ window.onmessage = (event: MessageEvent) => {
 
     case "multi-frame-data":
       handleMultiFrameData(msg.frames);
+      break;
+
+    case "multi-frame-payloads":
+      handleMultiFramePayloads(msg.payloads);
       break;
 
     case "text-updated":
@@ -1089,79 +1094,25 @@ async function handleSync(): Promise<void> {
   if (changeEntries.length === 0 || !selectedProjectId) return;
 
   isSyncing = true;
+  syncInProgress = true;
   renderChangesTab();
 
-  let syncedCount = 0;
-  let errorCount = 0;
-  const totalFrames = changeEntries.length;
+  $("sync-progress-text").textContent = `Exporting ${changeEntries.length} frame(s)...`;
 
-  for (const entry of changeEntries) {
-    $("sync-progress-text").textContent = `Syncing ${syncedCount + 1} of ${totalFrames} frames...`;
+  // Collect frame IDs to sync
+  const frameIds = changeEntries.map(e => e.frameId);
 
-    // Find the local frame data
-    const localFrame = allLocalFrames.find((f) => f.frameId === entry.frameId);
-    if (!localFrame) {
-      errorCount++;
-      continue;
-    }
-
-    // Build push payload from local frame data
-    const payload: PushComponentPayload = {
-      figmaFileId: fileKey,
-      figmaFrameId: localFrame.frameId,
-      figmaFrameName: localFrame.frameName,
-      thumbnailUrl: "",
-      frameWidth: localFrame.frameWidth,
-      frameHeight: localFrame.frameHeight,
+  // Send to main thread — it will export each frame with thumbnail and return payloads
+  parent.postMessage({
+    pluginMessage: {
+      type: "push-frames",
       projectId: selectedProjectId,
-      textFields: localFrame.textNodes.map((tn) => ({
-        figmaLayerId: tn.layerId,
-        figmaLayerName: tn.layerName,
-        currentText: tn.characters,
-        x: tn.x,
-        y: tn.y,
-        width: tn.width,
-        height: tn.height,
-        fontFamily: tn.fontFamily,
-        fontSize: tn.fontSize,
-        fontWeight: tn.fontWeight,
-        textAlign: tn.textAlign,
-        color: tn.color,
-      })),
-    };
-
-    try {
-      await api.pushComponent(payload);
-      persistTokens();
-      syncedCount++;
-    } catch (err) {
-      errorCount++;
-      console.error("Sync error for frame", entry.frameName, err);
+      frameIds,
     }
-  }
+  }, "*");
 
+  // The response comes back as "multi-frame-payloads" message handled by handleMultiFramePayloads
   isSyncing = false;
-
-  // Log activity
-  if (syncedCount > 0) {
-    addActivity(
-      "synced",
-      `You synced ${syncedCount} frame${syncedCount !== 1 ? "s" : ""} to InterCopy`,
-      syncedCount
-    );
-    $("settings-frame-count").textContent = String(
-      remoteComponents.length + syncedCount
-    );
-  }
-
-  if (errorCount > 0) {
-    showToast(`Synced ${syncedCount} frames, ${errorCount} failed`, "error");
-  } else {
-    showToast(`Synced ${syncedCount} frame${syncedCount !== 1 ? "s" : ""} successfully`, "success");
-  }
-
-  // Refresh to show updated state
-  await refreshChangesTab();
 }
 
 // ---------------------------------------------------------------
@@ -1188,8 +1139,37 @@ async function handleFrameData(payload: PushComponentPayload): Promise<void> {
 }
 
 function handleMultiFrameData(frames: FrameInfo[]): void {
-  // This is called when main thread returns data for specific frame IDs
-  // used in the sync flow — frames are already being pushed in handleSync
+  // Legacy handler — no longer used for sync
+}
+
+/** Handle payloads with thumbnails from main thread for sync */
+async function handleMultiFramePayloads(payloads: PushComponentPayload[]): Promise<void> {
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (const payload of payloads) {
+    try {
+      await api.pushComponent(payload);
+      persistTokens();
+      successCount++;
+      addActivity(
+        "synced",
+        `Synced frame "${payload.figmaFrameName}" — ${payload.textFields.length} text layers`,
+        1
+      );
+    } catch (_) {
+      errorCount++;
+    }
+  }
+
+  if (successCount > 0) {
+    showToast(`Synced ${successCount} frame(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`, "success");
+  } else {
+    showToast("Sync failed", "error");
+  }
+
+  syncInProgress = false;
+  refreshChangesTab();
 }
 
 // ---------------------------------------------------------------
