@@ -307,6 +307,7 @@ export interface LibraryComponentVariant {
   variantName: string
   variantProperties: string
   backgroundColor: string
+  thumbnailUrl: string
   frameWidth: number
   frameHeight: number
   createdUtc: string

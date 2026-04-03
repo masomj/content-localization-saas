@@ -1336,7 +1336,8 @@ async function handlePushLibraryComponent(componentKey: string): Promise<void> {
         figmaNodeId: v.nodeId,
         variantName: v.variantName,
         variantProperties: JSON.stringify(v.variantProperties),
-        backgroundColor: v.backgroundColor || "#ffffff",
+        backgroundColor: v.backgroundColor || "#374151",
+        thumbnailUrl: v.thumbnailUrl || "",
         frameWidth: Math.round(v.width),
         frameHeight: Math.round(v.height),
         textFields: v.textNodes.map((tn) => ({

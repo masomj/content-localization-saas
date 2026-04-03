@@ -214,6 +214,7 @@ export interface FigmaVariantInfo {
   width: number;
   height: number;
   backgroundColor: string;
+  thumbnailUrl: string;
   textNodes: TextNodeInfo[];
 }
 

@@ -219,6 +219,7 @@ export class InterCopyApi {
       variantName: string;
       variantProperties: string;
       backgroundColor: string;
+      thumbnailUrl: string;
       textFields: Array<{
         figmaLayerId: string;
         figmaLayerName: string;

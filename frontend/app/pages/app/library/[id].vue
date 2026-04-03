@@ -381,7 +381,14 @@ onMounted(async () => {
             }"
           >
             <!-- Background -->
-            <div class="canvas-frame__placeholder" :style="{ background: variantBgColor }" />
+            <!-- Background: thumbnail if available, otherwise solid colour -->
+            <img
+              v-if="selectedVariant?.thumbnailUrl"
+              :src="selectedVariant.thumbnailUrl"
+              :alt="selectedVariant.variantName"
+              class="canvas-frame__bg"
+            >
+            <div v-else class="canvas-frame__placeholder" :style="{ background: variantBgColor }" />
 
             <!-- Text field overlays -->
             <button
@@ -766,6 +773,16 @@ onMounted(async () => {
   background: #374151;
   flex-shrink: 0;
   will-change: transform;
+}
+
+.canvas-frame__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .canvas-frame__placeholder {

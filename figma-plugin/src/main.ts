@@ -124,7 +124,7 @@ figma.ui.onmessage = async (msg: UIMessage) => {
 // Scan Figma components + component sets on the current page
 // ---------------------------------------------------------------
 
-function handleScanComponents(): void {
+async function handleScanComponents(): Promise<void> {
   const components: FigmaComponentInfo[] = [];
 
   for (const node of figma.currentPage.children) {
@@ -147,6 +147,8 @@ function handleScanComponents(): void {
             }
           }
 
+          const thumbnailUrl = await exportVariantThumbnail(comp);
+
           variants.push({
             nodeId: comp.id,
             variantName: comp.name,
@@ -154,6 +156,7 @@ function handleScanComponents(): void {
             width: comp.width,
             height: comp.height,
             backgroundColor: getFrameBackground(comp),
+            thumbnailUrl,
             textNodes,
           });
         }
@@ -174,6 +177,8 @@ function handleScanComponents(): void {
       const textNodes: TextNodeInfo[] = [];
       walkTextNodes(comp, comp, textNodes);
 
+      const thumbnailUrl = await exportVariantThumbnail(comp);
+
       components.push({
         componentKey: comp.key || comp.id,
         componentId: comp.id,
@@ -190,6 +195,7 @@ function handleScanComponents(): void {
             width: comp.width,
             height: comp.height,
             backgroundColor: getFrameBackground(comp),
+            thumbnailUrl,
             textNodes,
           },
         ],
@@ -198,6 +204,37 @@ function handleScanComponents(): void {
   }
 
   postToUI({ type: "components-list", components } as any);
+}
+
+async function exportVariantThumbnail(node: SceneNode & ChildrenMixin): Promise<string> {
+  try {
+    // Hide text nodes so the thumbnail shows only the visual chrome
+    const hiddenNodes: { node: SceneNode; wasVisible: boolean }[] = [];
+    function hideTextNodes(parent: BaseNode & ChildrenMixin): void {
+      for (const child of parent.children) {
+        if (child.type === "TEXT") {
+          hiddenNodes.push({ node: child as SceneNode, wasVisible: child.visible });
+          child.visible = false;
+        } else if ("children" in child) {
+          hideTextNodes(child as BaseNode & ChildrenMixin);
+        }
+      }
+    }
+    hideTextNodes(node);
+
+    const exportSettings: ExportSettings = { format: "PNG", constraint: { type: "SCALE", value: 2 } };
+    const imageBytes = await node.exportAsync(exportSettings);
+    const base64 = figma.base64Encode(imageBytes);
+
+    // Restore text node visibility
+    for (const { node: n, wasVisible } of hiddenNodes) {
+      n.visible = wasVisible;
+    }
+
+    return "data:image/png;base64," + base64;
+  } catch (_) {
+    return "";
+  }
 }
 
 // ---------------------------------------------------------------

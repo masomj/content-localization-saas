@@ -103,6 +103,7 @@ public sealed class LibraryComponentsController(AppDbContext db) : ControllerBas
                 v.VariantName,
                 v.VariantProperties,
                 v.BackgroundColor,
+                v.ThumbnailUrl,
                 v.FrameWidth,
                 v.FrameHeight,
                 v.CreatedUtc,

@@ -52,6 +52,7 @@ public sealed record PluginPushLibraryVariant(
     string VariantName,
     string VariantProperties,
     string BackgroundColor,
+    string ThumbnailUrl,
     int FrameWidth,
     int FrameHeight,
     PluginPushLibraryTextField[] TextFields);
@@ -469,6 +470,7 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
                 variant.VariantName = incomingVariant.VariantName;
                 variant.VariantProperties = incomingVariant.VariantProperties;
                 variant.BackgroundColor = incomingVariant.BackgroundColor ?? "#374151";
+                variant.ThumbnailUrl = incomingVariant.ThumbnailUrl ?? "";
                 variant.FrameWidth = incomingVariant.FrameWidth;
                 variant.FrameHeight = incomingVariant.FrameHeight;
                 variant.UpdatedUtc = DateTime.UtcNow;
@@ -482,6 +484,7 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
                     VariantName = incomingVariant.VariantName,
                     VariantProperties = incomingVariant.VariantProperties,
                     BackgroundColor = incomingVariant.BackgroundColor ?? "#374151",
+                    ThumbnailUrl = incomingVariant.ThumbnailUrl ?? "",
                     FrameWidth = incomingVariant.FrameWidth,
                     FrameHeight = incomingVariant.FrameHeight
                 };
@@ -586,6 +589,7 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
                 v.VariantName,
                 v.VariantProperties,
                 v.BackgroundColor,
+                v.ThumbnailUrl,
                 v.FrameWidth,
                 v.FrameHeight,
                 v.CreatedUtc,
