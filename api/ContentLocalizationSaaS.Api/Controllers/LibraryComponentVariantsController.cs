@@ -32,6 +32,8 @@ public sealed class LibraryComponentVariantsController(AppDbContext db) : Contro
                 v.FigmaNodeId,
                 v.VariantName,
                 v.VariantProperties,
+                v.FrameWidth,
+                v.FrameHeight,
                 v.CreatedUtc,
                 v.UpdatedUtc,
                 TextFieldCount = db.LibraryComponentTextFields.Count(tf => tf.LibraryComponentVariantId == v.Id)
@@ -61,6 +63,8 @@ public sealed class LibraryComponentVariantsController(AppDbContext db) : Contro
             variant.FigmaNodeId,
             variant.VariantName,
             variant.VariantProperties,
+            variant.FrameWidth,
+            variant.FrameHeight,
             variant.CreatedUtc,
             variant.UpdatedUtc,
             TextFields = textFields.Select(tf => new
