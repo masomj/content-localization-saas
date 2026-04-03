@@ -137,6 +137,37 @@
       align-items: center;
       gap: 4px;
     }
+    .top-bar-select {
+      width: auto;
+      max-width: 80px;
+      padding: 2px 6px;
+      margin-left: 4px;
+      font-size: 10px;
+      font-weight: 500;
+      background: #2a2a2a;
+      color: #d4d4d4;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23888' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 5px center;
+      padding-right: 16px;
+    }
+    .top-bar-select:hover {
+      border-color: #555;
+      background-color: #333;
+    }
+    .top-bar-select:focus {
+      border-color: #0d99ff;
+      outline: none;
+    }
+    .top-bar-select option {
+      background: #2a2a2a;
+      color: #d4d4d4;
+    }
     .icon-btn {
       background: none;
       border: none;
@@ -709,7 +740,7 @@
       <div class="top-bar-left">
         <span class="logo-dot"></span>
         <span id="project-name-display">InterCopy</span>
-        <select id="global-language-select" style="background:var(--bg-secondary);color:var(--fg-primary);border:1px solid var(--border);border-radius:4px;padding:1px 4px;font-size:10px;margin-left:6px;max-width:70px;">
+        <select id="global-language-select" class="top-bar-select">
           <option value="">Source</option>
         </select>
       </div>
