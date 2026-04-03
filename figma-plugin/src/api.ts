@@ -203,6 +203,34 @@ export class InterCopyApi {
     );
   }
 
+  // -- Library components (push) -------------------------------
+
+  async pushLibraryComponent(data: {
+    projectId: string;
+    figmaFileId: string;
+    figmaComponentKey: string;
+    figmaComponentId: string;
+    figmaComponentSetId: string;
+    componentName: string;
+    frameWidth: number;
+    frameHeight: number;
+    variants: Array<{
+      figmaNodeId: string;
+      variantName: string;
+      variantProperties: string;
+      textFields: Array<{
+        figmaLayerId: string;
+        figmaLayerName: string;
+        currentText: string;
+        x: number; y: number; width: number; height: number;
+        fontFamily: string; fontSize: number; fontWeight: string; textAlign: string; color: string;
+      }>;
+    }>;
+  }): Promise<unknown> {
+    await this.ensureFreshToken();
+    return this.post<unknown>("/api/plugin-sync/push-library-component", data);
+  }
+
   // -- Activity feed ------------------------------------------
 
   async getActivity(projectId: string): Promise<{ items: ActivityFeedItem[] }> {

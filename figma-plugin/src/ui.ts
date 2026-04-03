@@ -14,6 +14,7 @@ import type {
   ChangedTextField,
   EditableTextField,
   SyncStatus,
+  FigmaComponentInfo,
 } from "./types";
 
 // ---------------------------------------------------------------
@@ -99,6 +100,10 @@ let expandedChangeFrames: Set<string> = new Set();
 
 // Activity tab
 let activityLog: ActivityEntry[] = [];
+
+// Library tab
+let libraryComponents: FigmaComponentInfo[] = [];
+let libraryPushing: Set<string> = new Set();
 
 // Settings
 let autoSync = false;
@@ -219,6 +224,11 @@ function bindEvents(): void {
   $("settings-back-btn").addEventListener("click", () => toggleSettings(false));
   $("settings-logout-btn").addEventListener("click", handleLogout);
 
+  // Library refresh
+  $("library-refresh-btn").addEventListener("click", () => {
+    postToMain({ type: "scan-components" } as any);
+  });
+
   // Settings toggles
   $("toggle-autosync").addEventListener("click", () => {
     autoSync = !autoSync;
@@ -320,6 +330,13 @@ window.onmessage = (event: MessageEvent) => {
       handleStorageData(sd.entries);
       break;
     }
+
+    case "components-list": {
+      const cl = msg as MainMessage & { type: "components-list" };
+      libraryComponents = cl.components;
+      renderLibraryTab();
+      break;
+    }
   }
 };
 
@@ -355,6 +372,8 @@ function switchTab(tab: TabName): void {
       refreshChangesTab();
       break;
     case "library":
+      // Request component scan from main thread
+      postToMain({ type: "scan-components" } as any);
       renderLibraryTab();
       break;
   }
@@ -1249,14 +1268,103 @@ function renderActivity(): void {
 // ---------------------------------------------------------------
 
 function renderLibraryTab(): void {
-  // For now, show empty state. Library is populated from copy components.
   const list = $("library-list");
   const empty = $("library-empty");
 
-  // TODO: Fetch copy components from API when endpoint is available
-  list.style.display = "none";
-  empty.classList.remove("hidden");
-  empty.style.display = "";
+  if (libraryComponents.length === 0) {
+    list.style.display = "none";
+    empty.classList.remove("hidden");
+    empty.style.display = "";
+    return;
+  }
+
+  empty.style.display = "none";
+  empty.classList.add("hidden");
+  list.style.display = "";
+
+  list.innerHTML = libraryComponents
+    .map((comp) => {
+      const variantCount = comp.variants.length;
+      const textCount = comp.variants.reduce((sum, v) => sum + v.textNodes.length, 0);
+      const isPushing = libraryPushing.has(comp.componentKey);
+      const badge = comp.isComponentSet
+        ? `<span style="font-size:9px;background:#333;color:#888;padding:1px 4px;border-radius:3px;margin-left:4px;">SET</span>`
+        : "";
+
+      return `<div class="library-item" data-component-key="${comp.componentKey}">
+        <div class="library-item-icon">
+          <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M5.5 2A1.5 1.5 0 004 3.5v9A1.5 1.5 0 005.5 14h5a1.5 1.5 0 001.5-1.5V6.621a1.5 1.5 0 00-.44-1.06L8.94 2.94A1.5 1.5 0 007.879 2.5H5.5z"/></svg>
+        </div>
+        <div class="library-item-info">
+          <div class="library-item-name">${escapeHtml(comp.name)}${badge}</div>
+          <div class="library-item-meta">${variantCount} variant${variantCount !== 1 ? "s" : ""} · ${textCount} text field${textCount !== 1 ? "s" : ""}</div>
+        </div>
+        <button class="btn-sm btn-primary library-push-btn" data-component-key="${comp.componentKey}" ${isPushing ? "disabled" : ""}>
+          ${isPushing ? "Pushing..." : "Push"}
+        </button>
+      </div>`;
+    })
+    .join("");
+
+  // Bind push buttons
+  list.querySelectorAll(".library-push-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const key = (e.currentTarget as HTMLElement).getAttribute("data-component-key");
+      if (key) handlePushLibraryComponent(key);
+    });
+  });
+}
+
+async function handlePushLibraryComponent(componentKey: string): Promise<void> {
+  const comp = libraryComponents.find((c) => c.componentKey === componentKey);
+  if (!comp || !selectedProjectId) return;
+
+  libraryPushing.add(componentKey);
+  renderLibraryTab();
+
+  try {
+    await api.pushLibraryComponent({
+      projectId: selectedProjectId,
+      figmaFileId: fileKey,
+      figmaComponentKey: comp.componentKey,
+      figmaComponentId: comp.componentId,
+      figmaComponentSetId: comp.componentSetId,
+      componentName: comp.name,
+      frameWidth: Math.round(comp.width),
+      frameHeight: Math.round(comp.height),
+      variants: comp.variants.map((v) => ({
+        figmaNodeId: v.nodeId,
+        variantName: v.variantName,
+        variantProperties: JSON.stringify(v.variantProperties),
+        textFields: v.textNodes.map((tn) => ({
+          figmaLayerId: tn.layerId,
+          figmaLayerName: tn.layerName,
+          currentText: tn.characters,
+          x: tn.x,
+          y: tn.y,
+          width: tn.width,
+          height: tn.height,
+          fontFamily: tn.fontFamily,
+          fontSize: tn.fontSize,
+          fontWeight: tn.fontWeight,
+          textAlign: tn.textAlign,
+          color: tn.color,
+        })),
+      })),
+    });
+    showToast(`Pushed "${comp.name}" to library`, "success");
+  } catch (err: unknown) {
+    showToast(err instanceof Error ? err.message : "Failed to push component", "error");
+  } finally {
+    libraryPushing.delete(componentKey);
+    renderLibraryTab();
+  }
+}
+
+function escapeHtml(text: string): string {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // ---------------------------------------------------------------

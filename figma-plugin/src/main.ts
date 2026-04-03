@@ -6,6 +6,8 @@ import type {
   MainMessage,
   UIMessage,
   DesignComponentTextField,
+  FigmaComponentInfo,
+  FigmaVariantInfo,
 } from "./types";
 
 // ---------------------------------------------------------------
@@ -111,8 +113,86 @@ figma.ui.onmessage = async (msg: UIMessage) => {
     case "storage-request":
       await sendStoredValues();
       break;
+
+    case "scan-components":
+      handleScanComponents();
+      break;
   }
 };
+
+// ---------------------------------------------------------------
+// Scan Figma components + component sets on the current page
+// ---------------------------------------------------------------
+
+function handleScanComponents(): void {
+  const components: FigmaComponentInfo[] = [];
+
+  for (const node of figma.currentPage.children) {
+    if (node.type === "COMPONENT_SET") {
+      const set = node as ComponentSetNode;
+      const variants: FigmaVariantInfo[] = [];
+
+      for (const child of set.children) {
+        if (child.type === "COMPONENT") {
+          const comp = child as ComponentNode;
+          const textNodes: TextNodeInfo[] = [];
+          walkTextNodes(comp, comp, textNodes);
+
+          const props: Record<string, string> = {};
+          const parts = comp.name.split(",").map((s: string) => s.trim());
+          for (const part of parts) {
+            const eq = part.indexOf("=");
+            if (eq > 0) {
+              props[part.substring(0, eq).trim()] = part.substring(eq + 1).trim();
+            }
+          }
+
+          variants.push({
+            nodeId: comp.id,
+            variantName: comp.name,
+            variantProperties: props,
+            textNodes,
+          });
+        }
+      }
+
+      components.push({
+        componentKey: set.key || set.id,
+        componentId: set.id,
+        componentSetId: set.id,
+        name: set.name,
+        width: set.width,
+        height: set.height,
+        isComponentSet: true,
+        variants,
+      });
+    } else if (node.type === "COMPONENT") {
+      const comp = node as ComponentNode;
+      const textNodes: TextNodeInfo[] = [];
+      walkTextNodes(comp, comp, textNodes);
+
+      components.push({
+        componentKey: comp.key || comp.id,
+        componentId: comp.id,
+        componentSetId: "",
+        name: comp.name,
+        width: comp.width,
+        height: comp.height,
+        isComponentSet: false,
+        variants: [
+          {
+            nodeId: comp.id,
+            variantName: "Default",
+            variantProperties: {},
+            textNodes,
+          },
+        ],
+      });
+    }
+  }
+
+  postToUI({ type: "components-list", components } as any);
+}
 
 // ---------------------------------------------------------------
 // Selection data extraction

@@ -204,7 +204,26 @@ export type UIMessage =
   | { type: "resize"; width: number; height: number }
   | { type: "storage-request" }
   | { type: "storage-set"; key: string; value: string }
-  | { type: "storage-remove"; key: string };
+  | { type: "storage-remove"; key: string }
+  | { type: "scan-components" };
+
+export interface FigmaVariantInfo {
+  nodeId: string;
+  variantName: string;
+  variantProperties: Record<string, string>;
+  textNodes: TextNodeInfo[];
+}
+
+export interface FigmaComponentInfo {
+  componentKey: string;
+  componentId: string;
+  componentSetId: string;
+  name: string;
+  width: number;
+  height: number;
+  isComponentSet: boolean;
+  variants: FigmaVariantInfo[];
+}
 
 export type MainMessage =
   | { type: "frame-data"; payload: PushComponentPayload }
@@ -218,4 +237,5 @@ export type MainMessage =
   | { type: "text-updated"; layerId: string; newText: string }
   | { type: "file-key"; fileKey: string }
   | { type: "current-user"; name: string; email: string }
-  | { type: "storage-data"; entries: Record<string, string | null> };
+  | { type: "storage-data"; entries: Record<string, string | null> }
+  | { type: "components-list"; components: FigmaComponentInfo[] };
