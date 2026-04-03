@@ -354,7 +354,10 @@ onMounted(async () => {
             v-for="field in component.textFields"
             :key="field.id"
             class="canvas-text-field"
-            :class="{ 'canvas-text-field--selected': selectedFieldId === field.id }"
+            :class="{
+              'canvas-text-field--selected': selectedFieldId === field.id,
+              'canvas-text-field--modified': getDisplayText(field) !== field.currentText,
+            }"
             :style="{
               left: field.x * canvasScale + 'px',
               top: field.y * canvasScale + 'px',
@@ -753,6 +756,13 @@ onMounted(async () => {
   background: color-mix(in srgb, var(--color-primary-500) 12%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500) 25%, transparent);
   color: var(--color-primary-700);
+}
+
+/* Show text overlay when content has been modified (edited or language switched) */
+.canvas-text-field--modified {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border-color: color-mix(in srgb, var(--color-primary-500) 30%, transparent);
 }
 
 /* When no thumbnail, always show text */
