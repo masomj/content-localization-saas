@@ -75,6 +75,8 @@ function zoomOut() {
 }
 function zoomReset() {
   zoomLevel.value = 1
+  panX.value = 0
+  panY.value = 0
 }
 function handleCanvasWheel(e: WheelEvent) {
   if (e.ctrlKey || e.metaKey) {
@@ -85,39 +87,40 @@ function handleCanvasWheel(e: WheelEvent) {
 }
 const zoomPercent = computed(() => Math.round(zoomLevel.value * 100) + '%')
 
-// Canvas drag-to-pan
+// Canvas drag-to-pan (transform-based for Figma-like behavior)
 const isPanning = ref(false)
-const panStart = ref({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
+const panX = ref(0)
+const panY = ref(0)
+const panStart = ref({ x: 0, y: 0, panX: 0, panY: 0 })
+
+const canvasTransform = computed(() => {
+  return `translate(${panX.value}px, ${panY.value}px)`
+})
 
 function handlePanStart(e: MouseEvent) {
   // Only pan on middle-click, or left-click on empty canvas (not on text field buttons)
   const target = e.target as HTMLElement
-  const isCanvas = target.classList.contains('canvas-scroll-area') || target.classList.contains('canvas-frame') || target.classList.contains('canvas-frame__bg') || target.classList.contains('canvas-frame__placeholder')
+  const isCanvas = target.closest('.canvas-scroll-area') !== null
+    && target.closest('.canvas-text-field') === null
   if (e.button === 1 || (e.button === 0 && isCanvas)) {
-    if (e.button === 0 && !isCanvas) return
     e.preventDefault()
     isPanning.value = true
-    const scrollArea = (e.currentTarget as HTMLElement)
-    panStart.value = { x: e.clientX, y: e.clientY, scrollLeft: scrollArea.scrollLeft, scrollTop: scrollArea.scrollTop }
-    scrollArea.style.cursor = 'grabbing'
+    panStart.value = { x: e.clientX, y: e.clientY, panX: panX.value, panY: panY.value }
   }
 }
 
 function handlePanMove(e: MouseEvent) {
   if (!isPanning.value) return
   e.preventDefault()
-  const scrollArea = (e.currentTarget as HTMLElement)
   const dx = e.clientX - panStart.value.x
   const dy = e.clientY - panStart.value.y
-  scrollArea.scrollLeft = panStart.value.scrollLeft - dx
-  scrollArea.scrollTop = panStart.value.scrollTop - dy
+  panX.value = panStart.value.panX + dx
+  panY.value = panStart.value.panY + dy
 }
 
 function handlePanEnd() {
   if (!isPanning.value) return
   isPanning.value = false
-  const el = document.querySelector('.canvas-scroll-area') as HTMLElement | null
-  if (el) el.style.cursor = ''
 }
 
 function selectField(field: DesignComponentTextField) {
@@ -404,6 +407,7 @@ onMounted(async () => {
       <div class="canvas-panel" ref="canvasContainerRef" @wheel="handleCanvasWheel">
         <div
           class="canvas-scroll-area"
+          :class="{ 'canvas-scroll-area--panning': isPanning }"
           @mousedown="handlePanStart"
           @mousemove="handlePanMove"
           @mouseup="handlePanEnd"
@@ -414,6 +418,7 @@ onMounted(async () => {
           :style="{
             width: component.frameWidth * canvasScale + 'px',
             height: component.frameHeight * canvasScale + 'px',
+            transform: canvasTransform,
           }"
         >
           <!-- Background -->
@@ -795,14 +800,15 @@ onMounted(async () => {
 
 .canvas-scroll-area {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-6);
   cursor: grab;
+  user-select: none;
 }
-.canvas-scroll-area:active {
+.canvas-scroll-area--panning {
   cursor: grabbing;
 }
 
@@ -825,6 +831,8 @@ onMounted(async () => {
   box-shadow: var(--shadow-lg);
   /* Always white — matches Figma frame background regardless of theme */
   background: #ffffff;
+  flex-shrink: 0;
+  will-change: transform;
 }
 
 .canvas-frame__bg {
