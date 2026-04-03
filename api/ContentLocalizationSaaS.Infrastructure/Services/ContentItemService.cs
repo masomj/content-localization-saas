@@ -4,6 +4,7 @@ using ContentLocalizationSaaS.Application.Exceptions;
 using ContentLocalizationSaaS.Domain;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace ContentLocalizationSaaS.Infrastructure.Services;
 
@@ -11,6 +12,8 @@ internal sealed class ContentItemService(
     AppDbContext db,
     IValidator<CreateContentItemRequest> createValidator) : IContentItemService
 {
+    private static readonly Regex InvalidKeyCharsRegex = new("[^a-z0-9._-]", RegexOptions.Compiled);
+
     public async Task<ContentItem> CreateAsync(CreateContentItemRequest request, CancellationToken cancellationToken)
     {
         var validation = await createValidator.ValidateAsync(request, cancellationToken);
@@ -22,11 +25,13 @@ internal sealed class ContentItemService(
         var projectExists = await db.Projects.AnyAsync(x => x.Id == request.ProjectId, cancellationToken);
         if (!projectExists) throw new ResourceNotFoundException(nameof(Project), request.ProjectId);
 
+        var normalizedKey = await BuildPrefixedKeyAsync(request.ProjectId, request.CollectionId, request.Key, cancellationToken);
+
         var item = new ContentItem
         {
             ProjectId = request.ProjectId,
             CollectionId = request.CollectionId,
-            Key = request.Key.Trim(),
+            Key = normalizedKey,
             Source = request.Source.Trim(),
             Status = request.Status.Trim(),
             Tags = string.Join('|', (request.Tags ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim().ToLowerInvariant())),
@@ -201,7 +206,98 @@ internal sealed class ContentItemService(
         item.CollectionId = request.CollectionId;
         item.SortOrder = request.SortOrder;
 
+        // Recompute key prefix on folder move while preserving leaf segment.
+        var currentLeaf = GetLeafSegment(item.Key);
+        item.Key = await BuildPrefixedKeyAsync(item.ProjectId, item.CollectionId, currentLeaf, cancellationToken);
+
         await db.SaveChangesAsync(cancellationToken);
         return item;
+    }
+
+    private async Task<string> BuildPrefixedKeyAsync(Guid projectId, Guid? collectionId, string rawKey, CancellationToken cancellationToken)
+    {
+        var leaf = GetLeafSegment(rawKey);
+        if (string.IsNullOrWhiteSpace(leaf))
+        {
+            throw new RequestValidationException(new Dictionary<string, string[]>
+            {
+                ["key"] = ["Key is required."]
+            });
+        }
+
+        if (!collectionId.HasValue)
+        {
+            return leaf;
+        }
+
+        var prefix = await BuildCollectionPrefixAsync(projectId, collectionId.Value, cancellationToken);
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            return leaf;
+        }
+
+        // Avoid double-prefixing when client already sent full key.
+        return leaf.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase) ? leaf : $"{prefix}.{leaf}";
+    }
+
+    private async Task<string> BuildCollectionPrefixAsync(Guid projectId, Guid collectionId, CancellationToken cancellationToken)
+    {
+        var nodes = await db.ProjectCollections
+            .Where(x => x.ProjectId == projectId)
+            .Select(x => new { x.Id, x.ParentId, x.Name })
+            .ToListAsync(cancellationToken);
+
+        var map = nodes.ToDictionary(x => x.Id, x => (x.ParentId, x.Name));
+        if (!map.TryGetValue(collectionId, out _))
+        {
+            throw new RequestValidationException(new Dictionary<string, string[]>
+            {
+                ["collectionId"] = ["Target collection not found for project."]
+            });
+        }
+
+        var segments = new List<string>();
+        var seen = new HashSet<Guid>();
+        var current = collectionId;
+
+        while (map.TryGetValue(current, out var node))
+        {
+            if (!seen.Add(current)) break;
+            segments.Add(SanitizeSegment(node.Name));
+            if (!node.ParentId.HasValue) break;
+            current = node.ParentId.Value;
+        }
+
+        segments.Reverse();
+        return string.Join('.', segments.Where(x => !string.IsNullOrWhiteSpace(x)));
+    }
+
+    private static string GetLeafSegment(string key)
+    {
+        var cleaned = (key ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(cleaned)) return string.Empty;
+
+        var normalized = InvalidKeyCharsRegex.Replace(cleaned, "_");
+        normalized = Regex.Replace(normalized, "[.]{2,}", ".");
+        normalized = Regex.Replace(normalized, "_{2,}", "_");
+        normalized = normalized.Trim('.', '_', '-');
+
+        if (string.IsNullOrWhiteSpace(normalized)) return string.Empty;
+
+        var idx = normalized.LastIndexOf('.');
+        return idx >= 0 && idx < normalized.Length - 1
+            ? normalized[(idx + 1)..]
+            : normalized;
+    }
+
+    private static string SanitizeSegment(string value)
+    {
+        var cleaned = (value ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(cleaned)) return string.Empty;
+        cleaned = cleaned.Replace(' ', '.').Replace('/', '.').Replace('\\', '.');
+        cleaned = InvalidKeyCharsRegex.Replace(cleaned, "_");
+        cleaned = Regex.Replace(cleaned, "[.]{2,}", ".");
+        cleaned = cleaned.Trim('.', '_', '-');
+        return cleaned;
     }
 }

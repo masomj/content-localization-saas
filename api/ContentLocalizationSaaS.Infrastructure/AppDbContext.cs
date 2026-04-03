@@ -47,6 +47,9 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ProjectVersionSnapshot> ProjectVersionSnapshots => Set<ProjectVersionSnapshot>();
     public DbSet<DesignComponent> DesignComponents => Set<DesignComponent>();
     public DbSet<DesignComponentTextField> DesignComponentTextFields => Set<DesignComponentTextField>();
+    public DbSet<LibraryComponent> LibraryComponents => Set<LibraryComponent>();
+    public DbSet<LibraryComponentVariant> LibraryComponentVariants => Set<LibraryComponentVariant>();
+    public DbSet<LibraryComponentTextField> LibraryComponentTextFields => Set<LibraryComponentTextField>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -430,6 +433,47 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => x.ContentItemId);
         });
 
+        builder.Entity<LibraryComponent>(e =>
+        {
+            e.ToTable("library_components");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FigmaFileId).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FigmaComponentKey).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FigmaComponentId).HasMaxLength(200).HasDefaultValue(string.Empty);
+            e.Property(x => x.FigmaComponentSetId).HasMaxLength(200).HasDefaultValue(string.Empty);
+            e.Property(x => x.Name).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.Description).HasMaxLength(2000).HasDefaultValue(string.Empty);
+            e.Property(x => x.ThumbnailUrl).HasColumnType("text").HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ProjectId, x.FigmaFileId, x.FigmaComponentKey }).IsUnique();
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<LibraryComponentVariant>(e =>
+        {
+            e.ToTable("library_component_variants");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FigmaNodeId).HasMaxLength(200).IsRequired();
+            e.Property(x => x.VariantName).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.VariantProperties).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.LibraryComponentId, x.FigmaNodeId }).IsUnique();
+            e.HasIndex(x => x.LibraryComponentId);
+        });
+
+        builder.Entity<LibraryComponentTextField>(e =>
+        {
+            e.ToTable("library_component_text_fields");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FigmaLayerId).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FigmaLayerName).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.CurrentText).HasMaxLength(4000).HasDefaultValue(string.Empty);
+            e.Property(x => x.FontFamily).HasMaxLength(200).HasDefaultValue(string.Empty);
+            e.Property(x => x.FontWeight).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.Property(x => x.TextAlign).HasMaxLength(32).HasDefaultValue("left");
+            e.Property(x => x.Color).HasMaxLength(32).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.LibraryComponentVariantId);
+            e.HasIndex(x => x.ContentItemId);
+        });
+
         // Story 8.1: explicit FK constraints for core relations
         builder.Entity<Project>()
             .HasOne<Workspace>()
@@ -606,6 +650,30 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<DesignComponentTextField>()
+            .HasOne<ContentItem>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<LibraryComponent>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<LibraryComponentVariant>()
+            .HasOne<LibraryComponent>()
+            .WithMany()
+            .HasForeignKey(x => x.LibraryComponentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<LibraryComponentTextField>()
+            .HasOne<LibraryComponentVariant>()
+            .WithMany()
+            .HasForeignKey(x => x.LibraryComponentVariantId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<LibraryComponentTextField>()
             .HasOne<ContentItem>()
             .WithMany()
             .HasForeignKey(x => x.ContentItemId)

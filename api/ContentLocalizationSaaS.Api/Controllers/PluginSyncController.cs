@@ -33,6 +33,37 @@ public sealed record PluginPushComponentRequest(
     int FrameHeight,
     PluginPushComponentTextField[] TextFields);
 
+public sealed record PluginPushLibraryTextField(
+    string FigmaLayerId,
+    string FigmaLayerName,
+    string CurrentText,
+    double X,
+    double Y,
+    double Width,
+    double Height,
+    string FontFamily,
+    double FontSize,
+    string FontWeight,
+    string TextAlign,
+    string Color);
+
+public sealed record PluginPushLibraryVariant(
+    string FigmaNodeId,
+    string VariantName,
+    string VariantProperties,
+    PluginPushLibraryTextField[] TextFields);
+
+public sealed record PluginPushLibraryComponentRequest(
+    Guid ProjectId,
+    string FigmaFileId,
+    string FigmaComponentKey,
+    string FigmaComponentId,
+    string FigmaComponentSetId,
+    string ComponentName,
+    int FrameWidth,
+    int FrameHeight,
+    PluginPushLibraryVariant[] Variants);
+
 [ApiController]
 [Route("api/plugin-sync")]
 [Microsoft.AspNetCore.Cors.EnableCors("PluginCors")]
@@ -372,6 +403,197 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
             textFields = result,
             languages = projectLanguages,
             requestedLanguage = language
+        });
+    }
+
+    [HttpPost("push-library-component")]
+    public async Task<IActionResult> PushLibraryComponent([FromBody] PluginPushLibraryComponentRequest request, CancellationToken cancellationToken)
+    {
+        // Upsert component by projectId + fileId + componentKey
+        var existing = await db.LibraryComponents.FirstOrDefaultAsync(
+            c => c.ProjectId == request.ProjectId
+                && c.FigmaFileId == request.FigmaFileId
+                && c.FigmaComponentKey == request.FigmaComponentKey,
+            cancellationToken);
+
+        LibraryComponent component;
+
+        if (existing is not null)
+        {
+            existing.FigmaComponentId = request.FigmaComponentId;
+            existing.FigmaComponentSetId = request.FigmaComponentSetId;
+            existing.Name = request.ComponentName;
+            existing.FrameWidth = request.FrameWidth;
+            existing.FrameHeight = request.FrameHeight;
+            existing.UpdatedUtc = DateTime.UtcNow;
+            component = existing;
+        }
+        else
+        {
+            component = new LibraryComponent
+            {
+                ProjectId = request.ProjectId,
+                FigmaFileId = request.FigmaFileId,
+                FigmaComponentKey = request.FigmaComponentKey,
+                FigmaComponentId = request.FigmaComponentId,
+                FigmaComponentSetId = request.FigmaComponentSetId,
+                Name = request.ComponentName,
+                FrameWidth = request.FrameWidth,
+                FrameHeight = request.FrameHeight
+            };
+            db.LibraryComponents.Add(component);
+        }
+
+        // Load existing variants for this component
+        var existingVariants = await db.LibraryComponentVariants
+            .Where(v => v.LibraryComponentId == component.Id)
+            .ToListAsync(cancellationToken);
+
+        var existingVariantIds = existingVariants.Select(v => v.Id).ToList();
+        var existingTextFields = existingVariantIds.Count > 0
+            ? await db.LibraryComponentTextFields
+                .Where(tf => existingVariantIds.Contains(tf.LibraryComponentVariantId))
+                .ToListAsync(cancellationToken)
+            : new List<LibraryComponentTextField>();
+
+        var processedVariantIds = new HashSet<Guid>();
+
+        foreach (var incomingVariant in request.Variants ?? [])
+        {
+            var variant = existingVariants.FirstOrDefault(v => v.FigmaNodeId == incomingVariant.FigmaNodeId);
+            if (variant is not null)
+            {
+                variant.VariantName = incomingVariant.VariantName;
+                variant.VariantProperties = incomingVariant.VariantProperties;
+                variant.UpdatedUtc = DateTime.UtcNow;
+            }
+            else
+            {
+                variant = new LibraryComponentVariant
+                {
+                    LibraryComponentId = component.Id,
+                    FigmaNodeId = incomingVariant.FigmaNodeId,
+                    VariantName = incomingVariant.VariantName,
+                    VariantProperties = incomingVariant.VariantProperties
+                };
+                db.LibraryComponentVariants.Add(variant);
+            }
+            processedVariantIds.Add(variant.Id);
+
+            // Upsert text fields for this variant
+            var variantFields = existingTextFields.Where(tf => tf.LibraryComponentVariantId == variant.Id).ToList();
+            var processedFieldIds = new HashSet<Guid>();
+
+            foreach (var incomingField in incomingVariant.TextFields ?? [])
+            {
+                var field = variantFields.FirstOrDefault(f => f.FigmaLayerId == incomingField.FigmaLayerId);
+                if (field is not null)
+                {
+                    field.FigmaLayerName = incomingField.FigmaLayerName;
+                    field.CurrentText = incomingField.CurrentText;
+                    field.X = incomingField.X;
+                    field.Y = incomingField.Y;
+                    field.Width = incomingField.Width;
+                    field.Height = incomingField.Height;
+                    field.FontFamily = incomingField.FontFamily;
+                    field.FontSize = incomingField.FontSize;
+                    field.FontWeight = incomingField.FontWeight;
+                    field.TextAlign = incomingField.TextAlign;
+                    field.Color = incomingField.Color;
+                    field.UpdatedUtc = DateTime.UtcNow;
+                }
+                else
+                {
+                    field = new LibraryComponentTextField
+                    {
+                        LibraryComponentVariantId = variant.Id,
+                        FigmaLayerId = incomingField.FigmaLayerId,
+                        FigmaLayerName = incomingField.FigmaLayerName,
+                        CurrentText = incomingField.CurrentText,
+                        X = incomingField.X,
+                        Y = incomingField.Y,
+                        Width = incomingField.Width,
+                        Height = incomingField.Height,
+                        FontFamily = incomingField.FontFamily,
+                        FontSize = incomingField.FontSize,
+                        FontWeight = incomingField.FontWeight,
+                        TextAlign = incomingField.TextAlign,
+                        Color = incomingField.Color
+                    };
+                    db.LibraryComponentTextFields.Add(field);
+                }
+                processedFieldIds.Add(field.Id);
+            }
+
+            // Remove text fields no longer present
+            var removedFields = variantFields.Where(f => !processedFieldIds.Contains(f.Id)).ToList();
+            db.LibraryComponentTextFields.RemoveRange(removedFields);
+        }
+
+        // Remove variants no longer present
+        var removedVariants = existingVariants.Where(v => !processedVariantIds.Contains(v.Id)).ToList();
+        foreach (var removedVariant in removedVariants)
+        {
+            var orphanFields = existingTextFields.Where(tf => tf.LibraryComponentVariantId == removedVariant.Id).ToList();
+            db.LibraryComponentTextFields.RemoveRange(orphanFields);
+        }
+        db.LibraryComponentVariants.RemoveRange(removedVariants);
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        // Reload full result
+        var resultVariants = await db.LibraryComponentVariants
+            .Where(v => v.LibraryComponentId == component.Id)
+            .OrderBy(v => v.VariantName)
+            .ToListAsync(cancellationToken);
+
+        var resultVariantIds = resultVariants.Select(v => v.Id).ToList();
+        var resultFields = await db.LibraryComponentTextFields
+            .Where(tf => resultVariantIds.Contains(tf.LibraryComponentVariantId))
+            .OrderBy(tf => tf.Y).ThenBy(tf => tf.X)
+            .ToListAsync(cancellationToken);
+
+        return Ok(new
+        {
+            component = new
+            {
+                component.Id,
+                component.ProjectId,
+                component.FigmaFileId,
+                component.FigmaComponentKey,
+                component.FigmaComponentId,
+                component.FigmaComponentSetId,
+                component.Name,
+                component.FrameWidth,
+                component.FrameHeight,
+                component.CreatedUtc,
+                component.UpdatedUtc
+            },
+            variants = resultVariants.Select(v => new
+            {
+                v.Id,
+                v.LibraryComponentId,
+                v.FigmaNodeId,
+                v.VariantName,
+                v.VariantProperties,
+                v.CreatedUtc,
+                v.UpdatedUtc,
+                textFields = resultFields
+                    .Where(tf => tf.LibraryComponentVariantId == v.Id)
+                    .Select(tf => new
+                    {
+                        tf.Id,
+                        tf.LibraryComponentVariantId,
+                        tf.FigmaLayerId,
+                        tf.FigmaLayerName,
+                        tf.CurrentText,
+                        tf.ContentItemId,
+                        tf.X, tf.Y, tf.Width, tf.Height,
+                        tf.FontFamily, tf.FontSize, tf.FontWeight, tf.TextAlign, tf.Color,
+                        tf.CreatedUtc,
+                        tf.UpdatedUtc
+                    })
+            })
         });
     }
 }
