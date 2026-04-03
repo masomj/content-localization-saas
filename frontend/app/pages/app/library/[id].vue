@@ -54,7 +54,11 @@ const filteredContentItems = computed(() => {
 })
 
 // Canvas scaling — use selected variant dimensions
-const canvasScale = computed(() => {
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 4
+const zoomLevel = ref(1)
+
+const baseScale = computed(() => {
   if (!selectedVariant.value) return 1
   const w = selectedVariant.value.frameWidth || component.value?.frameWidth || 100
   const h = selectedVariant.value.frameHeight || component.value?.frameHeight || 100
@@ -64,6 +68,8 @@ const canvasScale = computed(() => {
   const scaleY = maxHeight / h
   return Math.min(scaleX, scaleY, 1)
 })
+
+const canvasScale = computed(() => baseScale.value * zoomLevel.value)
 
 const canvasWidth = computed(() => {
   if (!selectedVariant.value) return 0
@@ -75,11 +81,25 @@ const canvasHeight = computed(() => {
   return selectedVariant.value.frameHeight || component.value?.frameHeight || 0
 })
 
+const zoomPercent = computed(() => Math.round(zoomLevel.value * 100) + '%')
+
+function zoomIn() { zoomLevel.value = Math.min(zoomLevel.value * 1.25, MAX_ZOOM) }
+function zoomOut() { zoomLevel.value = Math.max(zoomLevel.value / 1.25, MIN_ZOOM) }
+function zoomReset() { zoomLevel.value = 1 }
+function handleCanvasWheel(e: WheelEvent) {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault()
+    if (e.deltaY < 0) zoomIn()
+    else zoomOut()
+  }
+}
+
 function selectVariant(variant: LibraryComponentVariant) {
   selectedVariantId.value = variant.id
   selectedFieldId.value = null
   editorText.value = ''
   editorError.value = ''
+  zoomLevel.value = 1
 }
 
 function selectField(field: LibraryComponentTextField) {
@@ -238,7 +258,8 @@ onMounted(async () => {
       </aside>
 
       <!-- CENTER: Canvas -->
-      <div class="canvas-panel">
+      <div class="canvas-panel" @wheel="handleCanvasWheel">
+        <div class="canvas-scroll-area">
         <div
           v-if="selectedVariant"
           class="canvas-frame"
@@ -271,6 +292,14 @@ onMounted(async () => {
           </button>
         </div>
         <div v-else class="canvas-empty">Select a variant to preview</div>
+        </div>
+        <!-- Zoom controls -->
+        <div class="canvas-controls">
+          <button class="canvas-controls__btn" title="Zoom out" @click="zoomOut">−</button>
+          <span class="canvas-controls__label">{{ zoomPercent }}</span>
+          <button class="canvas-controls__btn" title="Zoom in" @click="zoomIn">+</button>
+          <button class="canvas-controls__btn" title="Reset zoom" @click="zoomReset">⟳</button>
+        </div>
       </div>
 
       <!-- RIGHT: Field editor -->
@@ -360,12 +389,17 @@ onMounted(async () => {
 .variant-nav__empty { padding: var(--spacing-4); text-align: center; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
 /* Canvas */
-.canvas-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--spacing-6); background: #e5e5e5; overflow: auto; min-width: 0; }
-:root[data-theme='dark'] .canvas-panel { background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .canvas-panel { background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%); } }
-.canvas-frame { position: relative; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-lg); background: #ffffff; }
+.canvas-panel { flex: 1; display: flex; flex-direction: column; padding: 0; background: #e5e5e5; overflow: hidden; min-width: 0; position: relative; }
+.canvas-scroll-area { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: var(--spacing-6); }
+:root[data-theme='dark'] .canvas-scroll-area { background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .canvas-scroll-area { background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%); } }
+.canvas-frame { position: relative; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-lg); background: #ffffff; flex-shrink: 0; }
 .canvas-frame__placeholder { position: absolute; inset: 0; background: #ffffff; }
 .canvas-empty { color: var(--color-text-muted); font-size: var(--font-size-sm); }
+.canvas-controls { position: absolute; bottom: var(--spacing-3); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: var(--spacing-1); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--spacing-1); box-shadow: var(--shadow-md); z-index: 2; }
+.canvas-controls__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: var(--radius-md); background: none; color: var(--color-text-secondary); cursor: pointer; font-size: var(--font-size-base); transition: background var(--transition-fast); }
+.canvas-controls__btn:hover { background: color-mix(in srgb, var(--color-primary-600) 10%, transparent); color: var(--color-text-primary); }
+.canvas-controls__label { font-size: var(--font-size-xs); color: var(--color-text-muted); min-width: 36px; text-align: center; }
 .canvas-text-field { position: absolute; overflow: hidden; border: 1px solid transparent; border-radius: 2px; background: transparent; cursor: pointer; padding: 0; margin: 0; line-height: 1.2; transition: border-color var(--transition-fast), background var(--transition-fast); display: flex; align-items: flex-start; word-break: break-word; }
 .canvas-text-field:hover { border-color: var(--color-primary-300); background: color-mix(in srgb, var(--color-primary-500) 8%, transparent); }
 .canvas-text-field--selected { border-color: var(--color-primary-500); border-width: 2px; background: color-mix(in srgb, var(--color-primary-500) 12%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500) 25%, transparent); }
