@@ -304,8 +304,10 @@ onMounted(async () => {
       <!-- LEFT SIDEBAR: Layer navigator -->
       <aside class="layer-nav">
         <div class="layer-nav__header">
-          <h2 class="layer-nav__title">Text Layers</h2>
-          <span class="layer-nav__count">{{ component.textFields.length }}</span>
+          <UiButton variant="ghost" size="sm" @click="goBack" title="Back to components">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width:1em;height:1em"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          </UiButton>
+          <h2 class="layer-nav__title">{{ component.figmaFrameName }}</h2>
         </div>
         <p class="layer-nav__hint">Click a layer to select it on the canvas and open the editor.</p>
 
@@ -354,17 +356,17 @@ onMounted(async () => {
             No text layers found in this component.
           </div>
         </div>
-      </aside>
-
-      <!-- CENTER: Visual canvas -->
-      <div class="canvas-panel" ref="canvasContainerRef" @wheel="handleCanvasWheel">
         <!-- Zoom controls -->
-        <div class="canvas-zoom-controls">
+        <div class="layer-nav__zoom">
           <button class="canvas-zoom-btn" title="Zoom out" @click="zoomOut">−</button>
           <span class="canvas-zoom-label">{{ zoomPercent }}</span>
           <button class="canvas-zoom-btn" title="Zoom in" @click="zoomIn">+</button>
           <button class="canvas-zoom-btn canvas-zoom-btn--reset" title="Reset zoom" @click="zoomReset">⟲</button>
         </div>
+      </aside>
+
+      <!-- CENTER: Visual canvas -->
+      <div class="canvas-panel" ref="canvasContainerRef" @wheel="handleCanvasWheel">
         <div class="canvas-scroll-area">
         <div
           class="canvas-frame"
@@ -512,19 +514,21 @@ onMounted(async () => {
 
 <style scoped>
 .component-detail {
+  /* Break out of the app layout's content padding to fill viewport */
+  position: fixed;
+  top: 64px;
+  left: 260px;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px - var(--spacing-6) * 2);
-  min-height: 0;
+  margin: calc(var(--spacing-6) * -1);
+  z-index: 1;
 }
 
-/* Top bar */
+/* Top bar — hidden, info moved to left sidebar */
 .component-detail__topbar {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  margin-bottom: var(--spacing-4);
-  flex-shrink: 0;
+  display: none;
 }
 
 .component-detail__title {
@@ -561,11 +565,8 @@ onMounted(async () => {
   display: flex;
   flex: 1;
   min-height: 0;
-  gap: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  position: relative;
   overflow: hidden;
-  background: var(--color-surface);
 }
 
 /* ========== LEFT SIDEBAR: Layer navigator ========== */
@@ -576,6 +577,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
+  overflow-y: auto;
 }
 
 .layer-nav__header {
@@ -706,25 +708,14 @@ onMounted(async () => {
   color: var(--color-text-muted);
 }
 
-/* ========== CENTER: Visual canvas ========== */
-.canvas-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  background: #e5e5e5;
-  overflow: hidden;
-  min-width: 0;
-  position: relative;
-}
-
-.canvas-zoom-controls {
+.layer-nav__zoom {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-1);
   padding: var(--spacing-2) var(--spacing-3);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border);
+  margin-top: auto;
   flex-shrink: 0;
 }
 .canvas-zoom-btn {
@@ -742,18 +733,24 @@ onMounted(async () => {
   font-weight: 600;
   transition: background var(--transition-fast);
 }
-.canvas-zoom-btn:hover {
-  background: var(--color-gray-100);
-}
-.canvas-zoom-btn--reset {
-  font-size: 14px;
-  margin-left: var(--spacing-1);
-}
+.canvas-zoom-btn:hover { background: var(--color-gray-100); }
+.canvas-zoom-btn--reset { font-size: 14px; margin-left: var(--spacing-1); }
 .canvas-zoom-label {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   min-width: 36px;
   text-align: center;
+}
+
+/* ========== CENTER: Visual canvas ========== */
+.canvas-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: #e5e5e5;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .canvas-scroll-area {
@@ -834,13 +831,18 @@ onMounted(async () => {
 
 /* ========== RIGHT SIDEBAR: Field editor ========== */
 .field-editor {
+  position: fixed;
+  right: 0;
+  top: 64px;
+  bottom: 0;
   width: 380px;
-  flex-shrink: 0;
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
   overflow-y: auto;
+  z-index: 10;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
 }
 
 .field-editor__header {
