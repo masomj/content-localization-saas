@@ -730,11 +730,12 @@ onMounted(async () => {
   border: 1px solid transparent;
   border-radius: 2px;
   background: transparent;
+  color: transparent;
   cursor: pointer;
   padding: 0;
   margin: 0;
   line-height: 1.2;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
   display: flex;
   align-items: flex-start;
   word-break: break-word;
@@ -743,6 +744,7 @@ onMounted(async () => {
 .canvas-text-field:hover {
   border-color: var(--color-primary-300);
   background: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
+  color: var(--color-primary-700);
 }
 
 .canvas-text-field--selected {
@@ -750,6 +752,12 @@ onMounted(async () => {
   border-width: 2px;
   background: color-mix(in srgb, var(--color-primary-500) 12%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500) 25%, transparent);
+  color: var(--color-primary-700);
+}
+
+/* When no thumbnail, always show text */
+.canvas-frame__placeholder ~ .canvas-text-field {
+  color: inherit;
 }
 
 /* ========== RIGHT SIDEBAR: Field editor ========== */
@@ -939,6 +947,14 @@ onMounted(async () => {
 
 .field-editor__search-item:hover {
   background: color-mix(in srgb, var(--color-primary-600) 5%, transparent);
+}
+
+.field-editor__search-item:focus-visible {
+  position: relative;
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--color-primary-600) 10%, transparent);
+  z-index: 1;
 }
 
 .field-editor__search-item:disabled {
