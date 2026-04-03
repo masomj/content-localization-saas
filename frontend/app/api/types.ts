@@ -278,4 +278,59 @@ export interface DesignComponentTextField {
   color: string
   createdUtc: string
   updatedUtc: string
+  isComponentInstance?: boolean
+  sourceComponentKey?: string
+}
+
+export interface LibraryComponent {
+  id: string
+  projectId: string
+  figmaFileId: string
+  figmaComponentKey: string
+  figmaComponentId: string
+  figmaComponentSetId: string
+  name: string
+  description: string
+  thumbnailUrl: string
+  frameWidth: number
+  frameHeight: number
+  createdUtc: string
+  updatedUtc: string
+  variantCount?: number
+  textFieldCount?: number
+}
+
+export interface LibraryComponentVariant {
+  id: string
+  libraryComponentId: string
+  figmaNodeId: string
+  variantName: string
+  variantProperties: string
+  createdUtc: string
+  updatedUtc: string
+  textFields?: LibraryComponentTextField[]
+}
+
+export interface LibraryComponentTextField {
+  id: string
+  libraryComponentVariantId: string
+  figmaLayerId: string
+  figmaLayerName: string
+  currentText: string
+  contentItemId?: string | null
+  x: number
+  y: number
+  width: number
+  height: number
+  fontFamily: string
+  fontSize: number
+  fontWeight: string
+  textAlign: string
+  color: string
+  createdUtc: string
+  updatedUtc: string
+}
+
+export interface LibraryComponentWithVariants extends LibraryComponent {
+  variants: LibraryComponentVariant[]
 }
