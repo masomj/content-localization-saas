@@ -372,7 +372,7 @@ onMounted(async () => {
             }"
           >
             <!-- Background -->
-            <div class="canvas-frame__placeholder" :style="{ background: selectedVariant?.backgroundColor || '#ffffff' }" />
+            <div class="canvas-frame__placeholder" :style="{ background: selectedVariant?.backgroundColor || '#374151' }" />
 
             <!-- Text field overlays -->
             <button
@@ -753,8 +753,8 @@ onMounted(async () => {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
-  /* Always white — matches Figma frame background regardless of theme */
-  background: #ffffff;
+  /* Dark default so white text from Figma is visible; overridden by placeholder */
+  background: #374151;
   flex-shrink: 0;
   will-change: transform;
 }
@@ -762,8 +762,9 @@ onMounted(async () => {
 .canvas-frame__placeholder {
   position: absolute;
   inset: 0;
-  /* Light placeholder matching Figma's default frame fill */
-  background: #ffffff;
+  z-index: 0;
+  /* Dark default — matches the inline style fallback */
+  background: #374151;
 }
 
 .canvas-empty {
@@ -771,10 +772,11 @@ onMounted(async () => {
   font-size: var(--font-size-sm);
 }
 
-/* Text field overlay — sits on the always-white canvas frame,
+/* Text field overlay — sits on the canvas frame,
    so colours come from the Figma data, not the theme */
 .canvas-text-field {
   position: absolute;
+  z-index: 1;
   overflow: hidden;
   border: 1px solid transparent;
   border-radius: 2px;
