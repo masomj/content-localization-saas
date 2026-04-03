@@ -5,7 +5,7 @@ import { libraryClient } from '~/api/libraryClient'
 import { contentClient } from '~/api/contentClient'
 import type { LibraryComponentWithVariants, LibraryComponentVariant, LibraryComponentTextField, ContentItem } from '~/api/types'
 
-definePageMeta({ layout: 'app' })
+definePageMeta({ layout: 'canvas' })
 useSeoMeta({ title: 'Library Component - InterCopy' })
 
 const route = useRoute()
@@ -54,6 +54,7 @@ const filteredContentItems = computed(() => {
 })
 
 // Canvas scaling — use selected variant dimensions
+const canvasContainerRef = ref<HTMLElement | null>(null)
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 4
 const zoomLevel = ref(1)
@@ -85,7 +86,11 @@ const zoomPercent = computed(() => Math.round(zoomLevel.value * 100) + '%')
 
 function zoomIn() { zoomLevel.value = Math.min(zoomLevel.value * 1.25, MAX_ZOOM) }
 function zoomOut() { zoomLevel.value = Math.max(zoomLevel.value / 1.25, MIN_ZOOM) }
-function zoomReset() { zoomLevel.value = 1 }
+function zoomReset() {
+  zoomLevel.value = 1
+  panX.value = 0
+  panY.value = 0
+}
 function handleCanvasWheel(e: WheelEvent) {
   if (e.ctrlKey || e.metaKey) {
     e.preventDefault()
@@ -94,17 +99,61 @@ function handleCanvasWheel(e: WheelEvent) {
   }
 }
 
+// Canvas drag-to-pan (transform-based for Figma-like behavior)
+const isPanning = ref(false)
+const panX = ref(0)
+const panY = ref(0)
+const panStart = ref({ x: 0, y: 0, panX: 0, panY: 0 })
+
+const canvasTransform = computed(() => {
+  return `translate(${panX.value}px, ${panY.value}px)`
+})
+
+function handlePanStart(e: MouseEvent) {
+  // Only pan on middle-click, or left-click on empty canvas (not on text field buttons)
+  const target = e.target as HTMLElement
+  const isCanvas = target.closest('.canvas-scroll-area') !== null
+    && target.closest('.canvas-text-field') === null
+  if (e.button === 1 || (e.button === 0 && isCanvas)) {
+    e.preventDefault()
+    isPanning.value = true
+    panStart.value = { x: e.clientX, y: e.clientY, panX: panX.value, panY: panY.value }
+  }
+}
+
+function handlePanMove(e: MouseEvent) {
+  if (!isPanning.value) return
+  e.preventDefault()
+  const dx = e.clientX - panStart.value.x
+  const dy = e.clientY - panStart.value.y
+  panX.value = panStart.value.panX + dx
+  panY.value = panStart.value.panY + dy
+}
+
+function handlePanEnd() {
+  if (!isPanning.value) return
+  isPanning.value = false
+}
+
 function selectVariant(variant: LibraryComponentVariant) {
   selectedVariantId.value = variant.id
   selectedFieldId.value = null
   editorText.value = ''
   editorError.value = ''
   zoomLevel.value = 1
+  panX.value = 0
+  panY.value = 0
 }
 
 function selectField(field: LibraryComponentTextField) {
   selectedFieldId.value = field.id
-  editorText.value = field.currentText
+  // If linked to a content key, show the content key's source text
+  if (field.contentItemId) {
+    const linked = contentItems.value.find(ci => ci.id === field.contentItemId)
+    editorText.value = linked?.source ?? field.currentText
+  } else {
+    editorText.value = field.currentText
+  }
   editorError.value = ''
 }
 
@@ -174,6 +223,15 @@ function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}...` : text
 }
 
+/** Resolve displayed text for a text field based on linked content key */
+function getDisplayText(field: LibraryComponentTextField): string {
+  if (field.contentItemId) {
+    const linked = contentItems.value.find(ci => ci.id === field.contentItemId)
+    return linked?.source ?? field.currentText
+  }
+  return field.currentText
+}
+
 async function loadComponent() {
   if (!componentId.value) return
   isLoading.value = true
@@ -182,6 +240,10 @@ async function loadComponent() {
     component.value = await libraryClient.get(componentId.value)
     if (component.value.variants.length > 0 && !selectedVariantId.value) {
       selectedVariantId.value = component.value.variants[0]!.id
+    }
+    // Set breadcrumb label to component name instead of GUID
+    if (component.value?.name) {
+      route.meta.breadcrumbLabel = component.value.name
     }
   } catch (err: any) {
     errorMessage.value = err?.message ?? 'Failed to load component'
@@ -214,6 +276,7 @@ onMounted(async () => {
 
 <template>
   <div class="lib-detail">
+    <!-- Top bar (hidden — info moved to left sidebar) -->
     <div class="lib-detail__topbar">
       <UiButton variant="ghost" size="sm" @click="goBack">
         <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon-inline">
@@ -224,20 +287,26 @@ onMounted(async () => {
       <h1 v-if="component" class="lib-detail__title">{{ component.name || 'Library Component' }}</h1>
     </div>
 
+    <!-- Loading state -->
     <div v-if="isLoading" class="lib-detail__loading">
       <AppSkeleton :lines="6" height="1rem" />
     </div>
 
+    <!-- Error state -->
     <div v-else-if="errorMessage" class="lib-detail__error" role="alert">{{ errorMessage }}</div>
 
+    <!-- Main three-panel layout -->
     <div v-else-if="component" class="lib-detail__panels">
-      <!-- LEFT: Variant navigator -->
+      <!-- LEFT SIDEBAR: Variant navigator -->
       <aside class="variant-nav">
         <div class="variant-nav__header">
-          <h2 class="variant-nav__title">Variants</h2>
-          <span class="variant-nav__count">{{ component.variants.length }}</span>
+          <UiButton variant="ghost" size="sm" @click="goBack" title="Back to library">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width:1em;height:1em"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          </UiButton>
+          <h2 class="variant-nav__title">{{ component.name || 'Library Component' }}</h2>
         </div>
         <p class="variant-nav__hint">Select a variant to view its text fields and edit copy.</p>
+
         <div class="variant-nav__list" role="listbox" :aria-label="`Variants of ${component.name}`">
           <button
             v-for="variant in component.variants"
@@ -248,94 +317,142 @@ onMounted(async () => {
             :aria-selected="selectedVariantId === variant.id"
             @click="selectVariant(variant)"
           >
-            <span class="variant-nav__item-name">{{ variant.variantName || 'Default' }}</span>
-            <span class="variant-nav__item-count">{{ (variant.textFields ?? []).length }} fields</span>
+            <div class="variant-nav__item-header">
+              <span class="variant-nav__item-name">{{ variant.variantName || 'Default' }}</span>
+              <span class="variant-nav__item-count">{{ (variant.textFields ?? []).length }} fields</span>
+            </div>
           </button>
           <div v-if="component.variants.length === 0" class="variant-nav__empty">
             No variants found. Push this component from the Figma plugin.
           </div>
         </div>
+
+        <!-- Zoom controls -->
+        <div class="variant-nav__zoom">
+          <button class="canvas-zoom-btn" title="Zoom out" @click="zoomOut">&#x2212;</button>
+          <span class="canvas-zoom-label">{{ zoomPercent }}</span>
+          <button class="canvas-zoom-btn" title="Zoom in" @click="zoomIn">+</button>
+          <button class="canvas-zoom-btn canvas-zoom-btn--reset" title="Reset zoom" @click="zoomReset">&#x27F2;</button>
+        </div>
       </aside>
 
-      <!-- CENTER: Canvas -->
-      <div class="canvas-panel" @wheel="handleCanvasWheel">
-        <div class="canvas-scroll-area">
+      <!-- CENTER: Visual canvas -->
+      <div class="canvas-panel" ref="canvasContainerRef" @wheel="handleCanvasWheel">
         <div
-          v-if="selectedVariant"
-          class="canvas-frame"
-          :style="{
-            width: canvasWidth * canvasScale + 'px',
-            height: canvasHeight * canvasScale + 'px',
-          }"
+          class="canvas-scroll-area"
+          :class="{ 'canvas-scroll-area--panning': isPanning }"
+          @mousedown="handlePanStart"
+          @mousemove="handlePanMove"
+          @mouseup="handlePanEnd"
+          @mouseleave="handlePanEnd"
         >
-          <div class="canvas-frame__placeholder" />
-          <button
-            v-for="field in variantFields"
-            :key="field.id"
-            class="canvas-text-field"
-            :class="{ 'canvas-text-field--selected': selectedFieldId === field.id }"
+          <div
+            v-if="selectedVariant"
+            class="canvas-frame"
             :style="{
-              left: field.x * canvasScale + 'px',
-              top: field.y * canvasScale + 'px',
-              width: field.width * canvasScale + 'px',
-              height: field.height * canvasScale + 'px',
-              fontFamily: field.fontFamily || 'inherit',
-              fontSize: (field.fontSize * canvasScale) + 'px',
-              fontWeight: field.fontWeight || 'normal',
-              textAlign: field.textAlign || 'left',
-              color: field.color || '#333',
+              width: canvasWidth * canvasScale + 'px',
+              height: canvasHeight * canvasScale + 'px',
+              transform: canvasTransform,
             }"
-            :title="field.figmaLayerName"
-            @click="selectField(field)"
           >
-            {{ field.currentText }}
-          </button>
-        </div>
-        <div v-else class="canvas-empty">Select a variant to preview</div>
-        </div>
-        <!-- Zoom controls -->
-        <div class="canvas-controls">
-          <button class="canvas-controls__btn" title="Zoom out" @click="zoomOut">−</button>
-          <span class="canvas-controls__label">{{ zoomPercent }}</span>
-          <button class="canvas-controls__btn" title="Zoom in" @click="zoomIn">+</button>
-          <button class="canvas-controls__btn" title="Reset zoom" @click="zoomReset">⟳</button>
-        </div>
+            <!-- Background -->
+            <div class="canvas-frame__placeholder" />
+
+            <!-- Text field overlays -->
+            <button
+              v-for="field in variantFields"
+              :key="field.id"
+              class="canvas-text-field"
+              :class="{ 'canvas-text-field--selected': selectedFieldId === field.id }"
+              :style="{
+                left: field.x * canvasScale + 'px',
+                top: field.y * canvasScale + 'px',
+                width: field.width * canvasScale + 'px',
+                height: field.height * canvasScale + 'px',
+                fontFamily: field.fontFamily || 'inherit',
+                fontSize: (field.fontSize * canvasScale) + 'px',
+                fontWeight: field.fontWeight || 'normal',
+                textAlign: field.textAlign || 'left',
+                color: field.color || 'var(--color-text-primary)',
+              }"
+              :title="field.figmaLayerName"
+              @click="selectField(field)"
+            >
+              {{ getDisplayText(field) }}
+            </button>
+          </div>
+          <div v-else class="canvas-empty">Select a variant to preview</div>
+        </div><!-- /canvas-scroll-area -->
       </div>
 
-      <!-- RIGHT: Field editor -->
+      <!-- RIGHT SIDEBAR: Text field editor -->
       <Transition name="editor-slide">
         <aside v-if="selectedField" class="field-editor">
           <div class="field-editor__header">
             <h2 class="field-editor__title">{{ selectedField.figmaLayerName }}</h2>
             <button class="field-editor__close" aria-label="Close editor" @click="closeEditor">
-              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
             </button>
           </div>
 
+          <!-- Current text -->
           <div class="field-editor__section">
             <label for="fieldText" class="field-editor__label">
-              <span>Current text</span>
-              <span class="field-editor__label-hint">Edit the text content for this layer</span>
+              <span>{{ selectedField.contentItemId ? 'Text (set by content key)' : 'Current text' }}</span>
+              <span class="field-editor__label-hint">
+                {{ selectedField.contentItemId
+                  ? 'Unlink the content key to edit directly'
+                  : 'Edit the text content for this layer' }}
+              </span>
             </label>
-            <textarea id="fieldText" v-model="editorText" class="field-editor__textarea" rows="4" />
+            <textarea
+              id="fieldText"
+              v-model="editorText"
+              class="field-editor__textarea"
+              :class="{ 'field-editor__textarea--readonly': !!selectedField.contentItemId }"
+              :readonly="!!selectedField.contentItemId"
+              rows="4"
+            />
           </div>
 
+          <!-- Content key link section -->
           <div class="field-editor__section">
             <label class="field-editor__label">
               <span>Content key</span>
               <span class="field-editor__label-hint">Link to an i18n content key for translations</span>
             </label>
 
+            <!-- Linked state -->
             <div v-if="selectedField.contentItemId" class="field-editor__linked">
               <div class="field-editor__linked-info">
-                <span class="field-editor__linked-key">{{ getLinkedContentKey(selectedField)?.key ?? selectedField.contentItemId }}</span>
-                <span v-if="getLinkedContentKey(selectedField)" class="field-editor__linked-source">{{ truncate(getLinkedContentKey(selectedField)!.source, 60) }}</span>
+                <span class="field-editor__linked-key">
+                  {{ getLinkedContentKey(selectedField)?.key ?? selectedField.contentItemId }}
+                </span>
+                <span v-if="getLinkedContentKey(selectedField)" class="field-editor__linked-source">
+                  {{ truncate(getLinkedContentKey(selectedField)!.source, 60) }}
+                </span>
               </div>
-              <UiButton variant="secondary" size="sm" :disabled="linkingFieldId === selectedField.id" @click="unlinkContentKey">Unlink</UiButton>
+              <UiButton
+                variant="secondary"
+                size="sm"
+                :disabled="linkingFieldId === selectedField.id"
+                @click="unlinkContentKey"
+              >
+                Unlink
+              </UiButton>
             </div>
 
+            <!-- Unlinked state: search & link -->
             <template v-else>
-              <input v-model="contentSearch" type="text" class="field-editor__search" placeholder="Search content keys..." autocomplete="off">
+              <input
+                v-model="contentSearch"
+                type="text"
+                class="field-editor__search"
+                placeholder="Search content keys..."
+                autocomplete="off"
+              >
               <div v-if="contentSearch.trim()" class="field-editor__search-results">
                 <button
                   v-for="item in filteredContentItems.slice(0, 8)"
@@ -347,16 +464,22 @@ onMounted(async () => {
                   <span class="field-editor__search-item-key">{{ item.key }}</span>
                   <span class="field-editor__search-item-source">{{ truncate(item.source, 50) }}</span>
                 </button>
-                <div v-if="filteredContentItems.length === 0" class="field-editor__search-empty">No matching content keys found.</div>
+                <div v-if="filteredContentItems.length === 0" class="field-editor__search-empty">
+                  No matching content keys found.
+                </div>
               </div>
             </template>
           </div>
 
+          <!-- Error -->
           <p v-if="editorError" class="field-editor__error">{{ editorError }}</p>
 
+          <!-- Actions -->
           <div class="field-editor__actions">
             <UiButton variant="secondary" size="sm" @click="closeEditor">Close</UiButton>
-            <UiButton size="sm" :disabled="editorSaving" @click="saveTextField">{{ editorSaving ? 'Saving...' : 'Save' }}</UiButton>
+            <UiButton v-if="!selectedField?.contentItemId" size="sm" :disabled="editorSaving" @click="saveTextField">
+              {{ editorSaving ? 'Saving...' : 'Save' }}
+            </UiButton>
           </div>
         </aside>
       </Transition>
@@ -365,81 +488,585 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.lib-detail { display: flex; flex-direction: column; height: calc(100vh - 64px - var(--spacing-6) * 2); min-height: 0; }
-.lib-detail__topbar { display: flex; align-items: center; gap: var(--spacing-3); margin-bottom: var(--spacing-4); flex-shrink: 0; }
-.lib-detail__title { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0; }
-.btn-icon-inline { width: 1em; height: 1em; flex-shrink: 0; }
-.lib-detail__loading { padding: var(--spacing-6); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
-.lib-detail__error { background: var(--color-error); color: var(--color-white); padding: var(--spacing-3) var(--spacing-4); border-radius: var(--radius-lg); font-size: var(--font-size-sm); }
+.lib-detail {
+  /* Fill the canvas layout's main area (no top header bar) */
+  position: fixed;
+  top: 0;
+  left: 260px;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
 
-.lib-detail__panels { display: flex; flex: 1; min-height: 0; gap: 0; border: 1px solid var(--color-border); border-radius: var(--radius-xl); overflow: hidden; background: var(--color-surface); }
+/* Top bar — hidden, info moved to left sidebar */
+.lib-detail__topbar {
+  display: none;
+}
 
-/* Variant navigator */
-.variant-nav { width: 240px; flex-shrink: 0; border-right: 1px solid var(--color-border); display: flex; flex-direction: column; background: var(--color-surface); }
-.variant-nav__header { display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-4); border-bottom: 1px solid var(--color-border); }
-.variant-nav__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0; }
-.variant-nav__count { font-size: var(--font-size-xs); color: var(--color-text-muted); background: color-mix(in srgb, var(--color-border) 50%, var(--color-background)); padding: 1px var(--spacing-2); border-radius: var(--radius-md); }
-.variant-nav__hint { font-size: var(--font-size-xs); color: var(--color-text-muted); padding: var(--spacing-2) var(--spacing-4); margin: 0; border-bottom: 1px solid var(--color-border); line-height: 1.4; }
-.variant-nav__list { flex: 1; overflow-y: auto; padding: var(--spacing-2); }
-.variant-nav__item { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: var(--spacing-2) var(--spacing-3); border: 1px solid transparent; border-radius: var(--radius-md); background: none; cursor: pointer; text-align: left; font: inherit; color: inherit; transition: background var(--transition-fast), border-color var(--transition-fast); }
-.variant-nav__item:hover { background: color-mix(in srgb, var(--color-primary-600) 5%, transparent); }
-.variant-nav__item--selected { background: color-mix(in srgb, var(--color-primary-600) 10%, transparent); border-color: var(--color-primary-400); }
-.variant-nav__item-name { font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
-.variant-nav__item-count { font-size: var(--font-size-xs); color: var(--color-text-muted); }
-.variant-nav__empty { padding: var(--spacing-4); text-align: center; font-size: var(--font-size-xs); color: var(--color-text-muted); }
+.lib-detail__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
 
-/* Canvas */
-.canvas-panel { flex: 1; display: flex; flex-direction: column; padding: 0; background: #e5e5e5; overflow: hidden; min-width: 0; position: relative; }
-.canvas-scroll-area { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: var(--spacing-6); }
-:root[data-theme='dark'] .canvas-scroll-area { background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .canvas-scroll-area { background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%); } }
-.canvas-frame { position: relative; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-lg); background: #ffffff; flex-shrink: 0; }
-.canvas-frame__placeholder { position: absolute; inset: 0; background: #ffffff; }
-.canvas-empty { color: var(--color-text-muted); font-size: var(--font-size-sm); }
-.canvas-controls { position: absolute; bottom: var(--spacing-3); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: var(--spacing-1); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--spacing-1); box-shadow: var(--shadow-md); z-index: 2; }
-.canvas-controls__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: var(--radius-md); background: none; color: var(--color-text-secondary); cursor: pointer; font-size: var(--font-size-base); transition: background var(--transition-fast); }
-.canvas-controls__btn:hover { background: color-mix(in srgb, var(--color-primary-600) 10%, transparent); color: var(--color-text-primary); }
-.canvas-controls__label { font-size: var(--font-size-xs); color: var(--color-text-muted); min-width: 36px; text-align: center; }
-.canvas-text-field { position: absolute; overflow: hidden; border: 1px solid transparent; border-radius: 2px; background: transparent; cursor: pointer; padding: 0; margin: 0; line-height: 1.2; transition: border-color var(--transition-fast), background var(--transition-fast); display: flex; align-items: flex-start; word-break: break-word; }
-.canvas-text-field:hover { border-color: var(--color-primary-300); background: color-mix(in srgb, var(--color-primary-500) 8%, transparent); }
-.canvas-text-field--selected { border-color: var(--color-primary-500); border-width: 2px; background: color-mix(in srgb, var(--color-primary-500) 12%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500) 25%, transparent); }
+.btn-icon-inline {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
 
-/* Field editor */
-.field-editor { width: 380px; flex-shrink: 0; border-left: 1px solid var(--color-border); display: flex; flex-direction: column; background: var(--color-surface); overflow-y: auto; }
-.field-editor__header { display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-4); border-bottom: 1px solid var(--color-border); }
-.field-editor__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.field-editor__close { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; flex-shrink: 0; transition: background var(--transition-fast), color var(--transition-fast); }
-.field-editor__close:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); color: var(--color-error); }
-.field-editor__close svg { width: 14px; height: 14px; }
-.field-editor__section { padding: var(--spacing-4); border-bottom: 1px solid var(--color-border); display: flex; flex-direction: column; gap: var(--spacing-2); }
-.field-editor__label { display: flex; flex-direction: column; gap: 1px; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-text-primary); }
-.field-editor__label-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); font-weight: var(--font-weight-normal); }
-.field-editor__textarea { padding: var(--spacing-3) var(--spacing-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-background); color: var(--color-text-primary); font-size: var(--font-size-sm); resize: vertical; font-family: inherit; }
-.field-editor__textarea:focus { outline: none; border-color: var(--color-primary-500); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
-.field-editor__linked { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-3); padding: var(--spacing-3); background: color-mix(in srgb, #22c55e 6%, transparent); border: 1px solid color-mix(in srgb, #22c55e 20%, transparent); border-radius: var(--radius-lg); }
-.field-editor__linked-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.field-editor__linked-key { font-family: monospace; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.field-editor__linked-source { font-size: var(--font-size-xs); color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.field-editor__search { padding: var(--spacing-2) var(--spacing-3); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-background); color: var(--color-text-primary); font-size: var(--font-size-sm); }
-.field-editor__search:focus { outline: none; border-color: var(--color-primary-500); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
-.field-editor__search-results { display: flex; flex-direction: column; max-height: 200px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
-.field-editor__search-item { display: flex; flex-direction: column; gap: 1px; padding: var(--spacing-2) var(--spacing-3); border: none; border-bottom: 1px solid var(--color-border); background: none; cursor: pointer; text-align: left; font: inherit; color: inherit; transition: background var(--transition-fast); }
-.field-editor__search-item:last-child { border-bottom: none; }
-.field-editor__search-item:hover { background: color-mix(in srgb, var(--color-primary-600) 5%, transparent); }
-.field-editor__search-item:disabled { opacity: 0.5; cursor: default; }
-.field-editor__search-item-key { font-family: monospace; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
-.field-editor__search-item-source { font-size: var(--font-size-xs); color: var(--color-text-muted); }
-.field-editor__search-empty { padding: var(--spacing-3); text-align: center; font-size: var(--font-size-xs); color: var(--color-text-muted); }
-.field-editor__error { margin: 0; padding: 0 var(--spacing-4); color: var(--color-error); font-size: var(--font-size-xs); }
-.field-editor__actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); padding: var(--spacing-4); margin-top: auto; }
+/* Loading & error */
+.lib-detail__loading {
+  padding: var(--spacing-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
 
-.editor-slide-enter-active, .editor-slide-leave-active { transition: transform 0.2s ease, opacity 0.2s ease; }
-.editor-slide-enter-from, .editor-slide-leave-to { transform: translateX(100%); opacity: 0; }
+.lib-detail__error {
+  background: var(--color-error);
+  color: var(--color-white);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+}
 
+/* Three-panel layout */
+.lib-detail__panels {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ========== LEFT SIDEBAR: Variant navigator ========== */
+.variant-nav {
+  width: 240px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  overflow-y: auto;
+}
+
+.variant-nav__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.variant-nav__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.variant-nav__count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-border) 50%, var(--color-background));
+  padding: 1px var(--spacing-2);
+  border-radius: var(--radius-md);
+}
+
+.variant-nav__hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  padding: var(--spacing-2) var(--spacing-4);
+  margin: 0;
+  border-bottom: 1px solid var(--color-border);
+  line-height: 1.4;
+}
+
+.variant-nav__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-2);
+}
+
+.variant-nav__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.variant-nav__item:hover {
+  background: color-mix(in srgb, var(--color-primary-600) 5%, transparent);
+}
+
+.variant-nav__item--selected {
+  background: color-mix(in srgb, var(--color-primary-600) 10%, transparent);
+  border-color: var(--color-primary-400);
+}
+
+.variant-nav__item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.variant-nav__item-name {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.variant-nav__item-count {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.variant-nav__empty {
+  padding: var(--spacing-4);
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.variant-nav__zoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-top: 1px solid var(--color-border);
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.canvas-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background var(--transition-fast);
+}
+.canvas-zoom-btn:hover { background: var(--color-gray-100); }
+.canvas-zoom-btn--reset { font-size: 14px; margin-left: var(--spacing-1); }
+.canvas-zoom-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  min-width: 36px;
+  text-align: center;
+}
+
+/* ========== CENTER: Visual canvas ========== */
+.canvas-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: #e5e5e5;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.canvas-scroll-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-6);
+  cursor: grab;
+  user-select: none;
+}
+.canvas-scroll-area--panning {
+  cursor: grabbing;
+}
+
+/* Dark mode: gradient from dark edges to lighter center for smooth
+   transition into the always-white frame */
+:root[data-theme='dark'] .canvas-scroll-area {
+  background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .canvas-scroll-area {
+    background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%);
+  }
+}
+
+.canvas-frame {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  /* Always white — matches Figma frame background regardless of theme */
+  background: #ffffff;
+  flex-shrink: 0;
+  will-change: transform;
+}
+
+.canvas-frame__placeholder {
+  position: absolute;
+  inset: 0;
+  /* Light placeholder matching Figma's default frame fill */
+  background: #ffffff;
+}
+
+.canvas-empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* Text field overlay — sits on the always-white canvas frame,
+   so colours come from the Figma data, not the theme */
+.canvas-text-field {
+  position: absolute;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  line-height: 1.2;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  display: flex;
+  align-items: flex-start;
+  word-break: break-word;
+}
+
+.canvas-text-field:hover {
+  border-color: var(--color-primary-300);
+  background: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
+}
+
+.canvas-text-field--selected {
+  border-color: var(--color-primary-500);
+  border-width: 2px;
+  background: color-mix(in srgb, var(--color-primary-500) 12%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500) 25%, transparent);
+}
+
+/* ========== RIGHT SIDEBAR: Field editor ========== */
+.field-editor {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 380px;
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  overflow-y: auto;
+  z-index: 10;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+}
+
+.field-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.field-editor__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.field-editor__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.field-editor__close:hover {
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  color: var(--color-error);
+}
+
+.field-editor__close svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Sections */
+.field-editor__section {
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.field-editor__label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.field-editor__label-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
+}
+
+.field-editor__textarea {
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  resize: vertical;
+  font-family: inherit;
+}
+.field-editor__textarea--readonly {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.field-editor__textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Content key linking - linked state */
+.field-editor__linked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  background: color-mix(in srgb, #22c55e 6%, transparent);
+  border: 1px solid color-mix(in srgb, #22c55e 20%, transparent);
+  border-radius: var(--radius-lg);
+}
+
+.field-editor__linked-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.field-editor__linked-key {
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-editor__linked-source {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Content key search */
+.field-editor__search {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.field-editor__search:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.field-editor__search-results {
+  display: flex;
+  flex-direction: column;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.field-editor__search-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background var(--transition-fast);
+}
+
+.field-editor__search-item:last-child {
+  border-bottom: none;
+}
+
+.field-editor__search-item:hover {
+  background: color-mix(in srgb, var(--color-primary-600) 5%, transparent);
+}
+
+.field-editor__search-item:focus-visible {
+  position: relative;
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--color-primary-600) 10%, transparent);
+  z-index: 1;
+}
+
+.field-editor__search-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.field-editor__search-item-key {
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.field-editor__search-item-source {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.field-editor__search-empty {
+  padding: var(--spacing-3);
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* Error */
+.field-editor__error {
+  margin: 0;
+  padding: 0 var(--spacing-4);
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+}
+
+/* Actions */
+.field-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+  padding: var(--spacing-4);
+  margin-top: auto;
+}
+
+/* Editor slide transition */
+.editor-slide-enter-active,
+.editor-slide-leave-active {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.editor-slide-enter-from,
+.editor-slide-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* Responsive */
 @media (max-width: 1024px) {
-  .lib-detail__panels { flex-direction: column; height: auto; }
-  .variant-nav { width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid var(--color-border); }
-  .canvas-panel { min-height: 300px; }
-  .field-editor { width: 100%; border-left: none; border-top: 1px solid var(--color-border); }
+  .lib-detail__panels {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .variant-nav {
+    width: 100%;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .variant-nav__list {
+    display: flex;
+    overflow-x: auto;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2);
+  }
+
+  .variant-nav__item {
+    flex-shrink: 0;
+    min-width: 160px;
+  }
+
+  .canvas-panel {
+    min-height: 300px;
+  }
+
+  .field-editor {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+}
+
+@media (max-width: 640px) {
+  .lib-detail {
+    height: auto;
+  }
 }
 </style>
