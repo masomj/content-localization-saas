@@ -73,6 +73,14 @@ const baseScale = computed(() => {
 
 const canvasScale = computed(() => baseScale.value * zoomLevel.value)
 
+// Variant background — treat #ffffff as "no background captured" since
+// that was the migration default before we started capturing fills
+const variantBgColor = computed(() => {
+  const bg = selectedVariant.value?.backgroundColor
+  if (!bg || bg === '#ffffff' || bg === '#FFFFFF') return '#374151'
+  return bg
+})
+
 const canvasWidth = computed(() => {
   if (!selectedVariant.value) return 0
   return selectedVariant.value.frameWidth || component.value?.frameWidth || 0
@@ -373,7 +381,7 @@ onMounted(async () => {
             }"
           >
             <!-- Background -->
-            <div class="canvas-frame__placeholder" :style="{ background: selectedVariant?.backgroundColor || '#374151' }" />
+            <div class="canvas-frame__placeholder" :style="{ background: variantBgColor }" />
 
             <!-- Text field overlays -->
             <button
