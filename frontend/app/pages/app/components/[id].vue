@@ -51,7 +51,12 @@ const filteredContentItems = computed(() => {
 
 // Canvas scaling
 const canvasContainerRef = ref<HTMLElement | null>(null)
-const canvasScale = computed(() => {
+// Zoom & pan
+const zoomLevel = ref(1)
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 4
+
+const baseScale = computed(() => {
   if (!component.value) return 1
   const maxWidth = 800
   const maxHeight = 600
@@ -59,6 +64,26 @@ const canvasScale = computed(() => {
   const scaleY = maxHeight / component.value.frameHeight
   return Math.min(scaleX, scaleY, 1)
 })
+
+const canvasScale = computed(() => baseScale.value * zoomLevel.value)
+
+function zoomIn() {
+  zoomLevel.value = Math.min(zoomLevel.value * 1.25, MAX_ZOOM)
+}
+function zoomOut() {
+  zoomLevel.value = Math.max(zoomLevel.value / 1.25, MIN_ZOOM)
+}
+function zoomReset() {
+  zoomLevel.value = 1
+}
+function handleCanvasWheel(e: WheelEvent) {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault()
+    if (e.deltaY < 0) zoomIn()
+    else zoomOut()
+  }
+}
+const zoomPercent = computed(() => Math.round(zoomLevel.value * 100) + '%')
 
 function selectField(field: DesignComponentTextField) {
   selectedFieldId.value = field.id
@@ -332,7 +357,15 @@ onMounted(async () => {
       </aside>
 
       <!-- CENTER: Visual canvas -->
-      <div class="canvas-panel" ref="canvasContainerRef">
+      <div class="canvas-panel" ref="canvasContainerRef" @wheel="handleCanvasWheel">
+        <!-- Zoom controls -->
+        <div class="canvas-zoom-controls">
+          <button class="canvas-zoom-btn" title="Zoom out" @click="zoomOut">−</button>
+          <span class="canvas-zoom-label">{{ zoomPercent }}</span>
+          <button class="canvas-zoom-btn" title="Zoom in" @click="zoomIn">+</button>
+          <button class="canvas-zoom-btn canvas-zoom-btn--reset" title="Reset zoom" @click="zoomReset">⟲</button>
+        </div>
+        <div class="canvas-scroll-area">
         <div
           class="canvas-frame"
           :style="{
@@ -372,6 +405,7 @@ onMounted(async () => {
             {{ getDisplayText(field) }}
           </button>
         </div>
+        </div><!-- /canvas-scroll-area -->
       </div>
 
       <!-- RIGHT SIDEBAR: Text field editor -->
@@ -676,23 +710,69 @@ onMounted(async () => {
 .canvas-panel {
   flex: 1;
   display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: #e5e5e5;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+
+.canvas-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.canvas-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background var(--transition-fast);
+}
+.canvas-zoom-btn:hover {
+  background: var(--color-gray-100);
+}
+.canvas-zoom-btn--reset {
+  font-size: 14px;
+  margin-left: var(--spacing-1);
+}
+.canvas-zoom-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  min-width: 36px;
+  text-align: center;
+}
+
+.canvas-scroll-area {
+  flex: 1;
+  overflow: auto;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-6);
-  /* Light mode: Figma-style grey canvas */
-  background: #e5e5e5;
-  overflow: auto;
-  min-width: 0;
 }
 
 /* Dark mode: gradient from dark edges to lighter center for smooth
    transition into the always-white frame */
-:root[data-theme='dark'] .canvas-panel {
+:root[data-theme='dark'] .canvas-scroll-area {
   background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .canvas-panel {
+  :root:not([data-theme='light']) .canvas-scroll-area {
     background: radial-gradient(ellipse at center, #3a3a3a 0%, #1a1a1a 100%);
   }
 }
