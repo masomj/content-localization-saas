@@ -6,7 +6,7 @@ import type { DesignComponentWithFields } from '~/api/componentsClient'
 import { contentClient } from '~/api/contentClient'
 import type { ContentItem, DesignComponentTextField } from '~/api/types'
 
-definePageMeta({ layout: 'app' })
+definePageMeta({ layout: 'canvas' })
 useSeoMeta({ title: 'Component Detail - InterCopy' })
 
 const route = useRoute()
@@ -514,15 +514,14 @@ onMounted(async () => {
 
 <style scoped>
 .component-detail {
-  /* Break out of the app layout's content padding to fill viewport */
+  /* Fill the canvas layout's main area (no top header bar) */
   position: fixed;
-  top: 64px;
+  top: 0;
   left: 260px;
   right: 0;
   bottom: 0;
   display: flex;
   flex-direction: column;
-  margin: calc(var(--spacing-6) * -1);
   z-index: 1;
 }
 
@@ -833,7 +832,7 @@ onMounted(async () => {
 .field-editor {
   position: fixed;
   right: 0;
-  top: 64px;
+  top: 0;
   bottom: 0;
   width: 380px;
   border-left: 1px solid var(--color-border);
