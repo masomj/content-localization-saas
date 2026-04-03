@@ -1336,6 +1336,8 @@ async function handlePushLibraryComponent(componentKey: string): Promise<void> {
         figmaNodeId: v.nodeId,
         variantName: v.variantName,
         variantProperties: JSON.stringify(v.variantProperties),
+        frameWidth: Math.round(v.width),
+        frameHeight: Math.round(v.height),
         textFields: v.textNodes.map((tn) => ({
           figmaLayerId: tn.layerId,
           figmaLayerName: tn.layerName,

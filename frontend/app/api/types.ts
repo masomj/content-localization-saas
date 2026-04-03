@@ -306,6 +306,8 @@ export interface LibraryComponentVariant {
   figmaNodeId: string
   variantName: string
   variantProperties: string
+  frameWidth: number
+  frameHeight: number
   createdUtc: string
   updatedUtc: string
   textFields?: LibraryComponentTextField[]

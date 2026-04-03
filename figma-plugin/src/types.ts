@@ -211,6 +211,8 @@ export interface FigmaVariantInfo {
   nodeId: string;
   variantName: string;
   variantProperties: Record<string, string>;
+  width: number;
+  height: number;
   textNodes: TextNodeInfo[];
 }
 

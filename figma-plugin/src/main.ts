@@ -151,6 +151,8 @@ function handleScanComponents(): void {
             nodeId: comp.id,
             variantName: comp.name,
             variantProperties: props,
+            width: comp.width,
+            height: comp.height,
             textNodes,
           });
         }
@@ -184,6 +186,8 @@ function handleScanComponents(): void {
             nodeId: comp.id,
             variantName: "Default",
             variantProperties: {},
+            width: comp.width,
+            height: comp.height,
             textNodes,
           },
         ],

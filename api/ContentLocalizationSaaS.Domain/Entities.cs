@@ -410,6 +410,8 @@ public sealed class LibraryComponentVariant
     public string FigmaNodeId { get; set; } = string.Empty;
     public string VariantName { get; set; } = string.Empty;
     public string VariantProperties { get; set; } = string.Empty;
+    public int FrameWidth { get; set; }
+    public int FrameHeight { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 }

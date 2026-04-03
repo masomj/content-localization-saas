@@ -51,6 +51,8 @@ public sealed record PluginPushLibraryVariant(
     string FigmaNodeId,
     string VariantName,
     string VariantProperties,
+    int FrameWidth,
+    int FrameHeight,
     PluginPushLibraryTextField[] TextFields);
 
 public sealed record PluginPushLibraryComponentRequest(
@@ -465,6 +467,8 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
             {
                 variant.VariantName = incomingVariant.VariantName;
                 variant.VariantProperties = incomingVariant.VariantProperties;
+                variant.FrameWidth = incomingVariant.FrameWidth;
+                variant.FrameHeight = incomingVariant.FrameHeight;
                 variant.UpdatedUtc = DateTime.UtcNow;
             }
             else
@@ -474,7 +478,9 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
                     LibraryComponentId = component.Id,
                     FigmaNodeId = incomingVariant.FigmaNodeId,
                     VariantName = incomingVariant.VariantName,
-                    VariantProperties = incomingVariant.VariantProperties
+                    VariantProperties = incomingVariant.VariantProperties,
+                    FrameWidth = incomingVariant.FrameWidth,
+                    FrameHeight = incomingVariant.FrameHeight
                 };
                 db.LibraryComponentVariants.Add(variant);
             }
@@ -576,6 +582,8 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
                 v.FigmaNodeId,
                 v.VariantName,
                 v.VariantProperties,
+                v.FrameWidth,
+                v.FrameHeight,
                 v.CreatedUtc,
                 v.UpdatedUtc,
                 textFields = resultFields

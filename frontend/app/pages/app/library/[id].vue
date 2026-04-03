@@ -53,14 +53,26 @@ const filteredContentItems = computed(() => {
   )
 })
 
-// Canvas scaling
+// Canvas scaling — use selected variant dimensions
 const canvasScale = computed(() => {
-  if (!component.value) return 1
+  if (!selectedVariant.value) return 1
+  const w = selectedVariant.value.frameWidth || component.value?.frameWidth || 100
+  const h = selectedVariant.value.frameHeight || component.value?.frameHeight || 100
   const maxWidth = 800
   const maxHeight = 600
-  const scaleX = maxWidth / component.value.frameWidth
-  const scaleY = maxHeight / component.value.frameHeight
+  const scaleX = maxWidth / w
+  const scaleY = maxHeight / h
   return Math.min(scaleX, scaleY, 1)
+})
+
+const canvasWidth = computed(() => {
+  if (!selectedVariant.value) return 0
+  return selectedVariant.value.frameWidth || component.value?.frameWidth || 0
+})
+
+const canvasHeight = computed(() => {
+  if (!selectedVariant.value) return 0
+  return selectedVariant.value.frameHeight || component.value?.frameHeight || 0
 })
 
 function selectVariant(variant: LibraryComponentVariant) {
@@ -231,8 +243,8 @@ onMounted(async () => {
           v-if="selectedVariant"
           class="canvas-frame"
           :style="{
-            width: component.frameWidth * canvasScale + 'px',
-            height: component.frameHeight * canvasScale + 'px',
+            width: canvasWidth * canvasScale + 'px',
+            height: canvasHeight * canvasScale + 'px',
           }"
         >
           <div class="canvas-frame__placeholder" />
