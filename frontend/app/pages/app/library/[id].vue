@@ -372,7 +372,7 @@ onMounted(async () => {
             }"
           >
             <!-- Background -->
-            <div class="canvas-frame__placeholder" />
+            <div class="canvas-frame__placeholder" :style="{ background: selectedVariant?.backgroundColor || '#ffffff' }" />
 
             <!-- Text field overlays -->
             <button

@@ -153,6 +153,7 @@ function handleScanComponents(): void {
             variantProperties: props,
             width: comp.width,
             height: comp.height,
+            backgroundColor: getFrameBackground(comp),
             textNodes,
           });
         }
@@ -188,6 +189,7 @@ function handleScanComponents(): void {
             variantProperties: {},
             width: comp.width,
             height: comp.height,
+            backgroundColor: getFrameBackground(comp),
             textNodes,
           },
         ],
@@ -626,6 +628,19 @@ function getColor(node: TextNode): string {
   const fill = fills[0];
   if (fill.type !== "SOLID") return "#000000";
   return rgbToHex(fill.color.r, fill.color.g, fill.color.b);
+}
+
+function getFrameBackground(node: SceneNode): string {
+  if ("fills" in node) {
+    const fills = (node as any).fills;
+    if (Array.isArray(fills) && fills.length > 0) {
+      const fill = fills[0];
+      if (fill.type === "SOLID" && fill.visible !== false) {
+        return rgbToHex(fill.color.r, fill.color.g, fill.color.b);
+      }
+    }
+  }
+  return "#ffffff";
 }
 
 function rgbToHex(r: number, g: number, b: number): string {

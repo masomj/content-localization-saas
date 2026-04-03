@@ -306,6 +306,7 @@ export interface LibraryComponentVariant {
   figmaNodeId: string
   variantName: string
   variantProperties: string
+  backgroundColor: string
   frameWidth: number
   frameHeight: number
   createdUtc: string

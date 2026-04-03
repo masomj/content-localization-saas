@@ -218,6 +218,7 @@ export class InterCopyApi {
       figmaNodeId: string;
       variantName: string;
       variantProperties: string;
+      backgroundColor: string;
       textFields: Array<{
         figmaLayerId: string;
         figmaLayerName: string;

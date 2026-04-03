@@ -213,6 +213,7 @@ export interface FigmaVariantInfo {
   variantProperties: Record<string, string>;
   width: number;
   height: number;
+  backgroundColor: string;
   textNodes: TextNodeInfo[];
 }
 

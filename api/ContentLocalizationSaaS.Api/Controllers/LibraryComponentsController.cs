@@ -102,6 +102,7 @@ public sealed class LibraryComponentsController(AppDbContext db) : ControllerBas
                 v.FigmaNodeId,
                 v.VariantName,
                 v.VariantProperties,
+                v.BackgroundColor,
                 v.FrameWidth,
                 v.FrameHeight,
                 v.CreatedUtc,
