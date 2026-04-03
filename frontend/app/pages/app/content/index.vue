@@ -27,6 +27,13 @@ const newContentKey = ref('')
 const newContentSource = ref('')
 const addContentError = ref('')
 
+const keyLeafPreview = computed(() => {
+  const raw = newContentKey.value.trim().toLowerCase()
+  if (!raw) return ''
+  const parts = raw.split('.').filter(Boolean)
+  return parts.length > 0 ? parts[parts.length - 1]! : raw
+})
+
 const showNewFolderForm = ref(false)
 const newFolderName = ref('')
 const newFolderError = ref('')
@@ -144,6 +151,20 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
     }
   }
   return trail
+})
+
+const currentFolderPrefix = computed(() => {
+  // Breadcrumb shape: Project Root / folder / subfolder
+  const folderSegments = breadcrumbs.value
+    .slice(1)
+    .map(c => c.name.trim().toLowerCase().replace(/[\s/\\]+/g, '.').replace(/[^a-z0-9._-]/g, '_'))
+    .filter(Boolean)
+  return folderSegments.join('.')
+})
+
+const effectiveKeyPreview = computed(() => {
+  if (!keyLeafPreview.value) return ''
+  return currentFolderPrefix.value ? `${currentFolderPrefix.value}.${keyLeafPreview.value}` : keyLeafPreview.value
 })
 
 /** Children of the current folder (folders first, then content keys) */
@@ -418,7 +439,7 @@ function closeAddContentForm() {
 }
 
 async function addContent() {
-  const key = newContentKey.value.trim()
+  const key = keyLeafPreview.value.trim()
   const source = newContentSource.value.trim()
 
   if (!selectedProjectId.value) {
@@ -787,10 +808,11 @@ watch(selectedProjectId, async () => {
         </div>
 
         <label for="contentKey" class="label-with-hint">
-          <span>Key</span>
-          <span class="label-hint">example: auth.login.title</span>
+          <span>Key name</span>
+          <span class="label-hint">Enter leaf only (e.g. submit_button). Folder path is prefixed automatically.</span>
         </label>
         <input id="contentKey" v-model="newContentKey" type="text" autocomplete="off">
+        <p v-if="effectiveKeyPreview" class="label-hint">Final key: <code>{{ effectiveKeyPreview }}</code></p>
 
         <label for="contentSource" class="label-with-hint">
           <span>Source text</span>

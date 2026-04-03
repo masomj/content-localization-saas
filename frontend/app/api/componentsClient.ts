@@ -79,4 +79,13 @@ export const componentsClient = {
       },
     )
   },
+
+  delete(projectId: string, id: string) {
+    return apiRequest<void>(
+      `/projects/${encodeURIComponent(projectId)}/components/${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+      },
+    )
+  },
 }

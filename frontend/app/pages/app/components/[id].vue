@@ -244,6 +244,21 @@ function goBack() {
   router.push(`/app/components?projectId=${encodeURIComponent(projectId.value)}`)
 }
 
+// Delete component
+const showDeleteConfirm = ref(false)
+const deleteError = ref('')
+
+async function confirmDeleteComponent() {
+  if (!component.value || !projectId.value) return
+  deleteError.value = ''
+  try {
+    await componentsClient.delete(projectId.value, component.value.id)
+    goBack()
+  } catch (err: any) {
+    deleteError.value = err?.message ?? 'Failed to delete component'
+  }
+}
+
 /** Resolve displayed text for a text field based on selected language */
 function getDisplayText(field: DesignComponentTextField): string {
   if (!displayLanguage.value || !field.contentItemId) {
@@ -325,6 +340,20 @@ onMounted(async () => {
         Back to Components
       </UiButton>
       <h1 v-if="component" class="component-detail__title">{{ component.figmaFrameName }}</h1>
+      <UiButton v-if="component" variant="danger" size="sm" @click="showDeleteConfirm = true">Delete</UiButton>
+    </div>
+
+    <!-- Delete confirmation modal -->
+    <div v-if="showDeleteConfirm" class="delete-overlay" @click.self="showDeleteConfirm = false">
+      <div class="delete-modal">
+        <h2>Delete component</h2>
+        <p class="delete-text">Delete <strong>{{ component?.figmaFrameName }}</strong>? This will remove the component and all its text fields from InterCopy. This cannot be undone.</p>
+        <p v-if="deleteError" class="delete-error">{{ deleteError }}</p>
+        <div class="delete-actions">
+          <UiButton variant="secondary" size="sm" @click="showDeleteConfirm = false">Cancel</UiButton>
+          <UiButton variant="danger" size="sm" @click="confirmDeleteComponent">Delete</UiButton>
+        </div>
+      </div>
     </div>
 
     <!-- Loading state -->
@@ -1178,4 +1207,12 @@ onMounted(async () => {
     height: auto;
   }
 }
+
+/* Delete confirmation modal */
+.delete-overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-black) 45%, transparent); display: grid; place-items: center; z-index: 100; }
+.delete-modal { width: min(480px, 92vw); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--spacing-6); display: flex; flex-direction: column; gap: var(--spacing-3); }
+.delete-modal h2 { margin: 0; color: var(--color-text-primary); }
+.delete-text { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.6; }
+.delete-error { margin: 0; color: var(--color-error); font-size: var(--font-size-xs); }
+.delete-actions { display: flex; justify-content: flex-end; gap: var(--spacing-2); }
 </style>
