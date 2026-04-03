@@ -287,6 +287,8 @@ function handleScanAllFrames(): void {
   const frames: FrameInfo[] = [];
 
   for (const node of figma.currentPage.children) {
+    // Skip standalone components and component sets — those belong in the Library tab
+    if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") continue;
     if (isFrameLike(node)) {
       frames.push(extractFrameInfo(node as SceneNode & ChildrenMixin));
     }
