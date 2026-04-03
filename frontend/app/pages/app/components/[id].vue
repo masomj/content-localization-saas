@@ -354,10 +354,7 @@ onMounted(async () => {
             v-for="field in component.textFields"
             :key="field.id"
             class="canvas-text-field"
-            :class="{
-              'canvas-text-field--selected': selectedFieldId === field.id,
-              'canvas-text-field--modified': getDisplayText(field) !== field.currentText,
-            }"
+            :class="{ 'canvas-text-field--selected': selectedFieldId === field.id }"
             :style="{
               left: field.x * canvasScale + 'px',
               top: field.y * canvasScale + 'px',
@@ -733,12 +730,11 @@ onMounted(async () => {
   border: 1px solid transparent;
   border-radius: 2px;
   background: transparent;
-  color: transparent;
   cursor: pointer;
   padding: 0;
   margin: 0;
   line-height: 1.2;
-  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
   display: flex;
   align-items: flex-start;
   word-break: break-word;
@@ -747,7 +743,6 @@ onMounted(async () => {
 .canvas-text-field:hover {
   border-color: var(--color-primary-300);
   background: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
-  color: var(--color-primary-700);
 }
 
 .canvas-text-field--selected {
@@ -755,19 +750,6 @@ onMounted(async () => {
   border-width: 2px;
   background: color-mix(in srgb, var(--color-primary-500) 12%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500) 25%, transparent);
-  color: var(--color-primary-700);
-}
-
-/* Show text overlay when content has been modified (edited or language switched) */
-.canvas-text-field--modified {
-  color: var(--color-text-primary);
-  background: var(--color-surface);
-  border-color: color-mix(in srgb, var(--color-primary-500) 30%, transparent);
-}
-
-/* When no thumbnail, always show text */
-.canvas-frame__placeholder ~ .canvas-text-field {
-  color: inherit;
 }
 
 /* ========== RIGHT SIDEBAR: Field editor ========== */

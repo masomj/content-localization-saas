@@ -289,15 +289,34 @@ async function buildPushPayload(
 
   const fileKey = getFileKey();
 
-  // Export frame as PNG for thumbnail
+  // Export frame as PNG for thumbnail — hide text nodes first so overlay handles text
   let thumbnailUrl = "";
   try {
+    // Hide all text nodes
+    const hiddenNodes: { node: SceneNode; wasVisible: boolean }[] = [];
+    function hideTextNodes(parent: BaseNode & ChildrenMixin): void {
+      for (const child of parent.children) {
+        if (child.type === "TEXT") {
+          hiddenNodes.push({ node: child as SceneNode, wasVisible: child.visible });
+          child.visible = false;
+        } else if ("children" in child) {
+          hideTextNodes(child as BaseNode & ChildrenMixin);
+        }
+      }
+    }
+    hideTextNodes(frame);
+
     const exportSettings: ExportSettings = { format: "PNG", constraint: { type: "SCALE", value: 2 } };
     const imageBytes = await (frame as SceneNode).exportAsync(exportSettings);
     const base64 = figma.base64Encode(imageBytes);
     thumbnailUrl = "data:image/png;base64," + base64;
+
+    // Restore text node visibility
+    for (const { node, wasVisible } of hiddenNodes) {
+      node.visible = wasVisible;
+    }
   } catch (_) {
-    // Export may fail for some node types — continue without thumbnail
+    // Export may fail — continue without thumbnail
   }
 
   return {
