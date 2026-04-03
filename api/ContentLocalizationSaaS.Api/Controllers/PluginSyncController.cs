@@ -468,7 +468,7 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
             {
                 variant.VariantName = incomingVariant.VariantName;
                 variant.VariantProperties = incomingVariant.VariantProperties;
-                variant.BackgroundColor = incomingVariant.BackgroundColor ?? "#ffffff";
+                variant.BackgroundColor = incomingVariant.BackgroundColor ?? "#374151";
                 variant.FrameWidth = incomingVariant.FrameWidth;
                 variant.FrameHeight = incomingVariant.FrameHeight;
                 variant.UpdatedUtc = DateTime.UtcNow;
@@ -481,7 +481,7 @@ public sealed class PluginSyncController(AppDbContext db) : ControllerBase
                     FigmaNodeId = incomingVariant.FigmaNodeId,
                     VariantName = incomingVariant.VariantName,
                     VariantProperties = incomingVariant.VariantProperties,
-                    BackgroundColor = incomingVariant.BackgroundColor ?? "#ffffff",
+                    BackgroundColor = incomingVariant.BackgroundColor ?? "#374151",
                     FrameWidth = incomingVariant.FrameWidth,
                     FrameHeight = incomingVariant.FrameHeight
                 };

@@ -63,11 +63,12 @@ const baseScale = computed(() => {
   if (!selectedVariant.value) return 1
   const w = selectedVariant.value.frameWidth || component.value?.frameWidth || 100
   const h = selectedVariant.value.frameHeight || component.value?.frameHeight || 100
-  const maxWidth = 800
-  const maxHeight = 600
+  const maxWidth = 600
+  const maxHeight = 400
   const scaleX = maxWidth / w
   const scaleY = maxHeight / h
-  return Math.min(scaleX, scaleY, 1)
+  // Allow scaling UP for small components (buttons etc), cap at 8x
+  return Math.min(scaleX, scaleY, 8)
 })
 
 const canvasScale = computed(() => baseScale.value * zoomLevel.value)
