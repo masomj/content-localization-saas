@@ -85,6 +85,41 @@ function handleCanvasWheel(e: WheelEvent) {
 }
 const zoomPercent = computed(() => Math.round(zoomLevel.value * 100) + '%')
 
+// Canvas drag-to-pan
+const isPanning = ref(false)
+const panStart = ref({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
+
+function handlePanStart(e: MouseEvent) {
+  // Only pan on middle-click, or left-click on empty canvas (not on text field buttons)
+  const target = e.target as HTMLElement
+  const isCanvas = target.classList.contains('canvas-scroll-area') || target.classList.contains('canvas-frame') || target.classList.contains('canvas-frame__bg') || target.classList.contains('canvas-frame__placeholder')
+  if (e.button === 1 || (e.button === 0 && isCanvas)) {
+    if (e.button === 0 && !isCanvas) return
+    e.preventDefault()
+    isPanning.value = true
+    const scrollArea = (e.currentTarget as HTMLElement)
+    panStart.value = { x: e.clientX, y: e.clientY, scrollLeft: scrollArea.scrollLeft, scrollTop: scrollArea.scrollTop }
+    scrollArea.style.cursor = 'grabbing'
+  }
+}
+
+function handlePanMove(e: MouseEvent) {
+  if (!isPanning.value) return
+  e.preventDefault()
+  const scrollArea = (e.currentTarget as HTMLElement)
+  const dx = e.clientX - panStart.value.x
+  const dy = e.clientY - panStart.value.y
+  scrollArea.scrollLeft = panStart.value.scrollLeft - dx
+  scrollArea.scrollTop = panStart.value.scrollTop - dy
+}
+
+function handlePanEnd() {
+  if (!isPanning.value) return
+  isPanning.value = false
+  const el = document.querySelector('.canvas-scroll-area') as HTMLElement | null
+  if (el) el.style.cursor = ''
+}
+
 function selectField(field: DesignComponentTextField) {
   selectedFieldId.value = field.id
   // If linked to a content key, show the content key's source text
@@ -367,7 +402,13 @@ onMounted(async () => {
 
       <!-- CENTER: Visual canvas -->
       <div class="canvas-panel" ref="canvasContainerRef" @wheel="handleCanvasWheel">
-        <div class="canvas-scroll-area">
+        <div
+          class="canvas-scroll-area"
+          @mousedown="handlePanStart"
+          @mousemove="handlePanMove"
+          @mouseup="handlePanEnd"
+          @mouseleave="handlePanEnd"
+        >
         <div
           class="canvas-frame"
           :style="{
@@ -759,6 +800,10 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: var(--spacing-6);
+  cursor: grab;
+}
+.canvas-scroll-area:active {
+  cursor: grabbing;
 }
 
 /* Dark mode: gradient from dark edges to lighter center for smooth
