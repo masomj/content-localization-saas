@@ -765,6 +765,7 @@ public static class DependencyInjection
         // EP11: Billing & Entitlements
         services.Configure<GoCardlessOptions>(configuration.GetSection(GoCardlessOptions.SectionName));
         services.AddHttpClient<IBillingProvider, GoCardlessProvider>();
+        services.AddScoped<ICiLicensingService, CiLicensingService>();
         services.AddScoped<IEntitlementService, EntitlementService>();
 
         return services;

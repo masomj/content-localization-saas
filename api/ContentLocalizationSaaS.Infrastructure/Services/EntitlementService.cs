@@ -9,14 +9,20 @@ public sealed class EntitlementService : IEntitlementService
 {
     private readonly AppDbContext _db;
     private readonly ILogger<EntitlementService> _logger;
+    private readonly ICiLicensingService? _ciLicensing;
 
     // Grace period TTL for provider outage fallback
     private static readonly TimeSpan GraceFallbackTtl = TimeSpan.FromHours(72);
 
-    public EntitlementService(AppDbContext db, ILogger<EntitlementService> logger)
+    // EP11-S6: Dunning timeline constants
+    private static readonly TimeSpan GracePeriod = TimeSpan.FromDays(14);
+    private static readonly TimeSpan DunningWarningAt = TimeSpan.FromDays(7); // warn at 7 days remaining
+
+    public EntitlementService(AppDbContext db, ILogger<EntitlementService> logger, ICiLicensingService? ciLicensing = null)
     {
         _db = db;
         _logger = logger;
+        _ciLicensing = ciLicensing;
     }
 
     public async Task<EntitlementSnapshot> GetEntitlementsAsync(Guid workspaceId, CancellationToken ct = default)
@@ -102,26 +108,43 @@ public sealed class EntitlementService : IEntitlementService
         switch (billingEvent.EventType)
         {
             case "mandate_created":
+                // EP11-S6: Upgrade starts as Pending, completes only on payment_confirmed
                 sub.Status = SubscriptionStatus.Pending;
                 sub.UpdatedUtc = DateTime.UtcNow;
                 break;
 
             case "payment_confirmed":
+                var wasPastDue = sub.Status == SubscriptionStatus.PastDue;
                 sub.Status = SubscriptionStatus.Active;
                 sub.GraceExpiresUtc = null;
                 sub.UpdatedUtc = DateTime.UtcNow;
+
+                // EP11-S4: Restore CI access on payment recovery
+                if (wasPastDue && _ciLicensing is not null)
+                    await _ciLicensing.RestoreCiTokensForSubscriptionAsync(sub.Id, billingEvent.ProviderEventId, ct);
                 break;
 
             case "payment_failed":
+                // EP11-S6: Dunning timeline — 14 day grace from first failure
                 sub.Status = SubscriptionStatus.PastDue;
-                sub.GraceExpiresUtc ??= DateTime.UtcNow.AddDays(14); // 14-day grace
+                sub.GraceExpiresUtc ??= DateTime.UtcNow.Add(GracePeriod);
                 sub.UpdatedUtc = DateTime.UtcNow;
+
+                // EP11-S4: If past grace, revoke CI tokens
+                if (sub.GraceExpiresUtc <= DateTime.UtcNow && _ciLicensing is not null)
+                    await _ciLicensing.RevokeCiTokensForSubscriptionAsync(sub.Id, billingEvent.ProviderEventId, ct);
                 break;
 
             case "mandate_cancelled":
             case "subscription_cancelled":
+                // EP11-S6: Downgrade — set to Cancelled, grace from now
                 sub.Status = SubscriptionStatus.Cancelled;
+                sub.GraceExpiresUtc ??= DateTime.UtcNow.Add(GracePeriod);
                 sub.UpdatedUtc = DateTime.UtcNow;
+
+                // EP11-S4: Revoke CI tokens on cancellation
+                if (_ciLicensing is not null)
+                    await _ciLicensing.RevokeCiTokensForSubscriptionAsync(sub.Id, billingEvent.ProviderEventId, ct);
                 break;
 
             default:
