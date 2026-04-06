@@ -1,4 +1,5 @@
 using ContentLocalizationSaaS.Api.Authorization;
+using ContentLocalizationSaaS.Application.Abstractions;
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -39,7 +40,7 @@ public sealed record UpdateDesignComponentRequest(
 [ApiController]
 [Route("api/projects/{projectId:guid}/components")]
 [Microsoft.AspNetCore.Cors.EnableCors("PluginCors")]
-public sealed class DesignComponentsController(AppDbContext db) : ControllerBase
+public sealed class DesignComponentsController(AppDbContext db, IEntitlementService entitlements) : ControllerBase
 {
     private string CurrentActor => HttpContext.Request.Headers["X-Actor-Email"].ToString() is { Length: > 0 } raw
         ? raw.Trim().ToLowerInvariant()
@@ -126,6 +127,25 @@ public sealed class DesignComponentsController(AppDbContext db) : ControllerBase
     [RequireAppRole(AppRole.Editor)]
     public async Task<IActionResult> Create(Guid projectId, [FromBody] CreateDesignComponentRequest request, CancellationToken ct)
     {
+        // EP11-S9: Figma board limit enforcement
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is not null)
+        {
+            if (!await entitlements.CanAddFigmaBoardAsync(project.WorkspaceId, ct))
+            {
+                var snap = await entitlements.GetEntitlementsAsync(project.WorkspaceId, ct);
+                return StatusCode(403, new
+                {
+                    error = "plan_limit_reached",
+                    message = $"Your {snap.CurrentTier} plan allows a maximum of {snap.MaxFigmaBoards} Figma board(s). Upgrade to Pro to add more.",
+                    currentTier = snap.CurrentTier.ToString(),
+                    upgradeRequired = true,
+                    used = snap.UsedFigmaBoards,
+                    max = snap.MaxFigmaBoards
+                });
+            }
+        }
+
         var component = new DesignComponent
         {
             ProjectId = projectId,

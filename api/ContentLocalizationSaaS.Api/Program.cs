@@ -181,6 +181,10 @@ else
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// EP11-S5: Org access gating — block writes for suspended workspaces
+app.UseMiddleware<ContentLocalizationSaaS.Api.Middleware.OrgAccessGatingMiddleware>();
+
 app.MapControllers();
 
 if (!DebugEndpointEnvironmentPolicy.IsProduction(app.Environment.EnvironmentName))
