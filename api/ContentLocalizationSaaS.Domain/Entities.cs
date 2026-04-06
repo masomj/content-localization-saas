@@ -438,3 +438,54 @@ public sealed class LibraryComponentTextField
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+// ── EP11: Pricing, Packaging & Entitlements ──
+
+public enum PlanTier { Free = 0, Pro = 1 }
+public enum BillingProvider { None = 0, GoCardless = 1 }
+public enum SubscriptionStatus { None = 0, Pending = 1, Active = 2, PastDue = 3, Cancelled = 4, Expired = 5 }
+
+public sealed class PlanDefinition
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string Name { get; set; }
+    public PlanTier Tier { get; set; }
+    public int MaxUsers { get; set; }
+    public int MaxProjects { get; set; }
+    public int MaxFigmaBoards { get; set; }
+    public int MaxFramesAndComponents { get; set; }
+    public decimal PricePerSeatMonthly { get; set; }
+    public bool IsDefault { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class WorkspaceSubscription
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceId { get; set; }
+    public Guid PlanDefinitionId { get; set; }
+    public SubscriptionStatus Status { get; set; } = SubscriptionStatus.None;
+    public BillingProvider Provider { get; set; } = BillingProvider.None;
+    public string ProviderCustomerId { get; set; } = string.Empty;
+    public string ProviderMandateId { get; set; } = string.Empty;
+    public string ProviderSubscriptionId { get; set; } = string.Empty;
+    public int SeatCount { get; set; } = 1;
+    public DateTime? CurrentPeriodStartUtc { get; set; }
+    public DateTime? CurrentPeriodEndUtc { get; set; }
+    public DateTime? GraceExpiresUtc { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class BillingEvent
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceSubscriptionId { get; set; }
+    public string ProviderEventId { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty;
+    public string PayloadJson { get; set; } = string.Empty;
+    public bool Processed { get; set; }
+    public DateTime ReceivedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? ProcessedUtc { get; set; }
+}

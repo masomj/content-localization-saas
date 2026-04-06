@@ -51,6 +51,11 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<LibraryComponentVariant> LibraryComponentVariants => Set<LibraryComponentVariant>();
     public DbSet<LibraryComponentTextField> LibraryComponentTextFields => Set<LibraryComponentTextField>();
 
+    // EP11: Pricing, Packaging & Entitlements
+    public DbSet<PlanDefinition> PlanDefinitions => Set<PlanDefinition>();
+    public DbSet<WorkspaceSubscription> WorkspaceSubscriptions => Set<WorkspaceSubscription>();
+    public DbSet<BillingEvent> BillingEvents => Set<BillingEvent>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -678,6 +683,61 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .WithMany()
             .HasForeignKey(x => x.ContentItemId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // EP11: Pricing, Packaging & Entitlements
+        builder.Entity<PlanDefinition>(e =>
+        {
+            e.ToTable("plan_definitions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Tier).HasConversion<int>();
+            e.Property(x => x.PricePerSeatMonthly).HasColumnType("decimal(10,2)");
+            e.HasIndex(x => x.Tier).IsUnique();
+            e.HasIndex(x => x.IsDefault).IsUnique().HasFilter("\"IsDefault\" = true");
+        });
+
+        builder.Entity<WorkspaceSubscription>(e =>
+        {
+            e.ToTable("workspace_subscriptions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Status).HasConversion<int>();
+            e.Property(x => x.Provider).HasConversion<int>();
+            e.Property(x => x.ProviderCustomerId).HasMaxLength(128).HasDefaultValue(string.Empty);
+            e.Property(x => x.ProviderMandateId).HasMaxLength(128).HasDefaultValue(string.Empty);
+            e.Property(x => x.ProviderSubscriptionId).HasMaxLength(128).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.WorkspaceId).IsUnique();
+            e.HasIndex(x => x.ProviderSubscriptionId);
+        });
+
+        builder.Entity<BillingEvent>(e =>
+        {
+            e.ToTable("billing_events");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ProviderEventId).HasMaxLength(128).IsRequired();
+            e.Property(x => x.EventType).HasMaxLength(64).IsRequired();
+            e.Property(x => x.PayloadJson).HasColumnType("text").HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.ProviderEventId).IsUnique();
+            e.HasIndex(x => new { x.WorkspaceSubscriptionId, x.ReceivedUtc });
+            e.HasIndex(x => x.Processed);
+        });
+
+        builder.Entity<WorkspaceSubscription>()
+            .HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<WorkspaceSubscription>()
+            .HasOne<PlanDefinition>()
+            .WithMany()
+            .HasForeignKey(x => x.PlanDefinitionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<BillingEvent>()
+            .HasOne<WorkspaceSubscription>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceSubscriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -701,6 +761,11 @@ public static class DependencyInjection
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IProjectCollectionService, ProjectCollectionService>();
         services.AddScoped<IContentItemService, ContentItemService>();
+
+        // EP11: Billing & Entitlements
+        services.Configure<GoCardlessOptions>(configuration.GetSection(GoCardlessOptions.SectionName));
+        services.AddHttpClient<IBillingProvider, GoCardlessProvider>();
+        services.AddScoped<IEntitlementService, EntitlementService>();
 
         return services;
     }
