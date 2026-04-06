@@ -8,7 +8,7 @@ namespace ContentLocalizationSaaS.Api.Controllers;
 [ApiController]
 [Route("api/projects")]
 [Microsoft.AspNetCore.Cors.EnableCors("PluginCors")]
-public sealed class ProjectsController(IProjectService projects) : ControllerBase
+public sealed class ProjectsController(IProjectService projects, IEntitlementService entitlements) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? workspaceId, CancellationToken cancellationToken)
@@ -21,6 +21,20 @@ public sealed class ProjectsController(IProjectService projects) : ControllerBas
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> Create([FromBody] CreateProjectRequest request, CancellationToken cancellationToken)
     {
+        if (!await entitlements.CanCreateProjectAsync(request.WorkspaceId, cancellationToken))
+        {
+            var snap = await entitlements.GetEntitlementsAsync(request.WorkspaceId, cancellationToken);
+            return StatusCode(403, new
+            {
+                error = "plan_limit_reached",
+                message = $"Your {snap.CurrentTier} plan allows a maximum of {snap.MaxProjects} project(s). Upgrade to Pro to create more.",
+                currentTier = snap.CurrentTier.ToString(),
+                upgradeRequired = true,
+                used = snap.UsedProjects,
+                max = snap.MaxProjects
+            });
+        }
+
         var project = await projects.CreateAsync(request, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = project.Id }, project);
     }

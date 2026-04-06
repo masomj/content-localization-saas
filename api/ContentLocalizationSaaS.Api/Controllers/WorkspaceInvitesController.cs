@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ContentLocalizationSaaS.Api.Authorization;
+using ContentLocalizationSaaS.Application.Abstractions;
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +16,7 @@ public sealed record ChangeMembershipRoleRequest(Guid WorkspaceId, string Email,
 [ApiController]
 [Route("api/admin/invites")]
 [RequireAppRole(AppRole.Admin)]
-public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
+public sealed class WorkspaceInvitesController(AppDbContext db, IEntitlementService entitlementService) : ControllerBase
 {
     private string ActorEmail => (User.FindFirst(ClaimTypes.Email)?.Value
                                   ?? User.FindFirst("email")?.Value
@@ -54,6 +55,21 @@ public sealed class WorkspaceInvitesController(AppDbContext db) : ControllerBase
 
         var adminCheck = await EnsureAdminInWorkspace(request.WorkspaceId, cancellationToken);
         if (adminCheck is not null) return adminCheck;
+
+        // EP11-S2: Free tier user limit enforcement
+        if (!await entitlementService.CanAddUserAsync(request.WorkspaceId, cancellationToken))
+        {
+            var snap = await entitlementService.GetEntitlementsAsync(request.WorkspaceId, cancellationToken);
+            return StatusCode(403, new
+            {
+                error = "plan_limit_reached",
+                message = $"Your {snap.CurrentTier} plan allows a maximum of {snap.MaxUsers} user(s). Upgrade to Pro to invite more members.",
+                currentTier = snap.CurrentTier.ToString(),
+                upgradeRequired = true,
+                used = snap.UsedUsers,
+                max = snap.MaxUsers
+            });
+        }
 
         var workspaceExists = await db.Workspaces.AnyAsync(x => x.Id == request.WorkspaceId, cancellationToken);
         if (!workspaceExists) return BadRequest(new { error = "workspace_not_found" });
