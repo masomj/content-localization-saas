@@ -16,7 +16,7 @@
   "devDependencies": {
     "typescript": "^5.4.0",
     "@figma/plugin-typings": "^1.98.0",
-    "esbuild": "^0.20.0",
+    "esbuild": "^0.25.0",
     "concurrently": "^8.2.0"
   }
 }
