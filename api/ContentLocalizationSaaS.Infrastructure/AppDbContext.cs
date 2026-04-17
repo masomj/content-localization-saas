@@ -72,6 +72,10 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     // EP4-S4: Figma Screenshot Sync
     public DbSet<FigmaScreenshotSync> FigmaScreenshotSyncs => Set<FigmaScreenshotSync>();
 
+    // EP5-S4: AI-Assisted Tone Check
+    public DbSet<ProjectToneConfig> ProjectToneConfigs => Set<ProjectToneConfig>();
+    public DbSet<ToneCheckResult> ToneCheckResults => Set<ToneCheckResult>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -895,6 +899,37 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .WithMany()
             .HasForeignKey(x => x.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // EP5-S4: AI-Assisted Tone Check
+        builder.Entity<ProjectToneConfig>(e =>
+        {
+            e.ToTable("project_tone_configs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ToneDescription).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<ProjectToneConfig>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ToneCheckResult>(e =>
+        {
+            e.ToTable("tone_check_results");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.OriginalText).HasMaxLength(10000).IsRequired();
+            e.Property(x => x.SuggestedText).HasMaxLength(10000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Reasoning).HasMaxLength(2000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.ContentItemLanguageTaskId);
+        });
+
+        builder.Entity<ToneCheckResult>()
+            .HasOne<ContentItemLanguageTask>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemLanguageTaskId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -927,6 +962,9 @@ public static class DependencyInjection
 
         // EP4-S1: Screenshot OCR
         services.AddScoped<IOcrService, StubOcrService>();
+
+        // EP5-S4: AI Tone Check
+        services.AddScoped<IToneCheckService, StubToneCheckService>();
 
         return services;
     }

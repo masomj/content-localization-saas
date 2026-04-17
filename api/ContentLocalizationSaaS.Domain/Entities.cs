@@ -592,3 +592,25 @@ public sealed class FigmaScreenshotSync
     public int FrameCount { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+// EP5-S4: AI-Assisted Tone Check
+public sealed class ProjectToneConfig
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string ToneDescription { get; set; }  // "Friendly and informal", "Professional and technical"
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class ToneCheckResult
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemLanguageTaskId { get; set; }
+    public required string OriginalText { get; set; }
+    public string SuggestedText { get; set; } = string.Empty;
+    public double ConfidenceScore { get; set; }
+    public string Reasoning { get; set; } = string.Empty;
+    public bool Applied { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

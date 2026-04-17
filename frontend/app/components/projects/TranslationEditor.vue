@@ -4,8 +4,9 @@ import UiSelect from '~/components/ui/Select.vue'
 import { translationClient } from '~/api/translationClient'
 import { glossaryClient } from '~/api/glossaryClient'
 import { styleRulesClient } from '~/api/styleRulesClient'
+import { toneCheckClient } from '~/api/toneCheckClient'
 import type { GlossarySuggestion } from '~/api/glossaryClient'
-import type { LanguageTask, TranslationSuggestion, ForbiddenMatch, StyleViolation } from '~/api/types'
+import type { LanguageTask, TranslationSuggestion, ForbiddenMatch, StyleViolation, ToneCheckResponse } from '~/api/types'
 
 interface Props {
   itemId: string
@@ -24,6 +25,7 @@ const emit = defineEmits<{
 }>()
 
 const translationText = ref('')
+const existingTaskId = ref('')
 const status = ref('draft')
 const previousApproved = ref('')
 const isOutdated = ref(false)
@@ -45,6 +47,11 @@ let forbiddenDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const styleViolations = ref<StyleViolation[]>([])
 const dismissedViolations = ref<Set<string>>(new Set())
 
+// Tone check state
+const toneResult = ref<ToneCheckResponse | null>(null)
+const isCheckingTone = ref(false)
+const toneApplied = ref(false)
+
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
   { value: 'pending_review', label: 'Pending review' },
@@ -59,6 +66,7 @@ async function loadExistingTask() {
       (t: LanguageTask) => t.languageCode === props.language,
     )
     if (match) {
+      existingTaskId.value = match.id ?? ''
       translationText.value = match.translationText ?? ''
       status.value = match.status ?? 'draft'
       previousApproved.value = match.previousApprovedTranslation ?? ''
@@ -136,6 +144,43 @@ async function checkStyleRules() {
   }
 }
 
+async function checkTone() {
+  if (!props.projectId || !existingTaskId.value || !translationText.value.trim()) return
+  isCheckingTone.value = true
+  toneResult.value = null
+  toneApplied.value = false
+  try {
+    const result = await toneCheckClient.check({
+      contentItemLanguageTaskId: existingTaskId.value,
+      text: translationText.value,
+      language: props.language,
+      projectId: props.projectId,
+    })
+    if (result.hasMismatch && result.confidence >= 0.7) {
+      toneResult.value = result
+    }
+  } catch {
+    // tone check is non-blocking — silently ignore errors
+  } finally {
+    isCheckingTone.value = false
+  }
+}
+
+async function applyToneSuggestion() {
+  if (!toneResult.value) return
+  try {
+    const result = await toneCheckClient.apply(toneResult.value.id)
+    translationText.value = result.translationText
+    toneApplied.value = true
+  } catch {
+    // fallback: just apply the suggestion text directly
+    if (toneResult.value.suggestion) {
+      translationText.value = toneResult.value.suggestion
+      toneApplied.value = true
+    }
+  }
+}
+
 function insertGlossaryTerm(translated: string) {
   const textarea = document.getElementById('teTranslation') as HTMLTextAreaElement | null
   if (textarea) {
@@ -178,6 +223,7 @@ async function save() {
       translationText: translationText.value,
     })
     await checkStyleRules()
+    checkTone() // async, non-blocking
     emit('saved')
   } catch (error: any) {
     saveError.value = error?.message || 'Failed to save translation'
@@ -301,6 +347,23 @@ onUnmounted(() => {
             <span>&#9888;&#65039; {{ v.message }}</span>
             <button class="te-style-dismiss" @click="dismissViolation(v.ruleId)">Dismiss</button>
           </div>
+        </div>
+
+        <!-- Tone check suggestion -->
+        <div v-if="isCheckingTone" class="te-banner te-banner--info">
+          Checking tone...
+        </div>
+        <div v-else-if="toneResult && !toneApplied" class="te-banner te-banner--info">
+          <span class="te-banner-icon">&#128161;</span>
+          <div class="te-banner-content">
+            <strong>Tone suggestion</strong>
+            <p class="te-banner-detail">&ldquo;{{ toneResult.suggestion }}&rdquo; (confidence: {{ Math.round(toneResult.confidence * 100) }}%)</p>
+            <p v-if="toneResult.reasoning" class="te-banner-detail te-tone-reasoning">{{ toneResult.reasoning }}</p>
+            <UiButton size="sm" variant="secondary" @click="applyToneSuggestion">Apply</UiButton>
+          </div>
+        </div>
+        <div v-else-if="toneApplied" class="te-banner te-banner--success">
+          Tone suggestion applied.
         </div>
 
         <!-- Status selector -->
@@ -457,6 +520,15 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--color-primary-600) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-primary-600) 20%, transparent);
   color: var(--color-text-primary);
+}
+.te-banner--success {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 25%, transparent);
+  color: var(--color-success);
+  font-size: var(--font-size-sm);
+}
+.te-tone-reasoning {
+  font-style: italic;
 }
 .te-banner-icon {
   font-size: 1.2rem;

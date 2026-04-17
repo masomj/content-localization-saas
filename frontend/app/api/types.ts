@@ -448,3 +448,46 @@ export interface FigmaScreenshotSync {
   frameCount: number
   createdUtc: string
 }
+
+// EP5-S4: AI-Assisted Tone Check
+export interface ProjectToneConfig {
+  id: string
+  projectId: string
+  toneDescription: string
+  isActive: boolean
+  createdUtc: string
+}
+
+export interface ToneCheckResultDto {
+  id: string
+  contentItemLanguageTaskId: string
+  originalText: string
+  suggestedText: string
+  confidenceScore: number
+  reasoning: string
+  applied: boolean
+  createdUtc: string
+}
+
+export interface ToneCheckResponse {
+  id: string
+  hasMismatch: boolean
+  suggestion: string
+  confidence: number
+  reasoning: string
+}
+
+// EP5-S5: Governance Dashboard
+export interface GovernanceDashboard {
+  glossaryAdoptionRate: number
+  styleRuleComplianceRate: number
+  forbiddenTermIncidentCount: number
+  topNonAdoptedTerms: { term: string; adoptionRate: number }[]
+  recentForbiddenIncidents: {
+    contentItemKey: string
+    language: string
+    term: string
+    translatorEmail: string
+    date: string
+  }[]
+}
