@@ -61,6 +61,10 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<GlossaryTerm> GlossaryTerms => Set<GlossaryTerm>();
     public DbSet<GlossaryTermTranslation> GlossaryTermTranslations => Set<GlossaryTermTranslation>();
 
+    // EP5-S2: Style Rules Engine
+    public DbSet<StyleRule> StyleRules => Set<StyleRule>();
+    public DbSet<StyleOverride> StyleOverrides => Set<StyleOverride>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -224,6 +228,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => new { x.ContentItemId, x.LanguageCode }).IsUnique();
             e.HasIndex(x => x.DueUtc);
             e.HasIndex(x => x.IsOutdated);
+            e.HasIndex(x => x.RequiresReview);
         });
 
         builder.Entity<TranslationMemoryEntry>(e =>
@@ -793,6 +798,45 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .HasOne<GlossaryTerm>()
             .WithMany()
             .HasForeignKey(x => x.GlossaryTermId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EP5-S2: Style Rules Engine
+        builder.Entity<StyleRule>(e =>
+        {
+            e.ToTable("style_rules");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.RuleType).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Pattern).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Scope).HasMaxLength(50).HasDefaultValue(string.Empty);
+            e.Property(x => x.Message).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<StyleOverride>(e =>
+        {
+            e.ToTable("style_overrides");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.OverriddenByEmail).HasMaxLength(320).IsRequired();
+            e.HasIndex(x => new { x.ContentItemLanguageTaskId, x.StyleRuleId }).IsUnique();
+        });
+
+        builder.Entity<StyleRule>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<StyleOverride>()
+            .HasOne<ContentItemLanguageTask>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemLanguageTaskId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<StyleOverride>()
+            .HasOne<StyleRule>()
+            .WithMany()
+            .HasForeignKey(x => x.StyleRuleId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

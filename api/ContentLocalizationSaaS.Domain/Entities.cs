@@ -145,6 +145,7 @@ public sealed class ContentItemLanguageTask
     public string TranslationText { get; set; } = string.Empty;
     public string PreviousApprovedTranslation { get; set; } = string.Empty;
     public bool IsOutdated { get; set; }
+    public bool RequiresReview { get; set; }
     public DateTime? DueUtc { get; set; }
     public string Status { get; set; } = "todo";
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
@@ -522,5 +523,29 @@ public sealed class GlossaryTermTranslation
     public Guid GlossaryTermId { get; set; }
     public required string LanguageCode { get; set; }
     public required string TranslatedTerm { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+// EP5-S2: Style Rules Engine
+
+public sealed class StyleRule
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string Name { get; set; }
+    public required string RuleType { get; set; }
+    public string Pattern { get; set; } = string.Empty;
+    public string Scope { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class StyleOverride
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemLanguageTaskId { get; set; }
+    public Guid StyleRuleId { get; set; }
+    public required string OverriddenByEmail { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }

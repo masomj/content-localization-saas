@@ -92,6 +92,32 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
             }
         }
 
+        // Check for forbidden terms and set RequiresReview flag
+        if (!string.IsNullOrWhiteSpace(existing.TranslationText))
+        {
+            var contentItem = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == existing.ContentItemId, cancellationToken);
+            if (contentItem is not null)
+            {
+                var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == contentItem.ProjectId, cancellationToken);
+                if (project is not null)
+                {
+                    var glossaryIds = await db.Glossaries
+                        .Where(g => g.WorkspaceId == project.WorkspaceId)
+                        .Select(g => g.Id)
+                        .ToListAsync(cancellationToken);
+
+                    if (glossaryIds.Count > 0)
+                    {
+                        var hasForbidden = await db.GlossaryTerms
+                            .Where(t => glossaryIds.Contains(t.GlossaryId) && t.IsForbidden)
+                            .AnyAsync(t => EF.Functions.ILike(existing.TranslationText, "%" + t.SourceTerm + "%"), cancellationToken);
+
+                        existing.RequiresReview = hasForbidden;
+                    }
+                }
+            }
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         return Ok(existing);
     }

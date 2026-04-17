@@ -199,8 +199,17 @@ public sealed class GlossaryTermsController(AppDbContext db) : ControllerBase
         if (headerLine is null) return BadRequest("Empty CSV file.");
 
         var headers = headerLine.Split(',').Select(h => h.Trim().Trim('"')).ToList();
-        // Expected: sourceTerm, definition, lang1, lang2, ...
-        var langCodes = headers.Skip(2).ToList();
+        // Expected: sourceTerm, definition, lang1, lang2, ... OR sourceTerm, definition, is_forbidden, replacement, lang1, lang2, ...
+        var isForbiddenIdx = headers.FindIndex(h => string.Equals(h, "is_forbidden", StringComparison.OrdinalIgnoreCase));
+        var replacementIdx = headers.FindIndex(h => string.Equals(h, "replacement", StringComparison.OrdinalIgnoreCase));
+
+        // Language columns are everything after sourceTerm, definition, and optional is_forbidden/replacement
+        var skipCols = new HashSet<int> { 0, 1 };
+        if (isForbiddenIdx >= 0) skipCols.Add(isForbiddenIdx);
+        if (replacementIdx >= 0) skipCols.Add(replacementIdx);
+        var langEntries = headers.Select((h, i) => (header: h, index: i))
+            .Where(x => !skipCols.Contains(x.index))
+            .ToList();
 
         var imported = 0;
         while (await reader.ReadLineAsync(ct) is { } line)
@@ -225,6 +234,18 @@ public sealed class GlossaryTermsController(AppDbContext db) : ControllerBase
                     SourceTerm = sourceTerm,
                     Definition = definition,
                 };
+
+                // Handle forbidden columns
+                if (isForbiddenIdx >= 0 && isForbiddenIdx < cols.Count)
+                {
+                    var val = cols[isForbiddenIdx].Trim().ToLowerInvariant();
+                    existing.IsForbidden = val is "true" or "1" or "yes";
+                }
+                if (replacementIdx >= 0 && replacementIdx < cols.Count)
+                {
+                    existing.ForbiddenReplacement = cols[replacementIdx].Trim();
+                }
+
                 db.GlossaryTerms.Add(existing);
                 await db.SaveChangesAsync(ct);
             }
@@ -232,13 +253,26 @@ public sealed class GlossaryTermsController(AppDbContext db) : ControllerBase
             {
                 existing.Definition = definition;
                 existing.UpdatedUtc = DateTime.UtcNow;
+
+                // Handle forbidden columns
+                if (isForbiddenIdx >= 0 && isForbiddenIdx < cols.Count)
+                {
+                    var val = cols[isForbiddenIdx].Trim().ToLowerInvariant();
+                    existing.IsForbidden = val is "true" or "1" or "yes";
+                }
+                if (replacementIdx >= 0 && replacementIdx < cols.Count)
+                {
+                    existing.ForbiddenReplacement = cols[replacementIdx].Trim();
+                }
             }
 
             // Upsert translations
-            for (var i = 0; i < langCodes.Count && i + 2 < cols.Count; i++)
+            for (var i = 0; i < langEntries.Count; i++)
             {
-                var langCode = langCodes[i];
-                var translated = cols[i + 2];
+                var langCode = langEntries[i].header;
+                var colIdx = langEntries[i].index;
+                if (colIdx >= cols.Count) continue;
+                var translated = cols[colIdx];
                 if (string.IsNullOrWhiteSpace(translated)) continue;
 
                 var exTrans = await db.GlossaryTermTranslations
