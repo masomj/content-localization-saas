@@ -62,7 +62,7 @@ const panelTranslations = ref<Record<string, string>>({})
 const panelTranslationSaving = ref<string | null>(null)
 
 // Translation editor
-const translationTarget = ref<{ itemId: string; itemKey: string; source: string; language: string; maxLength?: number | null } | null>(null)
+const translationTarget = ref<{ itemId: string; itemKey: string; source: string; language: string; maxLength?: number | null; contentType?: string | null } | null>(null)
 
 // Localization grid ref
 const locGridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
@@ -385,7 +385,7 @@ async function deleteSidePanelItem() {
 // ---------------------------------------------------------------------------
 function openTranslationEditor(payload: { itemId: string; itemKey: string; source: string; language: string }) {
   const item = contents.value.find(c => c.id === payload.itemId)
-  translationTarget.value = { ...payload, maxLength: item?.maxLength ?? null }
+  translationTarget.value = { ...payload, maxLength: item?.maxLength ?? null, contentType: item?.contentType ?? null }
 }
 
 function closeTranslationEditor() {
@@ -809,6 +809,8 @@ watch(selectedProjectId, async () => {
       :source="translationTarget.source"
       :language="translationTarget.language"
       :max-length="translationTarget.maxLength"
+      :project-id="selectedProjectId"
+      :content-type="translationTarget.contentType"
       @close="closeTranslationEditor"
       @saved="onTranslationSaved"
     />

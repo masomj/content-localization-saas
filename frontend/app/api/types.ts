@@ -344,3 +344,36 @@ export interface LibraryComponentTextField {
 export interface LibraryComponentWithVariants extends LibraryComponent {
   variants: LibraryComponentVariant[]
 }
+
+export interface StyleRuleDto {
+  id: string
+  projectId: string
+  name: string
+  ruleType: string
+  pattern: string
+  scope: string
+  message: string
+  isActive: boolean
+  createdUtc: string
+}
+
+export interface StyleViolation {
+  ruleId: string
+  ruleName: string
+  message: string
+  ruleType: string
+}
+
+export interface StyleOverrideDto {
+  id: string
+  contentItemLanguageTaskId: string
+  styleRuleId: string
+  overriddenByEmail: string
+  createdUtc: string
+}
+
+export interface ForbiddenMatch {
+  term: string
+  replacement: string
+  position: number
+}

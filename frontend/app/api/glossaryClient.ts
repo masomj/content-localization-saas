@@ -1,4 +1,5 @@
 import { apiRequest } from '~/api/client'
+import type { ForbiddenMatch } from '~/api/types'
 
 export interface GlossaryDto {
   id: string
@@ -101,5 +102,11 @@ export const glossaryClient = {
     apiRequest<GlossarySuggestion[]>('/glossary-suggestions', {
       method: 'POST',
       body: JSON.stringify({ sourceText, languageCode }),
+    }),
+
+  forbiddenCheck: (text: string, languageCode: string) =>
+    apiRequest<ForbiddenMatch[]>('/forbidden-check', {
+      method: 'POST',
+      body: JSON.stringify({ text, languageCode }),
     }),
 }

@@ -106,6 +106,10 @@ const breadcrumbs = computed(() => {
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
           <span v-if="!sidebarCollapsed">Glossary</span>
         </NuxtLink>
+        <NuxtLink v-if="!auth.isLoading.value && auth.isAdmin.value" to="/app/settings/style-rules" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h8a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h4a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+          <span v-if="!sidebarCollapsed">Style Rules</span>
+        </NuxtLink>
       </nav>
     </aside>
     <div class="layout-app__main">

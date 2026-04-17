@@ -227,6 +227,19 @@ function removeTranslation(index: number) {
   termForm.translations.splice(index, 1)
 }
 
+// Forbidden filter
+const termFilter = ref<'all' | 'forbidden'>('all')
+const filteredTerms = computed(() => {
+  if (termFilter.value === 'forbidden') {
+    return terms.value.filter(t => t.isForbidden)
+  }
+  return terms.value
+})
+
+function setTermFilter(filter: 'all' | 'forbidden') {
+  termFilter.value = filter
+}
+
 // Search debounce
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 function onSearchInput() {
@@ -377,10 +390,23 @@ onMounted(() => {
             </div>
             <input ref="csvImportRef" type="file" accept=".csv" hidden @change="handleCsvImport" />
             <input ref="tbxImportRef" type="file" accept=".tbx,.xml" hidden @change="handleTbxImport" />
+
+            <div class="gp-filter-tabs">
+              <button
+                class="gp-filter-tab"
+                :class="{ 'gp-filter-tab--active': termFilter === 'all' }"
+                @click="setTermFilter('all')"
+              >All Terms</button>
+              <button
+                class="gp-filter-tab"
+                :class="{ 'gp-filter-tab--active': termFilter === 'forbidden' }"
+                @click="setTermFilter('forbidden')"
+              >Forbidden Only</button>
+            </div>
           </div>
 
           <div v-if="isLoadingTerms" class="gp-loading">Loading terms...</div>
-          <div v-else-if="terms.length === 0" class="gp-empty">No terms found.</div>
+          <div v-else-if="filteredTerms.length === 0" class="gp-empty">No terms found.</div>
           <table v-else class="gp-terms-table">
             <thead>
               <tr>
@@ -392,7 +418,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in terms" :key="t.id">
+              <tr v-for="t in filteredTerms" :key="t.id">
                 <td class="gp-terms-table__source">{{ t.sourceTerm }}</td>
                 <td class="gp-terms-table__def">{{ t.definition || '—' }}</td>
                 <td class="gp-terms-table__trans">
@@ -868,5 +894,32 @@ onMounted(() => {
   background: color-mix(in srgb, var(--color-error) 14%, var(--color-surface));
   color: var(--color-text-primary);
   border: 1px solid color-mix(in srgb, var(--color-error) 45%, var(--color-border));
+}
+
+.gp-filter-tabs {
+  display: flex;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-3);
+}
+
+.gp-filter-tab {
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.gp-filter-tab:hover {
+  background: color-mix(in srgb, var(--color-primary-500) 6%, var(--color-surface));
+}
+
+.gp-filter-tab--active {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-500);
 }
 </style>

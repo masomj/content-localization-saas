@@ -3,8 +3,9 @@ import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { translationClient } from '~/api/translationClient'
 import { glossaryClient } from '~/api/glossaryClient'
+import { styleRulesClient } from '~/api/styleRulesClient'
 import type { GlossarySuggestion } from '~/api/glossaryClient'
-import type { LanguageTask, TranslationSuggestion } from '~/api/types'
+import type { LanguageTask, TranslationSuggestion, ForbiddenMatch, StyleViolation } from '~/api/types'
 
 interface Props {
   itemId: string
@@ -12,6 +13,8 @@ interface Props {
   source: string
   language: string
   maxLength?: number | null
+  projectId?: string | null
+  contentType?: string | null
 }
 
 const props = defineProps<Props>()
@@ -33,6 +36,14 @@ const suggestion = ref<TranslationSuggestion>({ hasSuggestion: false, suggestion
 
 const glossarySuggestions = ref<GlossarySuggestion[]>([])
 const isLoadingGlossary = ref(false)
+
+// Forbidden terms state
+const forbiddenMatches = ref<ForbiddenMatch[]>([])
+let forbiddenDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+// Style violations state
+const styleViolations = ref<StyleViolation[]>([])
+const dismissedViolations = ref<Set<string>>(new Set())
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -83,6 +94,48 @@ async function loadGlossarySuggestions() {
   }
 }
 
+async function checkForbiddenTerms() {
+  const text = translationText.value
+  if (!text.trim()) {
+    forbiddenMatches.value = []
+    return
+  }
+  try {
+    forbiddenMatches.value = await glossaryClient.forbiddenCheck(text, props.language)
+  } catch {
+    forbiddenMatches.value = []
+  }
+}
+
+watch(translationText, () => {
+  if (forbiddenDebounceTimer) clearTimeout(forbiddenDebounceTimer)
+  forbiddenDebounceTimer = setTimeout(() => {
+    checkForbiddenTerms()
+  }, 500)
+})
+
+const visibleStyleViolations = computed(() =>
+  styleViolations.value.filter(v => !dismissedViolations.value.has(v.ruleId)),
+)
+
+function dismissViolation(ruleId: string) {
+  dismissedViolations.value.add(ruleId)
+}
+
+async function checkStyleRules() {
+  if (!props.projectId) return
+  try {
+    styleViolations.value = await styleRulesClient.check(
+      translationText.value,
+      props.projectId,
+      props.contentType || '',
+    )
+    dismissedViolations.value.clear()
+  } catch {
+    styleViolations.value = []
+  }
+}
+
 function insertGlossaryTerm(translated: string) {
   const textarea = document.getElementById('teTranslation') as HTMLTextAreaElement | null
   if (textarea) {
@@ -124,6 +177,7 @@ async function save() {
       status: status.value,
       translationText: translationText.value,
     })
+    await checkStyleRules()
     emit('saved')
   } catch (error: any) {
     saveError.value = error?.message || 'Failed to save translation'
@@ -231,6 +285,21 @@ onUnmounted(() => {
           <div v-if="props.maxLength" class="te-maxlength" :class="{ 'te-maxlength--warn': translationText.length >= props.maxLength * 0.9 && translationText.length <= props.maxLength, 'te-maxlength--over': translationText.length > props.maxLength }">
             <span v-if="translationText.length > props.maxLength" class="te-maxlength-icon">&#9888;</span>
             {{ translationText.length }} / {{ props.maxLength }}
+          </div>
+        </div>
+
+        <!-- Forbidden term warnings -->
+        <div v-if="forbiddenMatches.length > 0" class="te-forbidden-list">
+          <div v-for="(fm, i) in forbiddenMatches" :key="i" class="te-forbidden-item">
+            &#10060; '{{ fm.term }}' &rarr; use '{{ fm.replacement }}' instead
+          </div>
+        </div>
+
+        <!-- Style violation warnings -->
+        <div v-if="visibleStyleViolations.length > 0" class="te-style-list">
+          <div v-for="v in visibleStyleViolations" :key="v.ruleId" class="te-style-item">
+            <span>&#9888;&#65039; {{ v.message }}</span>
+            <button class="te-style-dismiss" @click="dismissViolation(v.ruleId)">Dismiss</button>
           </div>
         </div>
 
@@ -482,5 +551,55 @@ onUnmounted(() => {
 .te-glossary-badge:hover {
   background: color-mix(in srgb, var(--color-primary-500) 20%, var(--color-surface));
   color: var(--color-text-primary);
+}
+
+.te-forbidden-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.te-forbidden-item {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-error) 30%, var(--color-border));
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+}
+
+.te-style-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.te-style-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, var(--color-border));
+  color: var(--color-warning);
+  font-size: var(--font-size-sm);
+}
+
+.te-style-dismiss {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, var(--color-border));
+  border-radius: var(--radius-md);
+  padding: 1px var(--spacing-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+
+.te-style-dismiss:hover {
+  background: color-mix(in srgb, var(--color-warning) 15%, var(--color-surface));
 }
 </style>
