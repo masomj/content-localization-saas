@@ -579,3 +579,16 @@ public sealed class ScreenshotRegion
     public bool IsManualLink { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+// EP4-S4: Figma Screenshot Sync
+public sealed class FigmaScreenshotSync
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string FigmaFileKey { get; set; }
+    public string FigmaFileName { get; set; } = string.Empty;
+    public DateTime? LastSyncUtc { get; set; }
+    public string SyncStatus { get; set; } = "idle"; // idle, syncing, completed, failed
+    public int FrameCount { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

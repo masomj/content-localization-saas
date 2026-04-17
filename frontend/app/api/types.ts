@@ -411,3 +411,40 @@ export interface ScreenshotRegion {
 export interface ScreenshotDetail extends Screenshot {
   regions: ScreenshotRegion[]
 }
+
+// EP4-S2: In-Context Editor
+export interface ScreenshotContextRegion extends ScreenshotRegion {
+  translationText: string | null
+  translationStatus: string | null
+}
+
+export interface ScreenshotContextDetail extends Screenshot {
+  regions: ScreenshotContextRegion[]
+}
+
+// EP4-S3: Visual Context in Review
+export interface LinkedRegionSummary {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  detectedText: string
+  confidence: number
+}
+
+export interface ContentItemScreenshot extends Screenshot {
+  linkedRegions: LinkedRegionSummary[]
+}
+
+// EP4-S4: Figma Screenshot Sync
+export interface FigmaScreenshotSync {
+  id: string
+  projectId: string
+  figmaFileKey: string
+  figmaFileName: string
+  lastSyncUtc: string | null
+  syncStatus: string
+  frameCount: number
+  createdUtc: string
+}

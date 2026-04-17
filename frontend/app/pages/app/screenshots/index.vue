@@ -297,6 +297,7 @@ function formatSize(bytes: number): string {
         <div class="screenshots-detail__header">
           <h2>{{ selectedScreenshot.fileName }}</h2>
           <div class="screenshots-detail__actions">
+            <NuxtLink :to="`/app/screenshots/${selectedScreenshot.id}/edit`" class="btn btn--primary btn--sm">Edit in Context</NuxtLink>
             <button class="btn btn--danger btn--sm" @click="confirmDelete(selectedScreenshot)" :disabled="deleting">Delete</button>
             <button class="btn btn--ghost btn--sm" @click="closeDetail">Close</button>
           </div>

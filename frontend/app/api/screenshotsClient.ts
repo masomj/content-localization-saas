@@ -1,5 +1,5 @@
 import { apiRequest } from '~/api/client'
-import type { Screenshot, ScreenshotDetail, ScreenshotRegion } from '~/api/types'
+import type { Screenshot, ScreenshotDetail, ScreenshotRegion, ScreenshotContextDetail, ContentItemScreenshot } from '~/api/types'
 
 export const screenshotsClient = {
   list(projectId: string) {
@@ -10,13 +10,20 @@ export const screenshotsClient = {
     return apiRequest<ScreenshotDetail>(`/projects/${encodeURIComponent(projectId)}/screenshots/${encodeURIComponent(id)}`)
   },
 
+  getContext(projectId: string, id: string, language: string) {
+    return apiRequest<ScreenshotContextDetail>(
+      `/projects/${encodeURIComponent(projectId)}/screenshots/${encodeURIComponent(id)}/context?language=${encodeURIComponent(language)}`,
+    )
+  },
+
+  getForContentItem(contentItemId: string) {
+    return apiRequest<ContentItemScreenshot[]>(`/content-items/${encodeURIComponent(contentItemId)}/screenshots`)
+  },
+
   upload(projectId: string, file: File) {
     const formData = new FormData()
     formData.append('file', file)
 
-    // apiRequest auto-sets Content-Type to application/json when body is present.
-    // For FormData, the browser must set it with the multipart boundary, so we
-    // override with an empty string which we then strip before fetch.
     return apiRequest<Screenshot>(`/projects/${encodeURIComponent(projectId)}/screenshots`, {
       method: 'POST',
       body: formData,

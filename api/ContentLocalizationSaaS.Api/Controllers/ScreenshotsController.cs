@@ -243,4 +243,68 @@ public sealed class ScreenshotsController(AppDbContext db, IOcrService ocr, IWeb
         await db.SaveChangesAsync(ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// EP4-S2: Returns screenshot with regions AND their current translations for a given language.
+    /// </summary>
+    [HttpGet("{id:guid}/context")]
+    public async Task<IActionResult> GetContext(Guid projectId, Guid id, [FromQuery] string language, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+            return BadRequest(new { error = "Query parameter 'language' is required." });
+
+        var screenshot = await db.Screenshots
+            .FirstOrDefaultAsync(s => s.Id == id && s.ProjectId == projectId, ct);
+
+        if (screenshot is null) return NotFound();
+
+        var regions = await db.ScreenshotRegions
+            .Where(r => r.ScreenshotId == id)
+            .OrderBy(r => r.Y).ThenBy(r => r.X)
+            .Select(r => new
+            {
+                r.Id,
+                r.ScreenshotId,
+                r.ContentItemId,
+                r.DetectedText,
+                r.X,
+                r.Y,
+                r.Width,
+                r.Height,
+                r.Confidence,
+                r.IsManualLink,
+                r.CreatedUtc,
+                ContentItemKey = r.ContentItemId != null
+                    ? db.ContentItems.Where(ci => ci.Id == r.ContentItemId).Select(ci => ci.Key).FirstOrDefault()
+                    : null,
+                TranslationText = r.ContentItemId != null
+                    ? db.ContentItemLanguageTasks
+                        .Where(t => t.ContentItemId == r.ContentItemId && t.LanguageCode == language)
+                        .Select(t => t.TranslationText)
+                        .FirstOrDefault()
+                    : null,
+                TranslationStatus = r.ContentItemId != null
+                    ? db.ContentItemLanguageTasks
+                        .Where(t => t.ContentItemId == r.ContentItemId && t.LanguageCode == language)
+                        .Select(t => t.Status)
+                        .FirstOrDefault()
+                    : null
+            })
+            .ToListAsync(ct);
+
+        return Ok(new
+        {
+            screenshot.Id,
+            screenshot.ProjectId,
+            screenshot.FileName,
+            screenshot.StoragePath,
+            screenshot.MimeType,
+            screenshot.FileSizeBytes,
+            screenshot.Width,
+            screenshot.Height,
+            screenshot.OcrStatus,
+            screenshot.CreatedUtc,
+            Regions = regions
+        });
+    }
 }

@@ -69,6 +69,9 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<Screenshot> Screenshots => Set<Screenshot>();
     public DbSet<ScreenshotRegion> ScreenshotRegions => Set<ScreenshotRegion>();
 
+    // EP4-S4: Figma Screenshot Sync
+    public DbSet<FigmaScreenshotSync> FigmaScreenshotSyncs => Set<FigmaScreenshotSync>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -874,6 +877,23 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .HasOne<Screenshot>()
             .WithMany()
             .HasForeignKey(x => x.ScreenshotId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EP4-S4: Figma Screenshot Sync
+        builder.Entity<FigmaScreenshotSync>(e =>
+        {
+            e.ToTable("figma_screenshot_syncs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FigmaFileKey).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FigmaFileName).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.SyncStatus).HasMaxLength(20).HasDefaultValue("idle");
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<FigmaScreenshotSync>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
