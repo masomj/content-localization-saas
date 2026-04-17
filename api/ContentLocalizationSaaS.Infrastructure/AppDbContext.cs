@@ -65,6 +65,10 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<StyleRule> StyleRules => Set<StyleRule>();
     public DbSet<StyleOverride> StyleOverrides => Set<StyleOverride>();
 
+    // EP4-S1: Screenshot Upload + OCR Tagging
+    public DbSet<Screenshot> Screenshots => Set<Screenshot>();
+    public DbSet<ScreenshotRegion> ScreenshotRegions => Set<ScreenshotRegion>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -838,6 +842,39 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .WithMany()
             .HasForeignKey(x => x.StyleRuleId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // EP4-S1: Screenshot Upload + OCR Tagging
+        builder.Entity<Screenshot>(e =>
+        {
+            e.ToTable("screenshots");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FileName).HasMaxLength(500).IsRequired();
+            e.Property(x => x.StoragePath).HasMaxLength(1000).IsRequired();
+            e.Property(x => x.MimeType).HasMaxLength(50).HasDefaultValue("image/png");
+            e.Property(x => x.OcrStatus).HasMaxLength(20).HasDefaultValue("pending");
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<ScreenshotRegion>(e =>
+        {
+            e.ToTable("screenshot_regions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DetectedText).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => x.ScreenshotId);
+            e.HasIndex(x => x.ContentItemId);
+        });
+
+        builder.Entity<Screenshot>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ScreenshotRegion>()
+            .HasOne<Screenshot>()
+            .WithMany()
+            .HasForeignKey(x => x.ScreenshotId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -867,6 +904,9 @@ public static class DependencyInjection
         services.AddHttpClient<IBillingProvider, GoCardlessProvider>();
         services.AddScoped<ICiLicensingService, CiLicensingService>();
         services.AddScoped<IEntitlementService, EntitlementService>();
+
+        // EP4-S1: Screenshot OCR
+        services.AddScoped<IOcrService, StubOcrService>();
 
         return services;
     }

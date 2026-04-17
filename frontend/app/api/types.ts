@@ -377,3 +377,37 @@ export interface ForbiddenMatch {
   replacement: string
   position: number
 }
+
+// EP4-S1: Screenshot Upload + OCR Tagging
+export interface Screenshot {
+  id: string
+  projectId: string
+  fileName: string
+  storagePath: string
+  mimeType: string
+  fileSizeBytes: number
+  width: number
+  height: number
+  ocrStatus: string
+  createdUtc: string
+  regionCount?: number
+}
+
+export interface ScreenshotRegion {
+  id: string
+  screenshotId: string
+  contentItemId: string | null
+  detectedText: string
+  x: number
+  y: number
+  width: number
+  height: number
+  confidence: number
+  isManualLink: boolean
+  createdUtc: string
+  contentItemKey?: string | null
+}
+
+export interface ScreenshotDetail extends Screenshot {
+  regions: ScreenshotRegion[]
+}

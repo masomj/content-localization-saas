@@ -549,3 +549,33 @@ public sealed class StyleOverride
     public required string OverriddenByEmail { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
+
+// EP4-S1: Screenshot Upload + OCR Tagging
+public sealed class Screenshot
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string FileName { get; set; }
+    public required string StoragePath { get; set; }
+    public string MimeType { get; set; } = "image/png";
+    public long FileSizeBytes { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public string OcrStatus { get; set; } = "pending";
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class ScreenshotRegion
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ScreenshotId { get; set; }
+    public Guid? ContentItemId { get; set; }
+    public required string DetectedText { get; set; }
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public double Confidence { get; set; }
+    public bool IsManualLink { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
