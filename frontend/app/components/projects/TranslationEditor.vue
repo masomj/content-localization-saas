@@ -9,6 +9,7 @@ interface Props {
   itemKey: string
   source: string
   language: string
+  maxLength?: number | null
 }
 
 const props = defineProps<Props>()
@@ -184,6 +185,10 @@ onUnmounted(() => {
             class="te-textarea"
             rows="5"
           />
+          <div v-if="props.maxLength" class="te-maxlength" :class="{ 'te-maxlength--warn': translationText.length >= props.maxLength * 0.9 && translationText.length <= props.maxLength, 'te-maxlength--over': translationText.length > props.maxLength }">
+            <span v-if="translationText.length > props.maxLength" class="te-maxlength-icon">&#9888;</span>
+            {{ translationText.length }} / {{ props.maxLength }}
+          </div>
         </div>
 
         <!-- Status selector -->
@@ -393,5 +398,22 @@ onUnmounted(() => {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   margin-right: auto;
+}
+
+.te-maxlength {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: right;
+  margin-top: var(--spacing-1);
+}
+.te-maxlength--warn {
+  color: #d97706;
+}
+.te-maxlength--over {
+  color: var(--color-error);
+  font-weight: var(--font-weight-medium);
+}
+.te-maxlength-icon {
+  margin-right: 2px;
 }
 </style>

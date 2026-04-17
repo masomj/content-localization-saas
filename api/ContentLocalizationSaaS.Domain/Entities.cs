@@ -85,6 +85,9 @@ public sealed class ContentItem
     public string Tags { get; set; } = string.Empty; // pipe-delimited for MVP
     public string Context { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int? MaxLength { get; set; }
+    public string ContentType { get; set; } = string.Empty;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 

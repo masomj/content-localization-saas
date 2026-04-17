@@ -181,19 +181,19 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
         return conflicts;
     }
 
-    private static Dictionary<string, Dictionary<string, string>> BuildLanguageMap(
+    private static Dictionary<string, Dictionary<string, object>> BuildLanguageMap(
         IReadOnlyList<ContentItem> items,
         IReadOnlyList<ContentItemLanguageTask> tasks,
         string? languageCode)
     {
-        var file = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        var file = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var item in items)
         {
             var (ns, key) = SplitNamespaceKey(item.Key);
             if (!file.TryGetValue(ns, out var bucket))
             {
-                bucket = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                bucket = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                 file[ns] = bucket;
             }
 
@@ -210,7 +210,11 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
                     : item.Source;
             }
 
-            bucket[key] = value;
+            var entry = new Dictionary<string, object?> { ["value"] = value };
+            if (!string.IsNullOrEmpty(item.Description)) entry["description"] = item.Description;
+            if (item.MaxLength.HasValue) entry["maxLength"] = item.MaxLength.Value;
+            if (!string.IsNullOrEmpty(item.ContentType)) entry["contentType"] = item.ContentType;
+            bucket[key] = entry;
         }
 
         return file;

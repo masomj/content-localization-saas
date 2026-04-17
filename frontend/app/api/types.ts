@@ -48,6 +48,9 @@ export interface ContentItem {
   status: string
   collectionId: string | null
   sortOrder: number
+  description?: string
+  maxLength?: number | null
+  contentType?: string
 }
 
 export interface CreateProjectRequest {
@@ -93,6 +96,9 @@ export interface CreateContentItemRequest {
   context: string | null
   notes: string | null
   collectionId: string | null
+  description?: string
+  maxLength?: number | null
+  contentType?: string
 }
 
 export interface Member {

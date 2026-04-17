@@ -44,11 +44,16 @@ const deleteTarget = ref<Pick<ContentItem, 'id' | 'key'> | null>(null)
 const deleteError = ref('')
 
 // Side panel
-const selectedItem = ref<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'> | null>(null)
+const selectedItem = ref<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId' | 'description' | 'maxLength' | 'contentType'> | null>(null)
 const panelSource = ref('')
 const panelStatus = ref('')
 const panelCollectionId = ref<string | null>(null)
 const panelError = ref('')
+
+// Context metadata
+const panelDescription = ref('')
+const panelMaxLength = ref<number | null>(null)
+const panelContentType = ref('')
 
 // Side panel translations
 const panelLanguages = ref<ProjectLanguage[]>([])
@@ -57,7 +62,7 @@ const panelTranslations = ref<Record<string, string>>({})
 const panelTranslationSaving = ref<string | null>(null)
 
 // Translation editor
-const translationTarget = ref<{ itemId: string; itemKey: string; source: string; language: string } | null>(null)
+const translationTarget = ref<{ itemId: string; itemKey: string; source: string; language: string; maxLength?: number | null } | null>(null)
 
 // Localization grid ref
 const locGridRef = ref<InstanceType<typeof LocalizationGrid> | null>(null)
@@ -256,11 +261,14 @@ function navigateUp() {
 }
 
 // Side panel (replaces TranslationEditor row click)
-function openSidePanel(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>) {
+function openSidePanel(item: Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId' | 'description' | 'maxLength' | 'contentType'>) {
   selectedItem.value = item
   panelSource.value = item.source
   panelStatus.value = item.status
   panelCollectionId.value = item.collectionId ?? null
+  panelDescription.value = item.description ?? ''
+  panelMaxLength.value = item.maxLength ?? null
+  panelContentType.value = item.contentType ?? ''
   panelError.value = ''
   loadPanelTranslations(item.id)
 }
@@ -326,6 +334,9 @@ function closeSidePanel() {
   panelSource.value = ''
   panelStatus.value = ''
   panelCollectionId.value = null
+  panelDescription.value = ''
+  panelMaxLength.value = null
+  panelContentType.value = ''
   panelError.value = ''
 }
 
@@ -337,7 +348,11 @@ async function saveSidePanel() {
     return
   }
   try {
-    await contentClient.update(selectedItem.value.id, source, panelStatus.value)
+    await contentClient.update(selectedItem.value.id, source, panelStatus.value, {
+      description: panelDescription.value,
+      maxLength: panelMaxLength.value,
+      contentType: panelContentType.value,
+    })
 
     // Move if folder changed
     const originalCollectionId = selectedItem.value.collectionId ?? null
@@ -369,7 +384,8 @@ async function deleteSidePanelItem() {
 // Translation grid cell click → open TranslationEditor
 // ---------------------------------------------------------------------------
 function openTranslationEditor(payload: { itemId: string; itemKey: string; source: string; language: string }) {
-  translationTarget.value = payload
+  const item = contents.value.find(c => c.id === payload.itemId)
+  translationTarget.value = { ...payload, maxLength: item?.maxLength ?? null }
 }
 
 function closeTranslationEditor() {
@@ -792,6 +808,7 @@ watch(selectedProjectId, async () => {
       :item-key="translationTarget.itemKey"
       :source="translationTarget.source"
       :language="translationTarget.language"
+      :max-length="translationTarget.maxLength"
       @close="closeTranslationEditor"
       @saved="onTranslationSaved"
     />
@@ -918,6 +935,52 @@ watch(selectedProjectId, async () => {
               {{ opt.label }}
             </option>
           </select>
+
+          <!-- Context metadata -->
+          <div class="context-metadata-section">
+            <h3 class="context-metadata-heading">Context</h3>
+
+            <label for="panelDescription" class="label-with-hint">
+              <span>Description</span>
+              <span class="label-hint">Describe where and how this text is used</span>
+            </label>
+            <textarea
+              id="panelDescription"
+              v-model="panelDescription"
+              rows="3"
+              class="side-panel-textarea"
+              maxlength="500"
+            />
+            <span class="char-counter">{{ panelDescription.length }} / 500</span>
+
+            <label for="panelMaxLength" class="label-with-hint">
+              <span>Max Length</span>
+              <span class="label-hint">Character limit for translations (optional)</span>
+            </label>
+            <input
+              id="panelMaxLength"
+              v-model.number="panelMaxLength"
+              type="number"
+              min="1"
+              class="context-number-input"
+              placeholder="No limit"
+            >
+
+            <label for="panelContentType" class="label-with-hint">
+              <span>Content Type</span>
+              <span class="label-hint">The UI element type for this text</span>
+            </label>
+            <select id="panelContentType" v-model="panelContentType" class="edit-status-select">
+              <option value="">Unspecified</option>
+              <option value="button_label">Button Label</option>
+              <option value="error_message">Error Message</option>
+              <option value="heading">Heading</option>
+              <option value="body_text">Body Text</option>
+              <option value="placeholder">Placeholder</option>
+              <option value="tooltip">Tooltip</option>
+              <option value="menu_item">Menu Item</option>
+            </select>
+          </div>
 
           <!-- Translations per language -->
           <div v-if="panelTargetLanguages.length > 0" class="panel-translations">
@@ -1402,6 +1465,39 @@ watch(selectedProjectId, async () => {
 }
 
 /* Panel inline translations */
+.context-metadata-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--color-border);
+}
+.context-metadata-heading {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+.char-counter {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: right;
+}
+.context-number-input {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  width: 140px;
+}
+.context-number-input:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
 .panel-translations {
   display: flex;
   flex-direction: column;

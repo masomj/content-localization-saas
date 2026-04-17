@@ -17,10 +17,10 @@ export const contentClient = {
       body: JSON.stringify(payload),
     })
   },
-  update(id: string, source: string, status: string) {
+  update(id: string, source: string, status: string, metadata?: { description?: string; maxLength?: number | null; contentType?: string }) {
     return apiRequest<ContentItem>(`/content-items/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ source, status }),
+      body: JSON.stringify({ source, status, ...metadata }),
     })
   },
   delete(id: string) {

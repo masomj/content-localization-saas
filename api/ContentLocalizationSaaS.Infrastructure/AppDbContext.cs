@@ -144,6 +144,9 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Tags).HasMaxLength(1000).HasDefaultValue(string.Empty);
             e.Property(x => x.Context).HasMaxLength(1000).HasDefaultValue(string.Empty);
             e.Property(x => x.Notes).HasMaxLength(2000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Description).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.MaxLength);
+            e.Property(x => x.ContentType).HasMaxLength(50).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
             e.HasIndex(x => new { x.ProjectId, x.CollectionId });
             e.HasIndex(x => x.Tags);
