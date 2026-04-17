@@ -99,6 +99,7 @@ export const myFeatureClient = {
 - `reviewClient` — content reviews
 - `translationClient` — translations
 - `versionsClient` — project versions
+- `glossaryClient` — glossary/termbase CRUD, import/export, suggestions
 
 **All types live in `api/types.ts`** — add new interfaces/types there, not in client files or pages.
 

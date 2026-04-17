@@ -492,3 +492,35 @@ public sealed class BillingEvent
     public DateTime ReceivedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? ProcessedUtc { get; set; }
 }
+
+public sealed class Glossary
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceId { get; set; }
+    public required string Name { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class GlossaryTerm
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid GlossaryId { get; set; }
+    public required string SourceTerm { get; set; }
+    public string Definition { get; set; } = string.Empty;
+    public bool IsForbidden { get; set; }
+    public string ForbiddenReplacement { get; set; } = string.Empty;
+    public bool CaseSensitive { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class GlossaryTermTranslation
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid GlossaryTermId { get; set; }
+    public required string LanguageCode { get; set; }
+    public required string TranslatedTerm { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}

@@ -2,6 +2,8 @@
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { translationClient } from '~/api/translationClient'
+import { glossaryClient } from '~/api/glossaryClient'
+import type { GlossarySuggestion } from '~/api/glossaryClient'
 import type { LanguageTask, TranslationSuggestion } from '~/api/types'
 
 interface Props {
@@ -28,6 +30,9 @@ const isLoadingSuggestion = ref(false)
 const saveError = ref('')
 
 const suggestion = ref<TranslationSuggestion>({ hasSuggestion: false, suggestion: null })
+
+const glossarySuggestions = ref<GlossarySuggestion[]>([])
+const isLoadingGlossary = ref(false)
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -63,6 +68,33 @@ async function loadSuggestion() {
     suggestion.value = { hasSuggestion: false, suggestion: null }
   } finally {
     isLoadingSuggestion.value = false
+  }
+}
+
+async function loadGlossarySuggestions() {
+  if (!props.source) return
+  isLoadingGlossary.value = true
+  try {
+    glossarySuggestions.value = await glossaryClient.suggest(props.source, props.language)
+  } catch {
+    glossarySuggestions.value = []
+  } finally {
+    isLoadingGlossary.value = false
+  }
+}
+
+function insertGlossaryTerm(translated: string) {
+  const textarea = document.getElementById('teTranslation') as HTMLTextAreaElement | null
+  if (textarea) {
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    translationText.value = translationText.value.substring(0, start) + translated + translationText.value.substring(end)
+    nextTick(() => {
+      textarea.focus()
+      textarea.selectionStart = textarea.selectionEnd = start + translated.length
+    })
+  } else {
+    translationText.value += translated
   }
 }
 
@@ -112,7 +144,7 @@ function handleKeydown(e: KeyboardEvent) {
 
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
-  await Promise.all([loadExistingTask(), loadSuggestion()])
+  await Promise.all([loadExistingTask(), loadSuggestion(), loadGlossarySuggestions()])
 })
 
 onUnmounted(() => {
@@ -146,6 +178,17 @@ onUnmounted(() => {
           <label class="te-label">Source text</label>
           <span class="te-hint">Original text in the source language (read-only)</span>
           <div class="te-source-display">{{ source }}</div>
+          <div v-if="glossarySuggestions.length > 0" class="te-glossary-badges">
+            <span
+              v-for="(gs, i) in glossarySuggestions"
+              :key="i"
+              class="te-glossary-badge"
+              :title="`${gs.glossaryName}${gs.definition ? ': ' + gs.definition : ''}`"
+              @click="insertGlossaryTerm(gs.translatedTerm || gs.term)"
+            >
+              {{ gs.term }}<template v-if="gs.translatedTerm"> → {{ gs.translatedTerm }}</template>
+            </span>
+          </div>
         </div>
 
         <!-- Outdated warning -->
@@ -415,5 +458,29 @@ onUnmounted(() => {
 }
 .te-maxlength-icon {
   margin-right: 2px;
+}
+
+.te-glossary-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-2);
+}
+
+.te-glossary-badge {
+  display: inline-block;
+  padding: 2px var(--spacing-2);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-primary-500) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary-500) 25%, var(--color-border));
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.te-glossary-badge:hover {
+  background: color-mix(in srgb, var(--color-primary-500) 20%, var(--color-surface));
+  color: var(--color-text-primary);
 }
 </style>

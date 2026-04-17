@@ -56,6 +56,11 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<WorkspaceSubscription> WorkspaceSubscriptions => Set<WorkspaceSubscription>();
     public DbSet<BillingEvent> BillingEvents => Set<BillingEvent>();
 
+    // EP5: Glossary / Termbase
+    public DbSet<Glossary> Glossaries => Set<Glossary>();
+    public DbSet<GlossaryTerm> GlossaryTerms => Set<GlossaryTerm>();
+    public DbSet<GlossaryTermTranslation> GlossaryTermTranslations => Set<GlossaryTermTranslation>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -740,6 +745,54 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .HasOne<WorkspaceSubscription>()
             .WithMany()
             .HasForeignKey(x => x.WorkspaceSubscriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EP5: Glossary / Termbase
+        builder.Entity<Glossary>(e =>
+        {
+            e.ToTable("glossaries");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.WorkspaceId);
+        });
+
+        builder.Entity<GlossaryTerm>(e =>
+        {
+            e.ToTable("glossary_terms");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SourceTerm).HasMaxLength(500).IsRequired();
+            e.Property(x => x.Definition).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.Property(x => x.ForbiddenReplacement).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.GlossaryId);
+            e.HasIndex(x => x.SourceTerm);
+        });
+
+        builder.Entity<GlossaryTermTranslation>(e =>
+        {
+            e.ToTable("glossary_term_translations");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.LanguageCode).HasMaxLength(10).IsRequired();
+            e.Property(x => x.TranslatedTerm).HasMaxLength(500).IsRequired();
+            e.HasIndex(x => new { x.GlossaryTermId, x.LanguageCode }).IsUnique();
+        });
+
+        builder.Entity<Glossary>()
+            .HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GlossaryTerm>()
+            .HasOne<Glossary>()
+            .WithMany()
+            .HasForeignKey(x => x.GlossaryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GlossaryTermTranslation>()
+            .HasOne<GlossaryTerm>()
+            .WithMany()
+            .HasForeignKey(x => x.GlossaryTermId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
