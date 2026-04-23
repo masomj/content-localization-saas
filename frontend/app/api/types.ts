@@ -48,6 +48,9 @@ export interface ContentItem {
   status: string
   collectionId: string | null
   sortOrder: number
+  description?: string
+  maxLength?: number | null
+  contentType?: string
 }
 
 export interface CreateProjectRequest {
@@ -93,6 +96,9 @@ export interface CreateContentItemRequest {
   context: string | null
   notes: string | null
   collectionId: string | null
+  description?: string
+  maxLength?: number | null
+  contentType?: string
 }
 
 export interface Member {
@@ -337,4 +343,151 @@ export interface LibraryComponentTextField {
 
 export interface LibraryComponentWithVariants extends LibraryComponent {
   variants: LibraryComponentVariant[]
+}
+
+export interface StyleRuleDto {
+  id: string
+  projectId: string
+  name: string
+  ruleType: string
+  pattern: string
+  scope: string
+  message: string
+  isActive: boolean
+  createdUtc: string
+}
+
+export interface StyleViolation {
+  ruleId: string
+  ruleName: string
+  message: string
+  ruleType: string
+}
+
+export interface StyleOverrideDto {
+  id: string
+  contentItemLanguageTaskId: string
+  styleRuleId: string
+  overriddenByEmail: string
+  createdUtc: string
+}
+
+export interface ForbiddenMatch {
+  term: string
+  replacement: string
+  position: number
+}
+
+// EP4-S1: Screenshot Upload + OCR Tagging
+export interface Screenshot {
+  id: string
+  projectId: string
+  fileName: string
+  storagePath: string
+  mimeType: string
+  fileSizeBytes: number
+  width: number
+  height: number
+  ocrStatus: string
+  createdUtc: string
+  regionCount?: number
+}
+
+export interface ScreenshotRegion {
+  id: string
+  screenshotId: string
+  contentItemId: string | null
+  detectedText: string
+  x: number
+  y: number
+  width: number
+  height: number
+  confidence: number
+  isManualLink: boolean
+  createdUtc: string
+  contentItemKey?: string | null
+}
+
+export interface ScreenshotDetail extends Screenshot {
+  regions: ScreenshotRegion[]
+}
+
+// EP4-S2: In-Context Editor
+export interface ScreenshotContextRegion extends ScreenshotRegion {
+  translationText: string | null
+  translationStatus: string | null
+}
+
+export interface ScreenshotContextDetail extends Screenshot {
+  regions: ScreenshotContextRegion[]
+}
+
+// EP4-S3: Visual Context in Review
+export interface LinkedRegionSummary {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  detectedText: string
+  confidence: number
+}
+
+export interface ContentItemScreenshot extends Screenshot {
+  linkedRegions: LinkedRegionSummary[]
+}
+
+// EP4-S4: Figma Screenshot Sync
+export interface FigmaScreenshotSync {
+  id: string
+  projectId: string
+  figmaFileKey: string
+  figmaFileName: string
+  lastSyncUtc: string | null
+  syncStatus: string
+  frameCount: number
+  createdUtc: string
+}
+
+// EP5-S4: AI-Assisted Tone Check
+export interface ProjectToneConfig {
+  id: string
+  projectId: string
+  toneDescription: string
+  isActive: boolean
+  createdUtc: string
+}
+
+export interface ToneCheckResultDto {
+  id: string
+  contentItemLanguageTaskId: string
+  originalText: string
+  suggestedText: string
+  confidenceScore: number
+  reasoning: string
+  applied: boolean
+  createdUtc: string
+}
+
+export interface ToneCheckResponse {
+  id: string
+  hasMismatch: boolean
+  suggestion: string
+  confidence: number
+  reasoning: string
+}
+
+// EP5-S5: Governance Dashboard
+export interface GovernanceDashboard {
+  glossaryAdoptionRate: number
+  styleRuleComplianceRate: number
+  forbiddenTermIncidentCount: number
+  topNonAdoptedTerms: { term: string; adoptionRate: number }[]
+  recentForbiddenIncidents: {
+    contentItemKey: string
+    language: string
+    term: string
+    translatorEmail: string
+    date: string
+  }[]
 }

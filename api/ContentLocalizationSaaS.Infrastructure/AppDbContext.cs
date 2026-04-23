@@ -51,6 +51,31 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<LibraryComponentVariant> LibraryComponentVariants => Set<LibraryComponentVariant>();
     public DbSet<LibraryComponentTextField> LibraryComponentTextFields => Set<LibraryComponentTextField>();
 
+    // EP11: Pricing, Packaging & Entitlements
+    public DbSet<PlanDefinition> PlanDefinitions => Set<PlanDefinition>();
+    public DbSet<WorkspaceSubscription> WorkspaceSubscriptions => Set<WorkspaceSubscription>();
+    public DbSet<BillingEvent> BillingEvents => Set<BillingEvent>();
+
+    // EP5: Glossary / Termbase
+    public DbSet<Glossary> Glossaries => Set<Glossary>();
+    public DbSet<GlossaryTerm> GlossaryTerms => Set<GlossaryTerm>();
+    public DbSet<GlossaryTermTranslation> GlossaryTermTranslations => Set<GlossaryTermTranslation>();
+
+    // EP5-S2: Style Rules Engine
+    public DbSet<StyleRule> StyleRules => Set<StyleRule>();
+    public DbSet<StyleOverride> StyleOverrides => Set<StyleOverride>();
+
+    // EP4-S1: Screenshot Upload + OCR Tagging
+    public DbSet<Screenshot> Screenshots => Set<Screenshot>();
+    public DbSet<ScreenshotRegion> ScreenshotRegions => Set<ScreenshotRegion>();
+
+    // EP4-S4: Figma Screenshot Sync
+    public DbSet<FigmaScreenshotSync> FigmaScreenshotSyncs => Set<FigmaScreenshotSync>();
+
+    // EP5-S4: AI-Assisted Tone Check
+    public DbSet<ProjectToneConfig> ProjectToneConfigs => Set<ProjectToneConfig>();
+    public DbSet<ToneCheckResult> ToneCheckResults => Set<ToneCheckResult>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -139,6 +164,9 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.Tags).HasMaxLength(1000).HasDefaultValue(string.Empty);
             e.Property(x => x.Context).HasMaxLength(1000).HasDefaultValue(string.Empty);
             e.Property(x => x.Notes).HasMaxLength(2000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Description).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.MaxLength);
+            e.Property(x => x.ContentType).HasMaxLength(50).HasDefaultValue(string.Empty);
             e.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
             e.HasIndex(x => new { x.ProjectId, x.CollectionId });
             e.HasIndex(x => x.Tags);
@@ -211,6 +239,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => new { x.ContentItemId, x.LanguageCode }).IsUnique();
             e.HasIndex(x => x.DueUtc);
             e.HasIndex(x => x.IsOutdated);
+            e.HasIndex(x => x.RequiresReview);
         });
 
         builder.Entity<TranslationMemoryEntry>(e =>
@@ -678,6 +707,229 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .WithMany()
             .HasForeignKey(x => x.ContentItemId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // EP11: Pricing, Packaging & Entitlements
+        builder.Entity<PlanDefinition>(e =>
+        {
+            e.ToTable("plan_definitions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Tier).HasConversion<int>();
+            e.Property(x => x.PricePerSeatMonthly).HasColumnType("decimal(10,2)");
+            e.HasIndex(x => x.Tier).IsUnique();
+            e.HasIndex(x => x.IsDefault).IsUnique().HasFilter("\"IsDefault\" = true");
+        });
+
+        builder.Entity<WorkspaceSubscription>(e =>
+        {
+            e.ToTable("workspace_subscriptions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Status).HasConversion<int>();
+            e.Property(x => x.Provider).HasConversion<int>();
+            e.Property(x => x.ProviderCustomerId).HasMaxLength(128).HasDefaultValue(string.Empty);
+            e.Property(x => x.ProviderMandateId).HasMaxLength(128).HasDefaultValue(string.Empty);
+            e.Property(x => x.ProviderSubscriptionId).HasMaxLength(128).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.WorkspaceId).IsUnique();
+            e.HasIndex(x => x.ProviderSubscriptionId);
+        });
+
+        builder.Entity<BillingEvent>(e =>
+        {
+            e.ToTable("billing_events");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ProviderEventId).HasMaxLength(128).IsRequired();
+            e.Property(x => x.EventType).HasMaxLength(64).IsRequired();
+            e.Property(x => x.PayloadJson).HasColumnType("text").HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.ProviderEventId).IsUnique();
+            e.HasIndex(x => new { x.WorkspaceSubscriptionId, x.ReceivedUtc });
+            e.HasIndex(x => x.Processed);
+        });
+
+        builder.Entity<WorkspaceSubscription>()
+            .HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<WorkspaceSubscription>()
+            .HasOne<PlanDefinition>()
+            .WithMany()
+            .HasForeignKey(x => x.PlanDefinitionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<BillingEvent>()
+            .HasOne<WorkspaceSubscription>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceSubscriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EP5: Glossary / Termbase
+        builder.Entity<Glossary>(e =>
+        {
+            e.ToTable("glossaries");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.WorkspaceId);
+        });
+
+        builder.Entity<GlossaryTerm>(e =>
+        {
+            e.ToTable("glossary_terms");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SourceTerm).HasMaxLength(500).IsRequired();
+            e.Property(x => x.Definition).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.Property(x => x.ForbiddenReplacement).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.GlossaryId);
+            e.HasIndex(x => x.SourceTerm);
+        });
+
+        builder.Entity<GlossaryTermTranslation>(e =>
+        {
+            e.ToTable("glossary_term_translations");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.LanguageCode).HasMaxLength(10).IsRequired();
+            e.Property(x => x.TranslatedTerm).HasMaxLength(500).IsRequired();
+            e.HasIndex(x => new { x.GlossaryTermId, x.LanguageCode }).IsUnique();
+        });
+
+        builder.Entity<Glossary>()
+            .HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GlossaryTerm>()
+            .HasOne<Glossary>()
+            .WithMany()
+            .HasForeignKey(x => x.GlossaryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GlossaryTermTranslation>()
+            .HasOne<GlossaryTerm>()
+            .WithMany()
+            .HasForeignKey(x => x.GlossaryTermId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EP5-S2: Style Rules Engine
+        builder.Entity<StyleRule>(e =>
+        {
+            e.ToTable("style_rules");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.RuleType).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Pattern).HasMaxLength(1000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Scope).HasMaxLength(50).HasDefaultValue(string.Empty);
+            e.Property(x => x.Message).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<StyleOverride>(e =>
+        {
+            e.ToTable("style_overrides");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.OverriddenByEmail).HasMaxLength(320).IsRequired();
+            e.HasIndex(x => new { x.ContentItemLanguageTaskId, x.StyleRuleId }).IsUnique();
+        });
+
+        builder.Entity<StyleRule>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<StyleOverride>()
+            .HasOne<ContentItemLanguageTask>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemLanguageTaskId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<StyleOverride>()
+            .HasOne<StyleRule>()
+            .WithMany()
+            .HasForeignKey(x => x.StyleRuleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EP4-S1: Screenshot Upload + OCR Tagging
+        builder.Entity<Screenshot>(e =>
+        {
+            e.ToTable("screenshots");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FileName).HasMaxLength(500).IsRequired();
+            e.Property(x => x.StoragePath).HasMaxLength(1000).IsRequired();
+            e.Property(x => x.MimeType).HasMaxLength(50).HasDefaultValue("image/png");
+            e.Property(x => x.OcrStatus).HasMaxLength(20).HasDefaultValue("pending");
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<ScreenshotRegion>(e =>
+        {
+            e.ToTable("screenshot_regions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DetectedText).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => x.ScreenshotId);
+            e.HasIndex(x => x.ContentItemId);
+        });
+
+        builder.Entity<Screenshot>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ScreenshotRegion>()
+            .HasOne<Screenshot>()
+            .WithMany()
+            .HasForeignKey(x => x.ScreenshotId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EP4-S4: Figma Screenshot Sync
+        builder.Entity<FigmaScreenshotSync>(e =>
+        {
+            e.ToTable("figma_screenshot_syncs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FigmaFileKey).HasMaxLength(200).IsRequired();
+            e.Property(x => x.FigmaFileName).HasMaxLength(500).HasDefaultValue(string.Empty);
+            e.Property(x => x.SyncStatus).HasMaxLength(20).HasDefaultValue("idle");
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<FigmaScreenshotSync>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EP5-S4: AI-Assisted Tone Check
+        builder.Entity<ProjectToneConfig>(e =>
+        {
+            e.ToTable("project_tone_configs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ToneDescription).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => x.ProjectId);
+        });
+
+        builder.Entity<ProjectToneConfig>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ToneCheckResult>(e =>
+        {
+            e.ToTable("tone_check_results");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.OriginalText).HasMaxLength(10000).IsRequired();
+            e.Property(x => x.SuggestedText).HasMaxLength(10000).HasDefaultValue(string.Empty);
+            e.Property(x => x.Reasoning).HasMaxLength(2000).HasDefaultValue(string.Empty);
+            e.HasIndex(x => x.ContentItemLanguageTaskId);
+        });
+
+        builder.Entity<ToneCheckResult>()
+            .HasOne<ContentItemLanguageTask>()
+            .WithMany()
+            .HasForeignKey(x => x.ContentItemLanguageTaskId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -701,6 +953,18 @@ public static class DependencyInjection
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IProjectCollectionService, ProjectCollectionService>();
         services.AddScoped<IContentItemService, ContentItemService>();
+
+        // EP11: Billing & Entitlements
+        services.Configure<GoCardlessOptions>(configuration.GetSection(GoCardlessOptions.SectionName));
+        services.AddHttpClient<IBillingProvider, GoCardlessProvider>();
+        services.AddScoped<ICiLicensingService, CiLicensingService>();
+        services.AddScoped<IEntitlementService, EntitlementService>();
+
+        // EP4-S1: Screenshot OCR
+        services.AddScoped<IOcrService, StubOcrService>();
+
+        // EP5-S4: AI Tone Check
+        services.AddScoped<IToneCheckService, StubToneCheckService>();
 
         return services;
     }

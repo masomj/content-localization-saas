@@ -99,6 +99,12 @@ export const myFeatureClient = {
 - `reviewClient` — content reviews
 - `translationClient` — translations
 - `versionsClient` — project versions
+- `glossaryClient` — glossary/termbase CRUD, import/export, suggestions
+- `styleRulesClient` — style rules CRUD, style checking
+- `screenshotsClient` — screenshot upload, OCR regions, region linking, context editing, content item screenshots
+- `figmaSyncClient` — Figma file connections, sync triggers
+- `toneCheckClient` — tone config CRUD, tone checking, apply suggestions
+- `governanceClient` — governance dashboard metrics, CSV export
 
 **All types live in `api/types.ts`** — add new interfaces/types there, not in client files or pages.
 

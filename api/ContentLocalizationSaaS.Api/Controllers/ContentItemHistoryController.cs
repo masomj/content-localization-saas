@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ContentLocalizationSaaS.Api.Controllers;
 
-public sealed record UpdateContentItemRequest(string Source, string Status);
+public sealed record UpdateContentItemRequest(string Source, string Status, string? Description = null, int? MaxLength = null, string? ContentType = null);
 
 [ApiController]
 [Route("api/content-items")]
@@ -17,7 +17,7 @@ public sealed class ContentItemHistoryController(IContentItemService contentItem
         var actor = HttpContext.Request.Headers["X-Actor-Email"].ToString();
         if (string.IsNullOrWhiteSpace(actor)) actor = "editor@system.local";
 
-        var item = await contentItems.UpdateAsync(id, request.Source, request.Status, actor, cancellationToken);
+        var item = await contentItems.UpdateAsync(id, request.Source, request.Status, actor, cancellationToken, request.Description, request.MaxLength, request.ContentType);
         return Ok(item);
     }
 

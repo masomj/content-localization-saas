@@ -177,7 +177,8 @@ async function executeRequest<T>(path: string, options: RequestInit, headers: Re
 }
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers as Record<string, string> || {}) }
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+  const headers: Record<string, string> = { ...(options.body && !isFormData ? { 'Content-Type': 'application/json' } : {}), ...(options.headers as Record<string, string> || {}) }
   const workspaceId = getStoredWorkspaceId()
   if (workspaceId && !headers['X-Workspace-Id']) {
     headers['X-Workspace-Id'] = workspaceId

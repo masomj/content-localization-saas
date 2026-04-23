@@ -36,7 +36,10 @@ internal sealed class ContentItemService(
             Status = request.Status.Trim(),
             Tags = string.Join('|', (request.Tags ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim().ToLowerInvariant())),
             Context = request.Context?.Trim() ?? string.Empty,
-            Notes = request.Notes?.Trim() ?? string.Empty
+            Notes = request.Notes?.Trim() ?? string.Empty,
+            Description = request.Description?.Trim() ?? string.Empty,
+            MaxLength = request.MaxLength,
+            ContentType = request.ContentType?.Trim() ?? string.Empty
         };
 
         db.ContentItems.Add(item);
@@ -66,7 +69,7 @@ internal sealed class ContentItemService(
         return await query.OrderByDescending(x => x.CreatedUtc).ToListAsync(cancellationToken);
     }
 
-    public async Task<ContentItem> UpdateAsync(Guid id, string source, string status, string actorEmail, CancellationToken cancellationToken)
+    public async Task<ContentItem> UpdateAsync(Guid id, string source, string status, string actorEmail, CancellationToken cancellationToken, string? description = null, int? maxLength = null, string? contentType = null)
     {
         var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new ResourceNotFoundException(nameof(ContentItem), id);
@@ -76,6 +79,10 @@ internal sealed class ContentItemService(
 
         item.Source = source.Trim();
         item.Status = status.Trim();
+
+        if (description is not null) item.Description = description.Trim();
+        if (maxLength.HasValue) item.MaxLength = maxLength.Value > 0 ? maxLength.Value : null;
+        if (contentType is not null) item.ContentType = contentType.Trim();
 
         if (!string.Equals(previousSource, item.Source, StringComparison.Ordinal))
         {

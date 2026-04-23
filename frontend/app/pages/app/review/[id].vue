@@ -3,11 +3,13 @@ import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiCard from '~/components/ui/Card.vue'
 import { reviewClient } from '~/api/reviewClient'
+import { screenshotsClient } from '~/api/screenshotsClient'
 import type {
   ContentReview,
   DiscussionComment,
   DiscussionThread,
   TimelineEntry,
+  ContentItemScreenshot,
 } from '~/api/types'
 
 definePageMeta({
@@ -57,6 +59,13 @@ const newCommentBody = ref('')
 const newCommentTitle = ref('General')
 const isAddingComment = ref(false)
 
+// Visual context (EP4-S3)
+const contextScreenshots = ref<ContentItemScreenshot[]>([])
+const contextExpanded = ref(true)
+const contextIndex = ref(0)
+const contextPanelWidth = ref(320)
+const isResizingContext = ref(false)
+
 // Reply state
 const replyingTo = ref<{ threadId: string; parentCommentId?: string } | null>(null)
 const replyBody = ref('')
@@ -100,6 +109,14 @@ async function loadData() {
 
     // Load comments for all threads
     await loadAllThreadComments()
+
+    // EP4-S3: Load visual context screenshots
+    try {
+      contextScreenshots.value = await screenshotsClient.getForContentItem(contentItemId.value)
+      contextIndex.value = 0
+    } catch (_) {
+      contextScreenshots.value = []
+    }
   } catch (err: any) {
     errorMessage.value = err?.message ?? 'Failed to load review details'
   } finally {
@@ -305,6 +322,23 @@ function scrollToBottom() {
     const el = document.querySelector('.timeline-section')
     if (el) el.scrollTop = el.scrollHeight
   })
+}
+
+// EP4-S3: Context panel resize
+function startContextResize(event: MouseEvent) {
+  isResizingContext.value = true
+  const startX = event.clientX
+  const startWidth = contextPanelWidth.value
+  function onMove(e: MouseEvent) {
+    contextPanelWidth.value = Math.max(200, Math.min(600, startWidth + (startX - e.clientX)))
+  }
+  function onUp() {
+    isResizingContext.value = false
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
 }
 
 function goBack() {
@@ -597,6 +631,67 @@ onMounted(loadData)
               </UiButton>
             </div>
           </UiCard>
+        </aside>
+
+        <!-- EP4-S3: Visual Context Panel -->
+        <aside
+          class="review-detail__context"
+          :style="{ width: `${contextPanelWidth}px` }"
+          aria-label="Visual context"
+        >
+          <div class="context-resize-handle" @mousedown="startContextResize"></div>
+          <div class="context-panel">
+            <button class="context-panel__toggle" @click="contextExpanded = !contextExpanded">
+              <span class="context-panel__toggle-icon">{{ contextExpanded ? '\u25BC' : '\u25B6' }}</span>
+              Visual Context
+            </button>
+
+            <div v-if="contextExpanded" class="context-panel__body">
+              <template v-if="contextScreenshots.length > 0">
+                <div class="context-panel__image-wrapper">
+                  <img
+                    :src="`/${contextScreenshots[contextIndex].storagePath}`"
+                    :alt="contextScreenshots[contextIndex].fileName"
+                    class="context-panel__image"
+                  />
+                  <!-- Highlighted regions -->
+                  <div
+                    v-for="region in contextScreenshots[contextIndex].linkedRegions"
+                    :key="region.id"
+                    class="context-panel__region-highlight"
+                    :style="{
+                      left: `${(region.x / (contextScreenshots[contextIndex].width || 1)) * 100}%`,
+                      top: `${(region.y / (contextScreenshots[contextIndex].height || 1)) * 100}%`,
+                      width: `${(region.width / (contextScreenshots[contextIndex].width || 1)) * 100}%`,
+                      height: `${(region.height / (contextScreenshots[contextIndex].height || 1)) * 100}%`,
+                    }"
+                  ></div>
+                </div>
+
+                <!-- Navigation arrows -->
+                <div v-if="contextScreenshots.length > 1" class="context-panel__nav">
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    :disabled="contextIndex <= 0"
+                    @click="contextIndex--"
+                  >&larr;</UiButton>
+                  <span class="context-panel__nav-label">{{ contextIndex + 1 }} / {{ contextScreenshots.length }}</span>
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    :disabled="contextIndex >= contextScreenshots.length - 1"
+                    @click="contextIndex++"
+                  >&rarr;</UiButton>
+                </div>
+              </template>
+
+              <div v-else class="context-panel__empty">
+                <p>No visual context available</p>
+                <p class="context-panel__empty-hint">Link screenshot regions to this content item to see them here.</p>
+              </div>
+            </div>
+          </div>
         </aside>
       </div>
     </template>
@@ -1248,5 +1343,104 @@ onMounted(loadData)
   .review-detail__sidebar {
     position: static;
   }
+
+  .review-detail__context {
+    width: 100% !important;
+  }
+}
+
+/* ================================================================== */
+/*  EP4-S3: Visual Context Panel                                       */
+/* ================================================================== */
+.review-detail__context {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.context-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.context-resize-handle:hover {
+  background: var(--color-primary-300);
+}
+
+.context-panel__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  text-align: left;
+}
+
+.context-panel__toggle-icon {
+  font-size: var(--font-size-xs);
+}
+
+.context-panel__body {
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: var(--spacing-3);
+  background: var(--color-surface);
+}
+
+.context-panel__image-wrapper {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: var(--spacing-2);
+}
+
+.context-panel__image {
+  width: 100%;
+  display: block;
+}
+
+.context-panel__region-highlight {
+  position: absolute;
+  border: 3px solid var(--color-primary-500);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-primary-300) 20%, transparent);
+  pointer-events: none;
+}
+
+.context-panel__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+}
+
+.context-panel__nav-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.context-panel__empty {
+  text-align: center;
+  padding: var(--spacing-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.context-panel__empty-hint {
+  font-size: var(--font-size-xs);
+  margin-top: var(--spacing-1);
 }
 </style>

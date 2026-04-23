@@ -112,6 +112,52 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.ToTable("api_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.BillingEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<bool>("Processed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ProcessedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProviderEventId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("ReceivedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceSubscriptionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Processed");
+
+                    b.HasIndex("ProviderEventId")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceSubscriptionId", "ReceivedUtc");
+
+                    b.ToTable("billing_events", (string)null);
+                });
+
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.ContentItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -131,6 +177,13 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.Property<Guid?>("CollectionId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("");
+
                     b.Property<string>("Context")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -144,10 +197,20 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasDefaultValue("");
+
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("MaxLength")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Notes")
                         .IsRequired()
@@ -246,6 +309,9 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasDefaultValue("");
 
+                    b.Property<bool>("RequiresReview")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -265,6 +331,8 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.HasIndex("DueUtc");
 
                     b.HasIndex("IsOutdated");
+
+                    b.HasIndex("RequiresReview");
 
                     b.HasIndex("ContentItemId", "LanguageCode")
                         .IsUnique();
@@ -721,6 +789,163 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.ToTable("external_review_links", (string)null);
                 });
 
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.FigmaScreenshotSync", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FigmaFileKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("FigmaFileName")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasDefaultValue("");
+
+                    b.Property<int>("FrameCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastSyncUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SyncStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("idle");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("figma_screenshot_syncs", (string)null);
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.Glossary", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId");
+
+                    b.ToTable("glossaries", (string)null);
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.GlossaryTerm", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CaseSensitive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("ForbiddenReplacement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasDefaultValue("");
+
+                    b.Property<Guid>("GlossaryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsForbidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SourceTerm")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GlossaryId");
+
+                    b.HasIndex("SourceTerm");
+
+                    b.ToTable("glossary_terms", (string)null);
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.GlossaryTermTranslation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GlossaryTermId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LanguageCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("TranslatedTerm")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GlossaryTermId", "LanguageCode")
+                        .IsUnique();
+
+                    b.ToTable("glossary_term_translations", (string)null);
+                });
+
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.IdempotencyRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1071,6 +1296,56 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.ToTable("notification_preferences", (string)null);
                 });
 
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.PlanDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxFigmaBoards")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxFramesAndComponents")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxProjects")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxUsers")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("PricePerSeatMonthly")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasFilter("\"IsDefault\" = true");
+
+                    b.HasIndex("Tier")
+                        .IsUnique();
+
+                    b.ToTable("plan_definitions", (string)null);
+                });
+
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.PluginSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1327,6 +1602,33 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.ToTable("project_languages", (string)null);
                 });
 
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.ProjectToneConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ToneDescription")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("project_tone_configs", (string)null);
+                });
+
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.ProjectVersion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1497,6 +1799,232 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("saved_filter_presets", (string)null);
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.Screenshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("image/png");
+
+                    b.Property<string>("OcrStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("pending");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("screenshots", (string)null);
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.ScreenshotRegion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("ContentItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DetectedText")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<double>("Height")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("IsManualLink")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ScreenshotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Width")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("X")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Y")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentItemId");
+
+                    b.HasIndex("ScreenshotId");
+
+                    b.ToTable("screenshot_regions", (string)null);
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.StyleOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ContentItemLanguageTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OverriddenByEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<Guid>("StyleRuleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StyleRuleId");
+
+                    b.HasIndex("ContentItemLanguageTaskId", "StyleRuleId")
+                        .IsUnique();
+
+                    b.ToTable("style_overrides", (string)null);
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.StyleRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Pattern")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasDefaultValue("");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RuleType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("style_rules", (string)null);
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.ToneCheckResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Applied")
+                        .HasColumnType("boolean");
+
+                    b.Property<double>("ConfidenceScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("ContentItemLanguageTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OriginalText")
+                        .IsRequired()
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)");
+
+                    b.Property<string>("Reasoning")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("SuggestedText")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
+                        .HasDefaultValue("");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentItemLanguageTaskId");
+
+                    b.ToTable("tone_check_results", (string)null);
                 });
 
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.TranslationMemoryEntry", b =>
@@ -1813,6 +2341,75 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.ToTable("workspace_memberships", (string)null);
                 });
 
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.WorkspaceSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CurrentPeriodEndUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CurrentPeriodStartUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("GraceExpiresUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlanDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Provider")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProviderCustomerId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("ProviderMandateId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("ProviderSubscriptionId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasDefaultValue("");
+
+                    b.Property<int>("SeatCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanDefinitionId");
+
+                    b.HasIndex("ProviderSubscriptionId");
+
+                    b.HasIndex("WorkspaceId")
+                        .IsUnique();
+
+                    b.ToTable("workspace_subscriptions", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -2009,6 +2606,15 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.BillingEvent", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.WorkspaceSubscription", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceSubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.ContentItem", b =>
                 {
                     b.HasOne("ContentLocalizationSaaS.Domain.ProjectCollection", null)
@@ -2134,6 +2740,42 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.FigmaScreenshotSync", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.Glossary", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.GlossaryTerm", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.Glossary", null)
+                        .WithMany()
+                        .HasForeignKey("GlossaryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.GlossaryTermTranslation", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.GlossaryTerm", null)
+                        .WithMany()
+                        .HasForeignKey("GlossaryTermId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.LibraryComponent", b =>
                 {
                     b.HasOne("ContentLocalizationSaaS.Domain.Project", null)
@@ -2225,6 +2867,15 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.ProjectToneConfig", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.ProjectVersion", b =>
                 {
                     b.HasOne("ContentLocalizationSaaS.Domain.Project", null)
@@ -2239,6 +2890,57 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
                     b.HasOne("ContentLocalizationSaaS.Domain.ProjectVersion", null)
                         .WithMany()
                         .HasForeignKey("VersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.Screenshot", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.ScreenshotRegion", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.Screenshot", null)
+                        .WithMany()
+                        .HasForeignKey("ScreenshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.StyleOverride", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.ContentItemLanguageTask", null)
+                        .WithMany()
+                        .HasForeignKey("ContentItemLanguageTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ContentLocalizationSaaS.Domain.StyleRule", null)
+                        .WithMany()
+                        .HasForeignKey("StyleRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.StyleRule", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.ToneCheckResult", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.ContentItemLanguageTask", null)
+                        .WithMany()
+                        .HasForeignKey("ContentItemLanguageTaskId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -2281,6 +2983,21 @@ namespace ContentLocalizationSaaS.Infrastructure.Migrations
 
             modelBuilder.Entity("ContentLocalizationSaaS.Domain.WorkspaceMembership", b =>
                 {
+                    b.HasOne("ContentLocalizationSaaS.Domain.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentLocalizationSaaS.Domain.WorkspaceSubscription", b =>
+                {
+                    b.HasOne("ContentLocalizationSaaS.Domain.PlanDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("PlanDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("ContentLocalizationSaaS.Domain.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")

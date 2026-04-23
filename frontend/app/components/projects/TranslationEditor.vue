@@ -2,13 +2,20 @@
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { translationClient } from '~/api/translationClient'
-import type { LanguageTask, TranslationSuggestion } from '~/api/types'
+import { glossaryClient } from '~/api/glossaryClient'
+import { styleRulesClient } from '~/api/styleRulesClient'
+import { toneCheckClient } from '~/api/toneCheckClient'
+import type { GlossarySuggestion } from '~/api/glossaryClient'
+import type { LanguageTask, TranslationSuggestion, ForbiddenMatch, StyleViolation, ToneCheckResponse } from '~/api/types'
 
 interface Props {
   itemId: string
   itemKey: string
   source: string
   language: string
+  maxLength?: number | null
+  projectId?: string | null
+  contentType?: string | null
 }
 
 const props = defineProps<Props>()
@@ -18,6 +25,7 @@ const emit = defineEmits<{
 }>()
 
 const translationText = ref('')
+const existingTaskId = ref('')
 const status = ref('draft')
 const previousApproved = ref('')
 const isOutdated = ref(false)
@@ -27,6 +35,22 @@ const isLoadingSuggestion = ref(false)
 const saveError = ref('')
 
 const suggestion = ref<TranslationSuggestion>({ hasSuggestion: false, suggestion: null })
+
+const glossarySuggestions = ref<GlossarySuggestion[]>([])
+const isLoadingGlossary = ref(false)
+
+// Forbidden terms state
+const forbiddenMatches = ref<ForbiddenMatch[]>([])
+let forbiddenDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+// Style violations state
+const styleViolations = ref<StyleViolation[]>([])
+const dismissedViolations = ref<Set<string>>(new Set())
+
+// Tone check state
+const toneResult = ref<ToneCheckResponse | null>(null)
+const isCheckingTone = ref(false)
+const toneApplied = ref(false)
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -42,6 +66,7 @@ async function loadExistingTask() {
       (t: LanguageTask) => t.languageCode === props.language,
     )
     if (match) {
+      existingTaskId.value = match.id ?? ''
       translationText.value = match.translationText ?? ''
       status.value = match.status ?? 'draft'
       previousApproved.value = match.previousApprovedTranslation ?? ''
@@ -62,6 +87,112 @@ async function loadSuggestion() {
     suggestion.value = { hasSuggestion: false, suggestion: null }
   } finally {
     isLoadingSuggestion.value = false
+  }
+}
+
+async function loadGlossarySuggestions() {
+  if (!props.source) return
+  isLoadingGlossary.value = true
+  try {
+    glossarySuggestions.value = await glossaryClient.suggest(props.source, props.language)
+  } catch {
+    glossarySuggestions.value = []
+  } finally {
+    isLoadingGlossary.value = false
+  }
+}
+
+async function checkForbiddenTerms() {
+  const text = translationText.value
+  if (!text.trim()) {
+    forbiddenMatches.value = []
+    return
+  }
+  try {
+    forbiddenMatches.value = await glossaryClient.forbiddenCheck(text, props.language)
+  } catch {
+    forbiddenMatches.value = []
+  }
+}
+
+watch(translationText, () => {
+  if (forbiddenDebounceTimer) clearTimeout(forbiddenDebounceTimer)
+  forbiddenDebounceTimer = setTimeout(() => {
+    checkForbiddenTerms()
+  }, 500)
+})
+
+const visibleStyleViolations = computed(() =>
+  styleViolations.value.filter(v => !dismissedViolations.value.has(v.ruleId)),
+)
+
+function dismissViolation(ruleId: string) {
+  dismissedViolations.value.add(ruleId)
+}
+
+async function checkStyleRules() {
+  if (!props.projectId) return
+  try {
+    styleViolations.value = await styleRulesClient.check(
+      translationText.value,
+      props.projectId,
+      props.contentType || '',
+    )
+    dismissedViolations.value.clear()
+  } catch {
+    styleViolations.value = []
+  }
+}
+
+async function checkTone() {
+  if (!props.projectId || !existingTaskId.value || !translationText.value.trim()) return
+  isCheckingTone.value = true
+  toneResult.value = null
+  toneApplied.value = false
+  try {
+    const result = await toneCheckClient.check({
+      contentItemLanguageTaskId: existingTaskId.value,
+      text: translationText.value,
+      language: props.language,
+      projectId: props.projectId,
+    })
+    if (result.hasMismatch && result.confidence >= 0.7) {
+      toneResult.value = result
+    }
+  } catch {
+    // tone check is non-blocking — silently ignore errors
+  } finally {
+    isCheckingTone.value = false
+  }
+}
+
+async function applyToneSuggestion() {
+  if (!toneResult.value) return
+  try {
+    const result = await toneCheckClient.apply(toneResult.value.id)
+    translationText.value = result.translationText
+    toneApplied.value = true
+  } catch {
+    // fallback: just apply the suggestion text directly
+    if (toneResult.value.suggestion) {
+      translationText.value = toneResult.value.suggestion
+      toneApplied.value = true
+    }
+  }
+}
+
+function insertGlossaryTerm(translated: string) {
+  const textarea = document.getElementById('teTranslation') as HTMLTextAreaElement | null
+  if (textarea) {
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    translationText.value = translationText.value.substring(0, start) + translated + translationText.value.substring(end)
+    nextTick(() => {
+      textarea.focus()
+      textarea.selectionStart = textarea.selectionEnd = start + translated.length
+    })
+  } else {
+    translationText.value += translated
   }
 }
 
@@ -91,6 +222,8 @@ async function save() {
       status: status.value,
       translationText: translationText.value,
     })
+    await checkStyleRules()
+    checkTone() // async, non-blocking
     emit('saved')
   } catch (error: any) {
     saveError.value = error?.message || 'Failed to save translation'
@@ -111,7 +244,7 @@ function handleKeydown(e: KeyboardEvent) {
 
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
-  await Promise.all([loadExistingTask(), loadSuggestion()])
+  await Promise.all([loadExistingTask(), loadSuggestion(), loadGlossarySuggestions()])
 })
 
 onUnmounted(() => {
@@ -145,6 +278,17 @@ onUnmounted(() => {
           <label class="te-label">Source text</label>
           <span class="te-hint">Original text in the source language (read-only)</span>
           <div class="te-source-display">{{ source }}</div>
+          <div v-if="glossarySuggestions.length > 0" class="te-glossary-badges">
+            <span
+              v-for="(gs, i) in glossarySuggestions"
+              :key="i"
+              class="te-glossary-badge"
+              :title="`${gs.glossaryName}${gs.definition ? ': ' + gs.definition : ''}`"
+              @click="insertGlossaryTerm(gs.translatedTerm || gs.term)"
+            >
+              {{ gs.term }}<template v-if="gs.translatedTerm"> → {{ gs.translatedTerm }}</template>
+            </span>
+          </div>
         </div>
 
         <!-- Outdated warning -->
@@ -184,6 +328,42 @@ onUnmounted(() => {
             class="te-textarea"
             rows="5"
           />
+          <div v-if="props.maxLength" class="te-maxlength" :class="{ 'te-maxlength--warn': translationText.length >= props.maxLength * 0.9 && translationText.length <= props.maxLength, 'te-maxlength--over': translationText.length > props.maxLength }">
+            <span v-if="translationText.length > props.maxLength" class="te-maxlength-icon">&#9888;</span>
+            {{ translationText.length }} / {{ props.maxLength }}
+          </div>
+        </div>
+
+        <!-- Forbidden term warnings -->
+        <div v-if="forbiddenMatches.length > 0" class="te-forbidden-list">
+          <div v-for="(fm, i) in forbiddenMatches" :key="i" class="te-forbidden-item">
+            &#10060; '{{ fm.term }}' &rarr; use '{{ fm.replacement }}' instead
+          </div>
+        </div>
+
+        <!-- Style violation warnings -->
+        <div v-if="visibleStyleViolations.length > 0" class="te-style-list">
+          <div v-for="v in visibleStyleViolations" :key="v.ruleId" class="te-style-item">
+            <span>&#9888;&#65039; {{ v.message }}</span>
+            <button class="te-style-dismiss" @click="dismissViolation(v.ruleId)">Dismiss</button>
+          </div>
+        </div>
+
+        <!-- Tone check suggestion -->
+        <div v-if="isCheckingTone" class="te-banner te-banner--info">
+          Checking tone...
+        </div>
+        <div v-else-if="toneResult && !toneApplied" class="te-banner te-banner--info">
+          <span class="te-banner-icon">&#128161;</span>
+          <div class="te-banner-content">
+            <strong>Tone suggestion</strong>
+            <p class="te-banner-detail">&ldquo;{{ toneResult.suggestion }}&rdquo; (confidence: {{ Math.round(toneResult.confidence * 100) }}%)</p>
+            <p v-if="toneResult.reasoning" class="te-banner-detail te-tone-reasoning">{{ toneResult.reasoning }}</p>
+            <UiButton size="sm" variant="secondary" @click="applyToneSuggestion">Apply</UiButton>
+          </div>
+        </div>
+        <div v-else-if="toneApplied" class="te-banner te-banner--success">
+          Tone suggestion applied.
         </div>
 
         <!-- Status selector -->
@@ -341,6 +521,15 @@ onUnmounted(() => {
   border: 1px solid color-mix(in srgb, var(--color-primary-600) 20%, transparent);
   color: var(--color-text-primary);
 }
+.te-banner--success {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 25%, transparent);
+  color: var(--color-success);
+  font-size: var(--font-size-sm);
+}
+.te-tone-reasoning {
+  font-style: italic;
+}
 .te-banner-icon {
   font-size: 1.2rem;
   flex-shrink: 0;
@@ -393,5 +582,96 @@ onUnmounted(() => {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   margin-right: auto;
+}
+
+.te-maxlength {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: right;
+  margin-top: var(--spacing-1);
+}
+.te-maxlength--warn {
+  color: #d97706;
+}
+.te-maxlength--over {
+  color: var(--color-error);
+  font-weight: var(--font-weight-medium);
+}
+.te-maxlength-icon {
+  margin-right: 2px;
+}
+
+.te-glossary-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-2);
+}
+
+.te-glossary-badge {
+  display: inline-block;
+  padding: 2px var(--spacing-2);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-primary-500) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary-500) 25%, var(--color-border));
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.te-glossary-badge:hover {
+  background: color-mix(in srgb, var(--color-primary-500) 20%, var(--color-surface));
+  color: var(--color-text-primary);
+}
+
+.te-forbidden-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.te-forbidden-item {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-error) 30%, var(--color-border));
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+}
+
+.te-style-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.te-style-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, var(--color-border));
+  color: var(--color-warning);
+  font-size: var(--font-size-sm);
+}
+
+.te-style-dismiss {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, var(--color-border));
+  border-radius: var(--radius-md);
+  padding: 1px var(--spacing-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+
+.te-style-dismiss:hover {
+  background: color-mix(in srgb, var(--color-warning) 15%, var(--color-surface));
 }
 </style>
