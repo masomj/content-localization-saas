@@ -2,6 +2,7 @@
 import AppBreadcrumbs from '~/components/AppBreadcrumbs.vue'
 
 const sidebarCollapsed = ref(false)
+const { componentLibrary } = useFeatureFlags()
 
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
@@ -78,11 +79,11 @@ const breadcrumbs = computed(() => {
           <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" /></svg>
           <span v-if="!sidebarCollapsed">Content</span>
         </NuxtLink>
-        <NuxtLink to="/app/components" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
+        <NuxtLink v-if="componentLibrary" to="/app/components" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
           <span v-if="!sidebarCollapsed">Components</span>
         </NuxtLink>
-        <NuxtLink to="/app/library" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
+        <NuxtLink v-if="componentLibrary" to="/app/library" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h3l1 1h2l1-1h3a2 2 0 012 2v1H2V6z" /><path fill-rule="evenodd" d="M2 9h16v6a2 2 0 01-2 2H4a2 2 0 01-2-2V9zm4 2a1 1 0 100 2h4a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
           <span v-if="!sidebarCollapsed">Library</span>
         </NuxtLink>

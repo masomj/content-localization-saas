@@ -1,11 +1,11 @@
 <script setup lang="ts">
+definePageMeta({ middleware: ['feature-flags'], layout: 'canvas' })
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
 import { libraryClient } from '~/api/libraryClient'
 import { contentClient } from '~/api/contentClient'
 import type { LibraryComponentWithVariants, LibraryComponentVariant, LibraryComponentTextField, ContentItem } from '~/api/types'
 
-definePageMeta({ layout: 'canvas' })
 useSeoMeta({ title: 'Library Component - InterCopy' })
 
 const route = useRoute()

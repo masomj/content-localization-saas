@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ middleware: ['feature-flags'], layout: 'canvas' })
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
 import { componentsClient } from '~/api/componentsClient'
@@ -6,7 +7,6 @@ import type { DesignComponentWithFields } from '~/api/componentsClient'
 import { contentClient } from '~/api/contentClient'
 import type { ContentItem, DesignComponentTextField } from '~/api/types'
 
-definePageMeta({ layout: 'canvas' })
 useSeoMeta({ title: 'Component Detail - InterCopy' })
 
 const route = useRoute()

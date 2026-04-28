@@ -15,6 +15,10 @@ export default defineNuxtConfig({
       keycloakUrl: process.env.NUXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080',
       keycloakRealm: process.env.NUXT_PUBLIC_KEYCLOAK_REALM || 'intercopy',
       keycloakClientId: process.env.NUXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'intercopy-web',
+      featureFlags: {
+        // Set NUXT_PUBLIC_FF_COMPONENT_LIBRARY=true to enable the component library feature
+        componentLibrary: process.env.NUXT_PUBLIC_FF_COMPONENT_LIBRARY === 'true',
+      },
     },
   },
   nitro: {
