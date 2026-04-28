@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ middleware: ['feature-flags'], layout: 'app' })
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import UiButton from '~/components/ui/Button.vue'
@@ -7,7 +8,6 @@ import { componentsClient } from '~/api/componentsClient'
 import { projectsClient } from '~/api/projectsClient'
 import type { DesignComponent, Project } from '~/api/types'
 
-definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Components - InterCopy' })
 
 const auth = useAuth()

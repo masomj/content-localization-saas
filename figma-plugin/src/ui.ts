@@ -21,6 +21,9 @@ import type {
 // InterCopy Plugin UI — Full multi-tab Frontitude-style interface
 // ---------------------------------------------------------------
 
+// Feature flags — set to true when the feature is ready for users
+const FEATURE_COMPONENT_LIBRARY = false;
+
 const DEFAULT_BASE_URL = "https://intercopy.co.uk";
 
 // ---------------------------------------------------------------
@@ -213,8 +216,13 @@ function bindEvents(): void {
 
   // Tabs
   document.querySelectorAll(".tab-item").forEach((el) => {
+    const tab = (el as HTMLElement).dataset.tab as TabName;
+    // Hide library tab when feature is disabled
+    if (tab === "library" && !FEATURE_COMPONENT_LIBRARY) {
+      (el as HTMLElement).style.display = "none";
+      return;
+    }
     el.addEventListener("click", () => {
-      const tab = (el as HTMLElement).dataset.tab as TabName;
       switchTab(tab);
     });
   });
@@ -345,6 +353,9 @@ window.onmessage = (event: MessageEvent) => {
 // ---------------------------------------------------------------
 
 function switchTab(tab: TabName): void {
+  // Guard: do not allow navigation to feature-flagged tabs when disabled
+  if (tab === "library" && !FEATURE_COMPONENT_LIBRARY) return;
+
   currentTab = tab;
 
   // Update tab bar
