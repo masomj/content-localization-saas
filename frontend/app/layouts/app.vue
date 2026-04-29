@@ -318,6 +318,8 @@ const breadcrumbs = computed(() => {
   border-radius: var(--radius-md);
   padding: 0.4rem 0.6rem;
   font-size: var(--font-size-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .layout-app__user-name {

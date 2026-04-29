@@ -197,11 +197,11 @@ function formatDate(dateStr: string): string {
 }
 
 .members-table tr:hover {
-  background: var(--color-gray-50);
+  background: var(--color-gray-100);
 }
 
 .row-expanded {
-  background: var(--color-gray-50);
+  background: var(--color-gray-100);
 }
 
 .loading-cell,
@@ -255,8 +255,8 @@ function formatDate(dateStr: string): string {
 }
 
 .status-active {
-  background: var(--color-green-100);
-  color: var(--color-green-700);
+  background: color-mix(in srgb, var(--color-success) 15%, var(--color-surface));
+  color: var(--color-success);
 }
 
 .status-inactive {
@@ -303,11 +303,11 @@ function formatDate(dateStr: string): string {
 }
 
 .icon-btn.success {
-  color: var(--color-green-600);
+  color: var(--color-success);
 }
 
 .icon-btn.success:hover {
-  color: var(--color-green-700);
+  color: color-mix(in srgb, var(--color-success) 80%, var(--color-text-primary));
 }
 
 .icon-btn svg {
