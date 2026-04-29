@@ -187,8 +187,10 @@ const breadcrumbs = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-4);
+  height: 64px;
+  padding: 0 var(--spacing-4);
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .layout-app__brand {
