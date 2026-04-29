@@ -137,6 +137,25 @@ export interface ProjectLanguage {
   isActive: boolean
 }
 
+export interface LocaleImportFileMapping {
+  fileName: string
+  languageCode: string
+  namespacePrefix?: string | null
+}
+
+export interface LocaleImportResult {
+  projectId: string
+  sourceLanguageCode: string
+  importedLanguages: string[]
+  createdLanguages: string[]
+  createdContentItems: number
+  updatedSourceItems: number
+  createdTranslationTasks: number
+  updatedTranslationTasks: number
+  skippedEntries: number
+  warnings: string[]
+}
+
 export interface LanguageTask {
   id: string
   contentItemId: string

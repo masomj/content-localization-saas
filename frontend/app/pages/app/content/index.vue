@@ -3,6 +3,7 @@ import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
 import ExportPanel from '~/components/projects/ExportPanel.vue'
 import LocalizationGrid from '~/components/projects/LocalizationGrid.vue'
+import LocaleImportModal from '~/components/projects/LocaleImportModal.vue'
 import TranslationEditor from '~/components/projects/TranslationEditor.vue'
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
@@ -10,7 +11,7 @@ import { contentClient } from '~/api/contentClient'
 import { projectsClient } from '~/api/projectsClient'
 import { translationClient } from '~/api/translationClient'
 import { languagesClient } from '~/api/languagesClient'
-import type { ContentItem, Project, ProjectTreeNode, ProjectLanguage, LanguageTask } from '~/api/types'
+import type { ContentItem, Project, ProjectTreeNode, ProjectLanguage, LanguageTask, LocaleImportResult } from '~/api/types'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Content - InterCopy' })
@@ -22,6 +23,8 @@ const selectedProjectId = ref('')
 const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' | 'collectionId'>>>([])
 
 const showExport = ref(false)
+const showImportModal = ref(false)
+const lastImportResult = ref<LocaleImportResult | null>(null)
 const showAddContentForm = ref(false)
 const newContentKey = ref('')
 const newContentSource = ref('')
@@ -397,6 +400,17 @@ function onTranslationSaved() {
   locGridRef.value?.reload()
 }
 
+async function onLocaleImported(result: LocaleImportResult) {
+  lastImportResult.value = result
+  showImportModal.value = false
+  await loadContent()
+  locGridRef.value?.reload()
+
+  if (selectedItem.value) {
+    await loadPanelTranslations(selectedItem.value.id)
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Data loading
 // ---------------------------------------------------------------------------
@@ -604,6 +618,9 @@ watch(selectedProjectId, async () => {
         <NuxtLink to="/app/content/languages" class="header-link-btn">
           Languages
         </NuxtLink>
+        <UiButton :disabled="!selectedProjectId" variant="secondary" @click="showImportModal = true">
+          Import Locale Files
+        </UiButton>
         <UiButton :disabled="!selectedProjectId" variant="secondary" @click="showExport = true">
           Export
         </UiButton>
@@ -638,6 +655,21 @@ watch(selectedProjectId, async () => {
     <div v-if="selectedProject" class="project-subheader">
       <p class="project-subheader-name">{{ selectedProject.name }}</p>
       <p v-if="selectedProject.description" class="project-subheader-desc">{{ selectedProject.description }}</p>
+    </div>
+
+    <div v-if="lastImportResult" class="import-summary-banner">
+      <p class="import-summary-title">Locale import complete</p>
+      <p class="import-summary-text">
+        Created {{ lastImportResult.createdContentItems }} keys, updated {{ lastImportResult.updatedSourceItems }} source items,
+        created {{ lastImportResult.createdTranslationTasks }} translations, updated {{ lastImportResult.updatedTranslationTasks }} translations,
+        skipped {{ lastImportResult.skippedEntries }} entries.
+      </p>
+      <p v-if="lastImportResult.createdLanguages.length > 0" class="import-summary-text">
+        Added languages: {{ lastImportResult.createdLanguages.join(', ') }}
+      </p>
+      <ul v-if="lastImportResult.warnings.length > 0" class="import-summary-warnings">
+        <li v-for="warning in lastImportResult.warnings.slice(0, 6)" :key="warning">{{ warning }}</li>
+      </ul>
     </div>
 
     <AppEmptyState
@@ -874,6 +906,13 @@ watch(selectedProjectId, async () => {
       </form>
     </div>
 
+    <LocaleImportModal
+      v-if="showImportModal && selectedProjectId"
+      :project-id="selectedProjectId"
+      @close="showImportModal = false"
+      @imported="onLocaleImported"
+    />
+
     <ExportPanel
       v-if="showExport && selectedProjectId"
       :project-id="selectedProjectId"
@@ -1099,6 +1138,34 @@ watch(selectedProjectId, async () => {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   line-height: 1.5;
+}
+.import-summary-banner {
+  margin-bottom: var(--spacing-5);
+  padding: var(--spacing-4);
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+}
+.import-summary-title {
+  margin: 0 0 var(--spacing-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+.import-summary-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+.import-summary-text + .import-summary-text {
+  margin-top: var(--spacing-1);
+}
+.import-summary-warnings {
+  margin: var(--spacing-3) 0 0;
+  padding-left: var(--spacing-5);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
 }
 .lang-manager-section { margin-bottom: var(--spacing-5); }
 .label-with-hint { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
