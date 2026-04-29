@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
 env:
   SERVER_HOST: ${{ secrets.HETZNER_DEV_HOST }}
   SERVER_USER: root
@@ -16,7 +20,7 @@ jobs:
     environment: dev
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set short SHA
         id: vars
@@ -38,13 +42,13 @@ jobs:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          command_timeout: 15m
+          command_timeout: 30m
           script: |
             set -euo pipefail
             cd /opt/intercopy
 
             echo "=== Building images ==="
-            docker compose build --no-cache api frontend
+            docker compose build --pull api frontend
 
             echo "=== Running EF Core migrations ==="
             docker compose run --rm \
