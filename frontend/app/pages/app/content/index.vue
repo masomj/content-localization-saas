@@ -843,9 +843,12 @@ watch(selectedProjectId, async () => {
       </section>
     </template>
 
-    <!-- ============================================================ -->
-    <!-- Localization Grid                                            -->
-    <!-- ============================================================ -->
+    <!--
+    ============================================================
+    Localization Grid (temporarily disabled)
+    Commented out for now so we can revisit the translations table later
+    and bring it back once the UX/function matches what we want.
+    ============================================================
     <template v-if="selectedProjectId && !isLoading">
       <div class="loc-grid-section">
         <h2 class="loc-grid-heading">Translations</h2>
@@ -859,6 +862,7 @@ watch(selectedProjectId, async () => {
         />
       </div>
     </template>
+    -->
 
     <!-- ============================================================ -->
     <!-- Translation Editor (opened from grid cell click)             -->
