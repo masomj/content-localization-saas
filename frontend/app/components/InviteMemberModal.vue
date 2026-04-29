@@ -124,13 +124,13 @@ function handleClose() {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-6);
-  border-bottom: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal__title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   margin: 0;
 }
 
@@ -139,14 +139,14 @@ function handleClose() {
   border: none;
   padding: var(--spacing-2);
   cursor: pointer;
-  color: var(--color-gray-500);
+  color: var(--color-text-secondary);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
 }
 
 .modal__close:hover {
-  background: var(--color-gray-100);
-  color: var(--color-gray-700);
+  background: var(--color-background);
+  color: var(--color-text-primary);
 }
 
 .modal__close svg {
@@ -172,6 +172,6 @@ function handleClose() {
   justify-content: flex-end;
   gap: var(--spacing-3);
   padding: var(--spacing-6);
-  border-top: 1px solid var(--color-gray-200);
+  border-top: 1px solid var(--color-border);
 }
 </style>
