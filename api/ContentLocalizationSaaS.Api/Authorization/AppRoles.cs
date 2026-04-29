@@ -21,7 +21,13 @@ public static class AppRoleResolver
         return TryParseRole(raw, out var parsed) ? parsed : AppRole.Viewer;
     }
 
-    public static bool TryResolveFromClaims(ClaimsPrincipal principal, out AppRole role)
+    public static bool TryResolveFromHeader(HttpContext context, out AppRole role)
+    {
+        var raw = context.Request.Headers[HeaderName].ToString();
+        return TryParseRole(raw, out role);
+    }
+
+    public static bool TryResolveFromClaims(ClaimsPrincipal? principal, out AppRole role)
     {
         role = AppRole.Viewer;
         if (principal?.Identity?.IsAuthenticated != true) return false;

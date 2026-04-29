@@ -22,6 +22,7 @@ public sealed class RequireAppRoleFilter(AppRole minimumRole, AppDbContext db, I
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var legacyEnabled = options?.Value.LegacyHeaderAuthEnabled ?? true;
+        var isAuthenticated = context.HttpContext.User?.Identity?.IsAuthenticated == true;
 
         AppRole current;
 
@@ -34,12 +35,18 @@ public sealed class RequireAppRoleFilter(AppRole minimumRole, AppDbContext db, I
         {
             current = claimsRole;
         }
-        else if (legacyEnabled)
+        else if (legacyEnabled && AppRoleResolver.TryResolveFromHeader(context.HttpContext, out var headerRole))
         {
-            current = AppRoleResolver.ResolveFromHeader(context.HttpContext);
+            current = headerRole;
         }
         else
         {
+            if (!isAuthenticated)
+            {
+                context.Result = new ChallengeResult();
+                return;
+            }
+
             current = AppRole.Viewer;
         }
 
