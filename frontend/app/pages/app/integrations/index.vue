@@ -5,6 +5,7 @@ import UiButton from '~/components/ui/Button.vue'
 
 definePageMeta({
   layout: 'app',
+  middleware: ['feature-flags'],
 })
 
 useSeoMeta({

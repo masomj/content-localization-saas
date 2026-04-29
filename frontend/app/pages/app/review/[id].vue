@@ -19,6 +19,7 @@ definePageMeta({
 const route = useRoute()
 const router = useRouter()
 const auth = useAuth()
+const { screenshots: screenshotsEnabled } = useFeatureFlags()
 
 const contentItemId = computed(() => route.params.id as string)
 
@@ -110,11 +111,15 @@ async function loadData() {
     // Load comments for all threads
     await loadAllThreadComments()
 
-    // EP4-S3: Load visual context screenshots
-    try {
-      contextScreenshots.value = await screenshotsClient.getForContentItem(contentItemId.value)
-      contextIndex.value = 0
-    } catch (_) {
+    // EP4-S3: Load visual context screenshots only when the feature is enabled
+    if (screenshotsEnabled) {
+      try {
+        contextScreenshots.value = await screenshotsClient.getForContentItem(contentItemId.value)
+        contextIndex.value = 0
+      } catch (_) {
+        contextScreenshots.value = []
+      }
+    } else {
       contextScreenshots.value = []
     }
   } catch (err: any) {
@@ -635,6 +640,7 @@ onMounted(loadData)
 
         <!-- EP4-S3: Visual Context Panel -->
         <aside
+          v-if="screenshotsEnabled"
           class="review-detail__context"
           :style="{ width: `${contextPanelWidth}px` }"
           aria-label="Visual context"

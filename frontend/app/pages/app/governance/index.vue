@@ -4,7 +4,7 @@ import UiCard from '~/components/ui/Card.vue'
 import { governanceClient } from '~/api/governanceClient'
 import type { GovernanceDashboard } from '~/api/types'
 
-definePageMeta({ layout: 'app', middleware: ['admin'] })
+definePageMeta({ layout: 'app', middleware: ['admin', 'feature-flags'] })
 
 const auth = useAuth()
 

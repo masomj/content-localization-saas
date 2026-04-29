@@ -8,7 +8,7 @@ import type { ScreenshotContextDetail, ScreenshotContextRegion, Project, Project
 import { useAuth } from '~/composables/useAuth'
 import UiButton from '~/components/ui/Button.vue'
 
-definePageMeta({ layout: 'canvas' })
+definePageMeta({ layout: 'canvas', middleware: ['feature-flags'] })
 
 const route = useRoute()
 const router = useRouter()

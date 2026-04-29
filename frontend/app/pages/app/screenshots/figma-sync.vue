@@ -7,7 +7,7 @@ import { useAuth } from '~/composables/useAuth'
 import UiButton from '~/components/ui/Button.vue'
 import UiCard from '~/components/ui/Card.vue'
 
-definePageMeta({ layout: 'app' })
+definePageMeta({ layout: 'app', middleware: ['feature-flags'] })
 
 const auth = useAuth()
 const workspaceId = computed(() => auth.workspace.value?.id ?? '')

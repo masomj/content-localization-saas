@@ -18,6 +18,12 @@ export default defineNuxtConfig({
       featureFlags: {
         // Set NUXT_PUBLIC_FF_COMPONENT_LIBRARY=true to enable the component library feature
         componentLibrary: process.env.NUXT_PUBLIC_FF_COMPONENT_LIBRARY === 'true',
+        // Set NUXT_PUBLIC_FF_INTEGRATIONS=true to enable integrations pages/navigation
+        integrations: process.env.NUXT_PUBLIC_FF_INTEGRATIONS === 'true',
+        // Set NUXT_PUBLIC_FF_SCREENSHOTS=true to enable screenshot management and visual context
+        screenshots: process.env.NUXT_PUBLIC_FF_SCREENSHOTS === 'true',
+        // Set NUXT_PUBLIC_FF_GOVERNANCE=true to enable governance pages/navigation
+        governance: process.env.NUXT_PUBLIC_FF_GOVERNANCE === 'true',
       },
     },
   },

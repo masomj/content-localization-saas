@@ -6,7 +6,7 @@ import { contentClient } from '~/api/contentClient'
 import type { Screenshot, ScreenshotDetail, ScreenshotRegion, Project, ContentItem } from '~/api/types'
 import { useAuth } from '~/composables/useAuth'
 
-definePageMeta({ layout: 'app' })
+definePageMeta({ layout: 'app', middleware: ['feature-flags'] })
 
 const auth = useAuth()
 const workspaceId = computed(() => auth.workspace.value?.id ?? '')
