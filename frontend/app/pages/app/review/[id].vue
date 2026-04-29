@@ -4,12 +4,14 @@ import UiButton from '~/components/ui/Button.vue'
 import UiCard from '~/components/ui/Card.vue'
 import { reviewClient } from '~/api/reviewClient'
 import { screenshotsClient } from '~/api/screenshotsClient'
+import { translationClient } from '~/api/translationClient'
 import type {
-  ContentReview,
   DiscussionComment,
   DiscussionThread,
   TimelineEntry,
   ContentItemScreenshot,
+  ReviewQueueItem,
+  LanguageTask,
 } from '~/api/types'
 
 definePageMeta({
@@ -33,47 +35,34 @@ useSeoMeta({
 const isLoading = ref(true)
 const errorMessage = ref('')
 
-// Timeline
+const timelineExpanded = ref(true)
 const timeline = ref<TimelineEntry[]>([])
-
-// Reviews
-const reviews = ref<ContentReview[]>([])
-
-// Discussion threads
 const threads = ref<DiscussionThread[]>([])
 const threadComments = ref<Record<string, DiscussionComment[]>>({})
 const expandedThreads = ref<Set<string>>(new Set())
 
-// Derived item info (from the first review-queue item or timeline)
 const itemKey = ref('')
 const itemSource = ref('')
 const itemStatus = ref('')
 const itemAssignee = ref('')
+const itemLocales = ref<string[]>([])
 
-// Review submission
 const reviewBody = ref('')
 const isSubmitting = ref(false)
 const submitError = ref('')
 
-// New comment
-const newCommentBody = ref('')
-const newCommentTitle = ref('General')
-const isAddingComment = ref(false)
-
-// Visual context (EP4-S3)
 const contextScreenshots = ref<ContentItemScreenshot[]>([])
 const contextExpanded = ref(true)
 const contextIndex = ref(0)
 const contextPanelWidth = ref(320)
 const isResizingContext = ref(false)
 
-// Reply state
 const replyingTo = ref<{ threadId: string; parentCommentId?: string } | null>(null)
 const replyBody = ref('')
 const isReplying = ref(false)
 
 /* ------------------------------------------------------------------ */
-/*  Role check                                                         */
+/*  Derived state                                                      */
 /* ------------------------------------------------------------------ */
 const userRole = computed(() => {
   const memberships = auth.user.value?.workspaces ?? []
@@ -88,30 +77,34 @@ const canReview = computed(() => {
   return role === 'Reviewer' || role === 'Admin'
 })
 
+const localeLabel = computed(() => itemLocales.value.length === 1 ? 'Locale' : 'Locales')
+const localeSummary = computed(() => itemLocales.value.join(', '))
+const showHeaderSource = computed(() => {
+  return !!itemSource.value.trim() && itemSource.value.trim() !== itemKey.value.trim()
+})
+
 /* ------------------------------------------------------------------ */
 /*  Data loading                                                       */
 /* ------------------------------------------------------------------ */
 async function loadData() {
   isLoading.value = true
   errorMessage.value = ''
+
   try {
-    const [timelineData, reviewsData, threadsData] = await Promise.all([
+    const reviewerEmail = auth.user.value?.email ?? ''
+    const [timelineData, threadsData, queueData, taskData] = await Promise.all([
       reviewClient.getTimeline(contentItemId.value),
-      reviewClient.getReviews(contentItemId.value),
       reviewClient.getThreads(contentItemId.value, true),
+      reviewClient.getQueue(reviewerEmail),
+      translationClient.getTasks(contentItemId.value),
     ])
 
     timeline.value = timelineData
-    reviews.value = reviewsData
     threads.value = threadsData
 
-    // Extract item info from timeline or reviews
-    extractItemInfo()
-
-    // Load comments for all threads
+    applyItemSummary(queueData, taskData)
     await loadAllThreadComments()
 
-    // EP4-S3: Load visual context screenshots only when the feature is enabled
     if (screenshotsEnabled) {
       try {
         contextScreenshots.value = await screenshotsClient.getForContentItem(contentItemId.value)
@@ -129,27 +122,21 @@ async function loadData() {
   }
 }
 
-function extractItemInfo() {
-  // Try to extract from timeline status_change or review entries
-  for (const entry of timeline.value) {
-    if (entry.details?.key) {
-      itemKey.value = entry.details.key
-    }
-    if (entry.details?.source) {
-      itemSource.value = entry.details.source
-    }
-    if (entry.details?.status) {
-      itemStatus.value = entry.details.status
-    }
-    if (entry.details?.reviewAssigneeEmail) {
-      itemAssignee.value = entry.details.reviewAssigneeEmail
-    }
-  }
+function applyItemSummary(queueData: ReviewQueueItem[], taskData: LanguageTask[]) {
+  const currentItem = queueData.find(item => item.id === contentItemId.value)
 
-  // Fallback: use review data
-  if (!itemKey.value && reviews.value.length > 0) {
-    itemKey.value = contentItemId.value
-  }
+  itemKey.value = currentItem?.key ?? itemKey.value
+  itemSource.value = currentItem?.source ?? itemSource.value
+  itemStatus.value = currentItem?.status ?? itemStatus.value
+  itemAssignee.value = currentItem?.reviewAssigneeEmail ?? itemAssignee.value
+
+  const pendingLocales = taskData
+    .filter(task => task.status === 'pending_review')
+    .map(task => task.languageCode)
+
+  const allLocales = taskData.map(task => task.languageCode)
+  const localeSet = new Set((pendingLocales.length > 0 ? pendingLocales : allLocales).filter(Boolean))
+  itemLocales.value = Array.from(localeSet).sort((left, right) => left.localeCompare(right))
 }
 
 async function loadAllThreadComments() {
@@ -170,38 +157,18 @@ async function loadAllThreadComments() {
 /*  Actions                                                            */
 /* ------------------------------------------------------------------ */
 async function submitReview(verdict: 'approved' | 'changes_requested' | 'comment') {
-  if (!reviewBody.value.trim() && verdict !== 'comment') return
+  if (!reviewBody.value.trim()) return
   isSubmitting.value = true
   submitError.value = ''
   try {
     await reviewClient.submitReview(contentItemId.value, verdict, reviewBody.value)
     reviewBody.value = ''
     await loadData()
-    scrollToBottom()
+    scrollToTimeline()
   } catch (err: any) {
     submitError.value = err?.message ?? 'Failed to submit review'
   } finally {
     isSubmitting.value = false
-  }
-}
-
-async function addComment() {
-  if (!newCommentBody.value.trim()) return
-  isAddingComment.value = true
-  try {
-    await reviewClient.createThread(
-      contentItemId.value,
-      newCommentTitle.value || 'General',
-      newCommentBody.value,
-    )
-    newCommentBody.value = ''
-    newCommentTitle.value = 'General'
-    await loadData()
-    scrollToBottom()
-  } catch (err: any) {
-    errorMessage.value = err?.message ?? 'Failed to add comment'
-  } finally {
-    isAddingComment.value = false
   }
 }
 
@@ -315,21 +282,14 @@ function handleReviewKeydown(event: KeyboardEvent) {
   }
 }
 
-function handleCommentKeydown(event: KeyboardEvent) {
-  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-    event.preventDefault()
-    addComment()
-  }
-}
-
-function scrollToBottom() {
+function scrollToTimeline() {
+  timelineExpanded.value = true
   nextTick(() => {
     const el = document.querySelector('.timeline-section')
-    if (el) el.scrollTop = el.scrollHeight
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   })
 }
 
-// EP4-S3: Context panel resize
 function startContextResize(event: MouseEvent) {
   isResizingContext.value = true
   const startX = event.clientX
@@ -350,22 +310,17 @@ function goBack() {
   router.push('/app/review')
 }
 
-/* ------------------------------------------------------------------ */
-/*  Lifecycle                                                          */
-/* ------------------------------------------------------------------ */
 onMounted(loadData)
 </script>
 
 <template>
   <div class="review-detail">
-    <!-- Back navigation -->
     <nav class="review-detail__nav" aria-label="Review navigation">
       <UiButton variant="ghost" size="sm" @click="goBack">
         &larr; Back to queue
       </UiButton>
     </nav>
 
-    <!-- Loading -->
     <div v-if="isLoading" class="review-detail__loading">
       <UiCard padding="md">
         <AppSkeleton :lines="4" height="1rem" />
@@ -375,18 +330,16 @@ onMounted(loadData)
       </UiCard>
     </div>
 
-    <!-- Error -->
     <div v-else-if="errorMessage" class="review-detail__error" role="alert">
       {{ errorMessage }}
       <UiButton variant="secondary" size="sm" @click="loadData">Retry</UiButton>
     </div>
 
     <template v-else>
-      <!-- Header section -->
       <header class="review-detail__header">
         <div class="review-detail__header-main">
           <h1>
-            <code class="review-detail__key">{{ itemKey || contentItemId }}</code>
+            <code class="review-detail__key">{{ itemKey || 'Content review' }}</code>
           </h1>
           <div class="review-detail__header-meta">
             <span v-if="itemStatus" class="status-badge" :class="`status-badge--${itemStatus}`">
@@ -396,249 +349,217 @@ onMounted(loadData)
               Reviewer: {{ itemAssignee }}
             </span>
           </div>
+
+          <dl v-if="localeSummary || showHeaderSource" class="review-detail__facts">
+            <div v-if="localeSummary" class="review-detail__fact">
+              <dt>{{ localeLabel }}</dt>
+              <dd>{{ localeSummary }}</dd>
+            </div>
+            <div v-if="showHeaderSource" class="review-detail__fact">
+              <dt>Source text</dt>
+              <dd>{{ itemSource }}</dd>
+            </div>
+          </dl>
         </div>
       </header>
 
-      <!-- Source text -->
-      <UiCard v-if="itemSource" padding="md" class="source-panel">
-        <h2 class="source-panel__title">Source Content</h2>
-        <p class="source-panel__helper">The original content text for reference.</p>
-        <div class="source-panel__text">{{ itemSource }}</div>
-      </UiCard>
-
-      <!-- Main content: two-column layout -->
       <div class="review-detail__content">
-        <!-- Left column: Timeline + Discussion -->
         <div class="review-detail__main">
-          <!-- Timeline section -->
-          <section class="timeline-section" aria-label="Review timeline" aria-live="polite">
-            <h2 class="section-title">Activity Timeline</h2>
-            <p class="section-helper">Chronological history of reviews, comments, and status changes.</p>
+          <UiCard padding="none" class="collapsible-section">
+            <button
+              class="collapsible-section__toggle"
+              type="button"
+              :aria-expanded="timelineExpanded ? 'true' : 'false'"
+              @click="timelineExpanded = !timelineExpanded"
+            >
+              <span>
+                <span class="section-title">Activity Timeline</span>
+                <span class="section-helper collapsible-section__helper">Chronological history of reviews, comments, and status changes.</span>
+              </span>
+              <span class="collapsible-section__icon" :class="{ 'collapsible-section__icon--open': timelineExpanded }">&#9662;</span>
+            </button>
 
-            <div v-if="timeline.length === 0" class="timeline-empty">
-              No activity yet.
-            </div>
+            <div v-if="timelineExpanded" class="collapsible-section__body timeline-section" aria-label="Review timeline" aria-live="polite">
+              <div v-if="timeline.length === 0" class="timeline-empty">
+                No activity yet.
+              </div>
 
-            <ol v-else class="timeline-list" role="list">
-              <li
-                v-for="(entry, idx) in timeline"
-                :key="idx"
-                :class="['tl-entry', timelineTypeClass(entry.type), { 'tl-entry--alt': idx % 2 === 1 }]"
-                role="listitem"
-              >
-                <div class="tl-entry__icon" aria-hidden="true">{{ timelineIcon(entry.type) }}</div>
-                <div class="tl-entry__body">
-                  <div class="tl-entry__header">
-                    <span class="tl-entry__actor">{{ entry.actorEmail }}</span>
-                    <span class="tl-entry__time">{{ formatTimestamp(entry.timestamp) }}</span>
-                  </div>
-                  <div class="tl-entry__summary">
-                    {{ entry.summary }}
-                  </div>
-                  <!-- Verdict badge for review entries -->
-                  <span
-                    v-if="entry.type === 'review' && entry.details?.verdict"
-                    :class="['verdict-badge', verdictClass(entry.details.verdict)]"
-                  >
-                    <span class="verdict-badge__icon" aria-hidden="true">{{ verdictIcon(entry.details.verdict) }}</span>
-                    {{ verdictLabel(entry.details.verdict) }}
-                  </span>
-                  <!-- Review body -->
-                  <p v-if="entry.type === 'review' && entry.details?.body" class="tl-entry__review-body">
-                    {{ entry.details.body }}
-                  </p>
-                </div>
-              </li>
-            </ol>
-          </section>
-
-          <!-- Discussion threads section -->
-          <section class="threads-section" aria-label="Discussion threads">
-            <h2 class="section-title">Discussion</h2>
-            <p class="section-helper">Conversation threads about this content item.</p>
-
-            <div v-if="threads.length === 0" class="threads-empty">
-              No discussion threads yet. Start one below.
-            </div>
-
-            <div v-else class="threads-list">
-              <UiCard
-                v-for="thread in threads"
-                :key="thread.id"
-                padding="none"
-                :class="['thread-card', { 'thread-card--resolved': thread.isResolved }]"
-              >
-                <div class="thread-card__header" @click="toggleThread(thread.id)">
-                  <button
-                    class="thread-card__toggle"
-                    :aria-expanded="expandedThreads.has(thread.id) ? 'true' : 'false'"
-                    :aria-label="`Toggle thread: ${thread.title}`"
-                    type="button"
-                    @click.stop="toggleThread(thread.id)"
-                  >
-                    <span class="thread-card__arrow" :class="{ 'thread-card__arrow--open': expandedThreads.has(thread.id) }">&#9656;</span>
-                  </button>
-                  <div class="thread-card__title-row">
-                    <span class="thread-card__title">{{ thread.title }}</span>
-                    <span v-if="thread.isResolved" class="thread-card__resolved-badge">Resolved</span>
-                  </div>
-                  <span class="thread-card__meta">
-                    {{ thread.createdByEmail }} &middot; {{ formatTimestamp(thread.createdUtc) }}
-                  </span>
-                </div>
-
-                <div v-if="expandedThreads.has(thread.id)" class="thread-card__comments">
-                  <div
-                    v-for="comment in (threadComments[thread.id] || [])"
-                    :key="comment.id"
-                    :class="['comment', { 'comment--nested': comment.parentCommentId }]"
-                  >
-                    <div class="comment__header">
-                      <span class="comment__author">{{ comment.authorEmail }}</span>
-                      <span class="comment__time">{{ formatTimestamp(comment.createdUtc) }}</span>
+              <ol v-else class="timeline-list" role="list">
+                <li
+                  v-for="(entry, idx) in timeline"
+                  :key="idx"
+                  :class="['tl-entry', timelineTypeClass(entry.type), { 'tl-entry--alt': idx % 2 === 1 }]"
+                  role="listitem"
+                >
+                  <div class="tl-entry__icon" aria-hidden="true">{{ timelineIcon(entry.type) }}</div>
+                  <div class="tl-entry__body">
+                    <div class="tl-entry__header">
+                      <span class="tl-entry__actor">{{ entry.actorEmail }}</span>
+                      <span class="tl-entry__time">{{ formatTimestamp(entry.timestamp) }}</span>
                     </div>
-                    <p class="comment__body">{{ comment.body }}</p>
-                    <button
-                      class="comment__reply-btn"
-                      type="button"
-                      @click="startReply(thread.id, comment.id)"
+                    <div class="tl-entry__summary">
+                      {{ entry.summary }}
+                    </div>
+                    <span
+                      v-if="entry.type === 'review' && entry.details?.verdict"
+                      :class="['verdict-badge', verdictClass(entry.details.verdict)]"
                     >
-                      Reply
-                    </button>
+                      <span class="verdict-badge__icon" aria-hidden="true">{{ verdictIcon(entry.details.verdict) }}</span>
+                      {{ verdictLabel(entry.details.verdict) }}
+                    </span>
+                    <p v-if="entry.type === 'review' && entry.details?.body" class="tl-entry__review-body">
+                      {{ entry.details.body }}
+                    </p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </UiCard>
 
-                    <!-- Inline reply form -->
-                    <div
-                      v-if="replyingTo?.threadId === thread.id && replyingTo?.parentCommentId === comment.id"
-                      class="reply-form"
+          <section class="threads-section" aria-label="Discussion threads">
+            <UiCard padding="md">
+              <h2 class="section-title">Discussion</h2>
+              <p class="section-helper">Conversation threads about this content item.</p>
+
+              <div v-if="threads.length === 0" class="threads-empty">
+                No discussion threads yet.
+              </div>
+
+              <div v-else class="threads-list">
+                <UiCard
+                  v-for="thread in threads"
+                  :key="thread.id"
+                  padding="none"
+                  :class="['thread-card', { 'thread-card--resolved': thread.isResolved }]"
+                >
+                  <div class="thread-card__header" @click="toggleThread(thread.id)">
+                    <button
+                      class="thread-card__toggle"
+                      :aria-expanded="expandedThreads.has(thread.id) ? 'true' : 'false'"
+                      :aria-label="`Toggle thread: ${thread.title}`"
+                      type="button"
+                      @click.stop="toggleThread(thread.id)"
                     >
-                      <label :for="`reply-${comment.id}`" class="reply-form__label">Your reply</label>
-                      <p class="reply-form__helper">Write a reply to this comment.</p>
-                      <textarea
-                        :id="`reply-${comment.id}`"
-                        v-model="replyBody"
-                        class="reply-form__textarea"
-                        rows="3"
-                      />
-                      <div class="reply-form__actions">
-                        <UiButton
-                          size="sm"
-                          :loading="isReplying"
-                          :disabled="!replyBody.trim()"
-                          @click="replyToComment(thread.id, comment.id)"
-                        >
-                          Post Reply
-                        </UiButton>
-                        <UiButton size="sm" variant="ghost" @click="cancelReply">Cancel</UiButton>
+                      <span class="thread-card__arrow" :class="{ 'thread-card__arrow--open': expandedThreads.has(thread.id) }">&#9656;</span>
+                    </button>
+                    <div class="thread-card__title-row">
+                      <span class="thread-card__title">{{ thread.title }}</span>
+                      <span v-if="thread.isResolved" class="thread-card__resolved-badge">Resolved</span>
+                    </div>
+                    <span class="thread-card__meta">
+                      {{ thread.createdByEmail }} &middot; {{ formatTimestamp(thread.createdUtc) }}
+                    </span>
+                  </div>
+
+                  <div v-if="expandedThreads.has(thread.id)" class="thread-card__comments">
+                    <div
+                      v-for="comment in (threadComments[thread.id] || [])"
+                      :key="comment.id"
+                      :class="['comment', { 'comment--nested': comment.parentCommentId }]"
+                    >
+                      <div class="comment__header">
+                        <span class="comment__author">{{ comment.authorEmail }}</span>
+                        <span class="comment__time">{{ formatTimestamp(comment.createdUtc) }}</span>
+                      </div>
+                      <p class="comment__body">{{ comment.body }}</p>
+                      <button
+                        class="comment__reply-btn"
+                        type="button"
+                        @click="startReply(thread.id, comment.id)"
+                      >
+                        Reply
+                      </button>
+
+                      <div
+                        v-if="replyingTo?.threadId === thread.id && replyingTo?.parentCommentId === comment.id"
+                        class="reply-form"
+                      >
+                        <label :for="`reply-${comment.id}`" class="reply-form__label">Your reply</label>
+                        <p class="reply-form__helper">Write a reply to this comment.</p>
+                        <textarea
+                          :id="`reply-${comment.id}`"
+                          v-model="replyBody"
+                          class="reply-form__textarea"
+                          rows="3"
+                        />
+                        <div class="reply-form__actions">
+                          <UiButton
+                            size="sm"
+                            :loading="isReplying"
+                            :disabled="!replyBody.trim()"
+                            @click="replyToComment(thread.id, comment.id)"
+                          >
+                            Post Reply
+                          </UiButton>
+                          <UiButton size="sm" variant="ghost" @click="cancelReply">Cancel</UiButton>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <!-- Resolve button -->
-                  <div v-if="!thread.isResolved" class="thread-card__actions">
-                    <UiButton size="sm" variant="secondary" @click="resolveThread(thread.id)">
-                      Resolve thread
-                    </UiButton>
+                    <div v-if="!thread.isResolved" class="thread-card__actions">
+                      <UiButton size="sm" variant="secondary" @click="resolveThread(thread.id)">
+                        Resolve thread
+                      </UiButton>
+                    </div>
                   </div>
-                </div>
-              </UiCard>
-            </div>
+                </UiCard>
+              </div>
+            </UiCard>
           </section>
 
-          <!-- New comment form -->
-          <section class="new-comment-section" aria-label="Add comment">
-            <UiCard padding="md">
-              <h3 class="new-comment-section__title">Add a comment</h3>
-              <p class="new-comment-section__helper">Start a new discussion thread about this content item.</p>
-              <div class="new-comment-form">
-                <div class="new-comment-form__field">
-                  <label for="new-comment-title" class="form-label">Thread title</label>
-                  <p class="form-helper">A short title for this discussion thread.</p>
-                  <input
-                    id="new-comment-title"
-                    v-model="newCommentTitle"
-                    class="form-input"
-                    type="text"
-                  />
-                </div>
-                <div class="new-comment-form__field">
-                  <label for="new-comment-body" class="form-label">Comment</label>
-                  <p class="form-helper">Your comment or question. Press Ctrl+Enter to submit.</p>
-                  <textarea
-                    id="new-comment-body"
-                    v-model="newCommentBody"
-                    class="form-textarea"
-                    rows="3"
-                    @keydown="handleCommentKeydown"
-                  />
-                </div>
+          <section v-if="canReview" class="submit-review-section" aria-label="Submit review">
+            <UiCard padding="md" class="review-panel">
+              <h2 class="review-panel__title">Submit Review</h2>
+              <p class="review-panel__helper">Leave an overall review comment and choose the outcome for this content.</p>
+
+              <div class="review-panel__field">
+                <label for="review-body" class="form-label">Review comment</label>
+                <p class="form-helper">Provide feedback on this content. Press Ctrl+Enter to submit as Comment.</p>
+                <textarea
+                  id="review-body"
+                  v-model="reviewBody"
+                  class="form-textarea"
+                  rows="5"
+                  @keydown="handleReviewKeydown"
+                />
+              </div>
+
+              <div v-if="submitError" class="review-panel__error" role="alert">
+                {{ submitError }}
+              </div>
+
+              <div class="review-panel__actions">
                 <UiButton
-                  size="sm"
-                  variant="secondary"
-                  :loading="isAddingComment"
-                  :disabled="!newCommentBody.trim()"
-                  @click="addComment"
+                  class="review-btn review-btn--approve"
+                  :loading="isSubmitting"
+                  :disabled="!reviewBody.trim()"
+                  @click="submitReview('approved')"
                 >
-                  Post Comment
+                  <span aria-hidden="true">&#10003;</span> Approve
+                </UiButton>
+                <UiButton
+                  class="review-btn review-btn--request-changes"
+                  variant="danger"
+                  :loading="isSubmitting"
+                  :disabled="!reviewBody.trim()"
+                  @click="submitReview('changes_requested')"
+                >
+                  <span aria-hidden="true">&#10007;</span> Request Changes
+                </UiButton>
+                <UiButton
+                  class="review-btn review-btn--comment"
+                  variant="secondary"
+                  :loading="isSubmitting"
+                  :disabled="!reviewBody.trim()"
+                  @click="submitReview('comment')"
+                >
+                  <span aria-hidden="true">&#128172;</span> Comment
                 </UiButton>
               </div>
             </UiCard>
           </section>
         </div>
 
-        <!-- Right column: Review submission panel -->
-        <aside v-if="canReview" class="review-detail__sidebar" aria-label="Submit review">
-          <UiCard padding="md" class="review-panel">
-            <h2 class="review-panel__title">Submit Review</h2>
-            <p class="review-panel__helper">Leave an overall review comment and submit your verdict.</p>
-
-            <div class="review-panel__field">
-              <label for="review-body" class="form-label">Review comment</label>
-              <p class="form-helper">Provide feedback on this content. Press Ctrl+Enter to submit as Comment.</p>
-              <textarea
-                id="review-body"
-                v-model="reviewBody"
-                class="form-textarea"
-                rows="5"
-                @keydown="handleReviewKeydown"
-              />
-            </div>
-
-            <div v-if="submitError" class="review-panel__error" role="alert">
-              {{ submitError }}
-            </div>
-
-            <div class="review-panel__actions">
-              <UiButton
-                class="review-btn review-btn--approve"
-                :loading="isSubmitting"
-                :disabled="!reviewBody.trim()"
-                @click="submitReview('approved')"
-              >
-                <span aria-hidden="true">&#10003;</span> Approve
-              </UiButton>
-              <UiButton
-                class="review-btn review-btn--request-changes"
-                variant="danger"
-                :loading="isSubmitting"
-                :disabled="!reviewBody.trim()"
-                @click="submitReview('changes_requested')"
-              >
-                <span aria-hidden="true">&#10007;</span> Request Changes
-              </UiButton>
-              <UiButton
-                class="review-btn review-btn--comment"
-                variant="secondary"
-                :loading="isSubmitting"
-                :disabled="!reviewBody.trim()"
-                @click="submitReview('comment')"
-              >
-                <span aria-hidden="true">&#128172;</span> Comment
-              </UiButton>
-            </div>
-          </UiCard>
-        </aside>
-
-        <!-- EP4-S3: Visual Context Panel -->
         <aside
           v-if="screenshotsEnabled"
           class="review-detail__context"
@@ -660,7 +581,6 @@ onMounted(loadData)
                     :alt="contextScreenshots[contextIndex].fileName"
                     class="context-panel__image"
                   />
-                  <!-- Highlighted regions -->
                   <div
                     v-for="region in contextScreenshots[contextIndex].linkedRegions"
                     :key="region.id"
@@ -674,7 +594,6 @@ onMounted(loadData)
                   ></div>
                 </div>
 
-                <!-- Navigation arrows -->
                 <div v-if="contextScreenshots.length > 1" class="context-panel__nav">
                   <UiButton
                     variant="ghost"
@@ -705,9 +624,6 @@ onMounted(loadData)
 </template>
 
 <style scoped>
-/* ================================================================== */
-/*  Page layout                                                        */
-/* ================================================================== */
 .review-detail {
   max-width: 1200px;
 }
@@ -732,9 +648,6 @@ onMounted(loadData)
   gap: var(--spacing-3);
 }
 
-/* ================================================================== */
-/*  Header                                                             */
-/* ================================================================== */
 .review-detail__header {
   margin-bottom: var(--spacing-4);
 }
@@ -757,8 +670,37 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   gap: var(--spacing-3);
+  flex-wrap: wrap;
   font-size: var(--font-size-sm);
   color: var(--color-gray-500);
+  margin-bottom: var(--spacing-3);
+}
+
+.review-detail__facts {
+  display: grid;
+  gap: var(--spacing-2);
+  margin: 0;
+}
+
+.review-detail__fact {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: var(--spacing-3);
+  align-items: start;
+}
+
+.review-detail__fact dt {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.review-detail__fact dd {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .status-badge {
@@ -786,44 +728,9 @@ onMounted(loadData)
   color: var(--color-gray-500);
 }
 
-/* ================================================================== */
-/*  Source panel                                                        */
-/* ================================================================== */
-.source-panel {
-  margin-bottom: var(--spacing-4);
-}
-
-.source-panel__title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
-  margin: 0 0 var(--spacing-1) 0;
-}
-
-.source-panel__helper {
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
-  margin: 0 0 var(--spacing-3) 0;
-}
-
-.source-panel__text {
-  background: var(--color-gray-50);
-  border: 1px solid var(--color-gray-200);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-3) var(--spacing-4);
-  font-size: var(--font-size-sm);
-  color: var(--color-gray-800);
-  line-height: var(--line-height-relaxed);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* ================================================================== */
-/*  Two-column layout                                                  */
-/* ================================================================== */
 .review-detail__content {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--spacing-6);
   align-items: start;
 }
@@ -835,14 +742,6 @@ onMounted(loadData)
   min-width: 0;
 }
 
-.review-detail__sidebar {
-  position: sticky;
-  top: var(--spacing-4);
-}
-
-/* ================================================================== */
-/*  Section titles                                                     */
-/* ================================================================== */
 .section-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
@@ -856,9 +755,47 @@ onMounted(loadData)
   margin: 0 0 var(--spacing-4) 0;
 }
 
-/* ================================================================== */
-/*  Timeline                                                           */
-/* ================================================================== */
+.collapsible-section {
+  overflow: hidden;
+}
+
+.collapsible-section__toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--spacing-5) var(--spacing-6);
+  text-align: left;
+  cursor: pointer;
+}
+
+.collapsible-section__toggle:hover {
+  background: var(--color-gray-50);
+}
+
+.collapsible-section__helper {
+  display: block;
+  margin-bottom: 0;
+}
+
+.collapsible-section__icon {
+  color: var(--color-text-muted);
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.collapsible-section__icon--open {
+  transform: rotate(180deg);
+}
+
+.collapsible-section__body {
+  border-top: 1px solid var(--color-border);
+  padding: var(--spacing-5) var(--spacing-6) var(--spacing-6);
+}
+
 .timeline-empty,
 .threads-empty {
   font-size: var(--font-size-sm);
@@ -888,7 +825,6 @@ onMounted(loadData)
   background: var(--color-gray-50);
 }
 
-/* Type-specific left-border colors */
 .tl-entry--review {
   border-left-color: var(--color-primary-400);
 }
@@ -955,9 +891,6 @@ onMounted(loadData)
   word-break: break-word;
 }
 
-/* ================================================================== */
-/*  Verdict badges                                                     */
-/* ================================================================== */
 .verdict-badge {
   display: inline-flex;
   align-items: center;
@@ -988,9 +921,6 @@ onMounted(loadData)
   color: var(--color-gray-700);
 }
 
-/* ================================================================== */
-/*  Discussion threads                                                 */
-/* ================================================================== */
 .threads-list {
   display: flex;
   flex-direction: column;
@@ -1077,9 +1007,6 @@ onMounted(loadData)
   margin-top: var(--spacing-3);
 }
 
-/* ================================================================== */
-/*  Comments                                                           */
-/* ================================================================== */
 .comment {
   padding: var(--spacing-2) 0;
 }
@@ -1140,9 +1067,6 @@ onMounted(loadData)
   outline-offset: 2px;
 }
 
-/* ================================================================== */
-/*  Reply form                                                         */
-/* ================================================================== */
 .reply-form {
   margin-top: var(--spacing-2);
   padding: var(--spacing-3);
@@ -1164,7 +1088,8 @@ onMounted(loadData)
   margin: 0 0 var(--spacing-2) 0;
 }
 
-.reply-form__textarea {
+.reply-form__textarea,
+.form-textarea {
   width: 100%;
   font-family: inherit;
   font-size: var(--font-size-sm);
@@ -1176,7 +1101,8 @@ onMounted(loadData)
   resize: vertical;
 }
 
-.reply-form__textarea:focus {
+.reply-form__textarea:focus,
+.form-textarea:focus {
   outline: none;
   border-color: var(--color-primary-500);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
@@ -1188,36 +1114,6 @@ onMounted(loadData)
   margin-top: var(--spacing-2);
 }
 
-/* ================================================================== */
-/*  New comment section                                                */
-/* ================================================================== */
-.new-comment-section__title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
-  margin: 0 0 var(--spacing-1) 0;
-}
-
-.new-comment-section__helper {
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
-  margin: 0 0 var(--spacing-4) 0;
-}
-
-.new-comment-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
-}
-
-.new-comment-form__field {
-  display: flex;
-  flex-direction: column;
-}
-
-/* ================================================================== */
-/*  Form elements                                                      */
-/* ================================================================== */
 .form-label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -1231,43 +1127,6 @@ onMounted(loadData)
   margin: 0 0 var(--spacing-2) 0;
 }
 
-.form-input {
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-2) var(--spacing-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
-.form-textarea {
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-2) var(--spacing-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  resize: vertical;
-  width: 100%;
-}
-
-.form-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
-/* ================================================================== */
-/*  Review panel (sidebar)                                             */
-/* ================================================================== */
 .review-panel__title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
@@ -1300,9 +1159,6 @@ onMounted(loadData)
   gap: var(--spacing-2);
 }
 
-/* ================================================================== */
-/*  Review verdict buttons                                             */
-/* ================================================================== */
 .review-btn {
   width: 100%;
   justify-content: center;
@@ -1338,26 +1194,6 @@ onMounted(loadData)
   background: var(--color-gray-200);
 }
 
-/* ================================================================== */
-/*  Responsive                                                         */
-/* ================================================================== */
-@media (max-width: 900px) {
-  .review-detail__content {
-    grid-template-columns: 1fr;
-  }
-
-  .review-detail__sidebar {
-    position: static;
-  }
-
-  .review-detail__context {
-    width: 100% !important;
-  }
-}
-
-/* ================================================================== */
-/*  EP4-S3: Visual Context Panel                                       */
-/* ================================================================== */
 .review-detail__context {
   position: relative;
   flex-shrink: 0;
@@ -1448,5 +1284,22 @@ onMounted(loadData)
 .context-panel__empty-hint {
   font-size: var(--font-size-xs);
   margin-top: var(--spacing-1);
+}
+
+@media (min-width: 1100px) {
+  .review-detail__content {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .review-detail__context {
+    width: 100% !important;
+  }
+
+  .review-detail__fact {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-1);
+  }
 }
 </style>

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -44,9 +45,12 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
         "comment"
     };
 
-    private string CurrentActor => HttpContext.Request.Headers["X-Actor-Email"].ToString() is { Length: > 0 } raw
-        ? raw.Trim().ToLowerInvariant()
-        : "reviewer@example.com";
+    private string CurrentActor => (User.FindFirst(ClaimTypes.Email)?.Value
+        ?? User.FindFirst("email")?.Value
+        ?? User.FindFirst("preferred_username")?.Value
+        ?? HttpContext.Request.Headers["X-Actor-Email"].ToString()) is { Length: > 0 } raw
+            ? raw.Trim().ToLowerInvariant()
+            : "reviewer@example.com";
 
     /// <summary>
     /// GET /api/content-reviews/queue — reviewer's queue: content items with status in_review

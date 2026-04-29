@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ContentLocalizationSaaS.Api.Authorization;
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
@@ -13,9 +14,12 @@ public sealed record ReplyRequest(Guid ThreadId, Guid? ParentCommentId, string B
 [Route("api/discussions")]
 public sealed class DiscussionThreadsController(AppDbContext db) : ControllerBase
 {
-    private string CurrentActor => HttpContext.Request.Headers["X-Actor-Email"].ToString() is { Length: > 0 } raw
-        ? raw.Trim().ToLowerInvariant()
-        : "member@example.com";
+    private string CurrentActor => (User.FindFirst(ClaimTypes.Email)?.Value
+        ?? User.FindFirst("email")?.Value
+        ?? User.FindFirst("preferred_username")?.Value
+        ?? HttpContext.Request.Headers["X-Actor-Email"].ToString()) is { Length: > 0 } raw
+            ? raw.Trim().ToLowerInvariant()
+            : "member@example.com";
 
     [HttpGet("threads")]
     public async Task<IActionResult> GetThreads([FromQuery] Guid contentItemId, [FromQuery] bool includeResolved = false, CancellationToken cancellationToken = default)
