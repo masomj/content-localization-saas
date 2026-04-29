@@ -13,6 +13,7 @@ const isOpen = ref(false)
 const triggerRef = ref<HTMLButtonElement | null>(null)
 const listboxRef = ref<HTMLUListElement | null>(null)
 const focusedIndex = ref(-1)
+const listboxId = 'theme-toggle-listbox'
 
 const currentOption = computed(
   () => options.find(o => o.value === theme.preference.value) ?? options[2]
@@ -89,7 +90,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
       type="button"
       :aria-expanded="isOpen"
       aria-haspopup="listbox"
-      aria-label="`Theme: ${currentOption.label}`"
+      :aria-controls="isOpen ? listboxId : undefined"
+      :aria-label="`Theme: ${currentOption.label}`"
       @click="toggle"
       @keydown="onTriggerKeydown"
     >
@@ -112,6 +114,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
     <Transition name="tt-fade">
       <ul
         v-if="isOpen"
+        :id="listboxId"
         ref="listboxRef"
         class="tt-listbox"
         role="listbox"
@@ -179,8 +182,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
 }
 
 .tt-trigger:hover {
-  background: var(--color-gray-100);
-  border-color: var(--color-gray-300);
+  background: var(--color-background);
+  border-color: var(--color-border);
 }
 
 .tt-trigger:focus-visible {
