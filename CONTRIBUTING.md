@@ -56,6 +56,7 @@ Before creating ANY new component, check `components/ui/` first:
 - **Never duplicate** a component that already exists — extend the existing one
 - New generic UI components go in `components/ui/`
 - Domain-specific components go in `components/{domain}/` (e.g. `components/projects/`)
+- Project domain examples include modals like `components/projects/LocaleImportModal.vue`
 - All components use `<script setup lang="ts">` with typed props via `defineProps<>()`
 
 ### 2. API Client Pattern
@@ -105,6 +106,7 @@ export const myFeatureClient = {
 - `figmaSyncClient` — Figma file connections, sync triggers
 - `toneCheckClient` — tone config CRUD, tone checking, apply suggestions
 - `governanceClient` — governance dashboard metrics, CSV export
+- `localeImportsClient` — upload existing locale JSON files and import keys/translations
 
 **All types live in `api/types.ts`** — add new interfaces/types there, not in client files or pages.
 
