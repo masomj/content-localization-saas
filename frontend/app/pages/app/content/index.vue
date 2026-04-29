@@ -63,7 +63,17 @@ const panelContentType = ref('')
 const panelLanguages = ref<ProjectLanguage[]>([])
 const panelTasks = ref<LanguageTask[]>([])
 const panelTranslations = ref<Record<string, string>>({})
+const panelTranslationStatuses = ref<Record<string, string>>({})
 const panelTranslationSaving = ref<string | null>(null)
+
+const PANEL_TRANSLATION_STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'pending_review', label: 'Pending review' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'done', label: 'Done' },
+  { value: 'outdated', label: 'Outdated' },
+  { value: 'todo', label: 'Todo' },
+]
 
 // Translation editor
 const translationTarget = ref<{ itemId: string; itemKey: string; source: string; language: string; maxLength?: number | null; contentType?: string | null } | null>(null)
@@ -292,11 +302,15 @@ async function loadPanelTranslations(itemId: string) {
     // Populate translation text map
     for (const task of panelTasks.value) {
       panelTranslations.value[task.languageCode] = task.translationText ?? ''
+      panelTranslationStatuses.value[task.languageCode] = task.status || 'draft'
     }
     // Ensure all target languages have an entry
     for (const lang of panelTargetLanguages.value) {
       if (!(lang.bcp47Code in panelTranslations.value)) {
         panelTranslations.value[lang.bcp47Code] = ''
+      }
+      if (!(lang.bcp47Code in panelTranslationStatuses.value)) {
+        panelTranslationStatuses.value[lang.bcp47Code] = 'draft'
       }
     }
   } catch {
@@ -309,8 +323,7 @@ const panelTargetLanguages = computed(() =>
 )
 
 function panelTaskStatus(langCode: string): string {
-  const task = panelTasks.value.find(t => t.languageCode === langCode)
-  return task?.status ?? 'untranslated'
+  return panelTranslationStatuses.value[langCode] ?? panelTasks.value.find(t => t.languageCode === langCode)?.status ?? 'untranslated'
 }
 
 async function savePanelTranslation(langCode: string) {
@@ -320,7 +333,7 @@ async function savePanelTranslation(langCode: string) {
     await translationClient.upsert({
       contentItemId: selectedItem.value.id,
       languageCode: langCode,
-      status: 'draft',
+      status: panelTranslationStatuses.value[langCode] ?? 'draft',
       translationText: panelTranslations.value[langCode] ?? '',
     })
     // Reload tasks to get updated status
@@ -342,6 +355,7 @@ function closeSidePanel() {
   panelMaxLength.value = null
   panelContentType.value = ''
   panelError.value = ''
+  panelTranslationStatuses.value = {}
 }
 
 async function saveSidePanel() {
@@ -1042,7 +1056,7 @@ watch(selectedProjectId, async () => {
           <div v-if="panelTargetLanguages.length > 0" class="panel-translations">
             <label class="label-with-hint">
               <span>Translations</span>
-              <span class="label-hint">Add or edit translations for each target language</span>
+              <span class="label-hint">Add or edit translations and review status for each target language</span>
             </label>
             <div
               v-for="lang in panelTargetLanguages"
@@ -1057,6 +1071,25 @@ watch(selectedProjectId, async () => {
                 >
                   {{ panelTaskStatus(lang.bcp47Code) }}
                 </span>
+              </div>
+              <div class="panel-translation-controls">
+                <label :for="`panel-status-${lang.bcp47Code}`" class="label-with-hint compact-label panel-translation-status-field">
+                  <span>Review status</span>
+                  <span class="label-hint">Set the workflow state for {{ lang.bcp47Code }}</span>
+                </label>
+                <select
+                  :id="`panel-status-${lang.bcp47Code}`"
+                  v-model="panelTranslationStatuses[lang.bcp47Code]"
+                  class="edit-status-select panel-translation-select"
+                >
+                  <option
+                    v-for="option in PANEL_TRANSLATION_STATUS_OPTIONS"
+                    :key="`${lang.bcp47Code}-${option.value}`"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
               </div>
               <div class="panel-translation-input-row">
                 <textarea
@@ -1620,12 +1653,23 @@ watch(selectedProjectId, async () => {
 .panel-translation-row {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-1);
+  gap: var(--spacing-2);
 }
 .panel-translation-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+.panel-translation-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+.panel-translation-status-field {
+  margin: 0;
+}
+.panel-translation-select {
+  max-width: 220px;
 }
 .panel-translation-lang {
   font-size: var(--font-size-xs);
