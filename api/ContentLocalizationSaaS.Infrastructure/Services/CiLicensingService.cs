@@ -43,20 +43,11 @@ public sealed class CiLicensingService : ICiLicensingService
 
         if (sub is null) return;
 
-        // Find all active API tokens scoped to projects in this workspace
-        var projectIds = await _db.Projects
-            .Where(p => p.WorkspaceId == sub.WorkspaceId)
-            .Select(p => p.Id)
-            .ToListAsync(ct);
-
-        // API tokens are workspace-level (not project-scoped in current model)
-        // Revoke all non-revoked tokens
+        // Revoke only CI tokens that belong to the affected workspace.
         var tokens = await _db.ApiTokens
-            .Where(t => !t.IsRevoked)
+            .Where(t => t.WorkspaceId == sub.WorkspaceId && !t.IsRevoked)
             .ToListAsync(ct);
 
-        // Since ApiToken doesn't have a WorkspaceId, we revoke all for now
-        // TODO: Add WorkspaceId to ApiToken entity for proper scoping
         var revokedCount = 0;
         foreach (var token in tokens)
         {

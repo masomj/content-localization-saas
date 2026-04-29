@@ -88,10 +88,16 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         [FromQuery] string? version,
         CancellationToken cancellationToken)
     {
+        if (projectId == Guid.Empty) return BadRequest(new { error = "projectId_required" });
+
+        var auth = await ValidateTokenAsync(requiredScope: "exports:read", projectId, cancellationToken);
+        if (auth.Result is not null) return auth.Result;
+
         var requestId = Request.Headers["X-Request-Id"].ToString().Trim();
-        if (!string.IsNullOrWhiteSpace(requestId))
+        var idempotencyKey = string.IsNullOrWhiteSpace(requestId) ? null : $"{auth.TokenHash}:{requestId}";
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
         {
-            var existing = await db.IdempotencyRecords.FirstOrDefaultAsync(x => x.Operation == "export_bundle" && x.Key == requestId, cancellationToken);
+            var existing = await db.IdempotencyRecords.FirstOrDefaultAsync(x => x.Operation == "export_bundle" && x.Key == idempotencyKey, cancellationToken);
             if (existing is not null)
             {
                 existing.HitCount += 1;
@@ -105,9 +111,6 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
                 return Ok(parsed);
             }
         }
-
-        var auth = await ValidateTokenAsync(requiredScope: "exports:read", cancellationToken);
-        if (auth.Result is not null) return auth.Result;
 
         var tokenKey = auth.TokenHash!;
         var now = DateTime.UtcNow;
@@ -128,8 +131,6 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             Response.Headers["X-RateLimit-Remaining"] = Math.Max(0, MaxPerMinute - queue.Count).ToString();
             Response.Headers["X-RateLimit-Reset"] = DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeSeconds().ToString();
         }
-
-        if (projectId == Guid.Empty) return BadRequest(new { error = "projectId_required" });
 
         // Resolve which version to serve from
         var useSnapshot = false;
@@ -287,7 +288,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             db.IdempotencyRecords.Add(new IdempotencyRecord
             {
                 Operation = "export_bundle",
-                Key = requestId,
+                Key = idempotencyKey!,
                 ResponseJson = JsonSerializer.Serialize(responseObj),
                 HitCount = 1,
                 FirstSeenUtc = DateTime.UtcNow,
@@ -299,7 +300,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         return Ok(responseObj);
     }
 
-    private async Task<(IActionResult? Result, string? TokenHash)> ValidateTokenAsync(string requiredScope, CancellationToken cancellationToken)
+    private async Task<(IActionResult? Result, string? TokenHash)> ValidateTokenAsync(string requiredScope, Guid projectId, CancellationToken cancellationToken)
     {
         var raw = Request.Headers["X-Api-Token"].ToString();
         if (string.IsNullOrWhiteSpace(raw)) return (StatusCode(StatusCodes.Status401Unauthorized, new { error = "api_token_required" }), null);
@@ -309,14 +310,32 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         if (token is null || token.IsRevoked) return (StatusCode(StatusCodes.Status401Unauthorized, new { error = "invalid_token" }), null);
         if (token.ExpiresUtc <= DateTime.UtcNow) return (StatusCode(StatusCodes.Status401Unauthorized, new { error = "token_expired" }), null);
 
-        token.LastUsedUtc = DateTime.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
-
         var scopes = (token.Scope ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (!scopes.Contains(requiredScope))
             return (StatusCode(StatusCodes.Status403Forbidden, new { error = "scope_denied", requiredScope }), null);
+
+        var project = await db.Projects
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == projectId, cancellationToken);
+        if (project is null)
+            return (NotFound(new { error = "project_not_found" }), null);
+
+        if (project.WorkspaceId != token.WorkspaceId)
+            return (StatusCode(StatusCodes.Status403Forbidden, new { error = "project_out_of_scope" }), null);
+
+        var scopedProjectIds = await db.ApiTokenProjectScopes
+            .AsNoTracking()
+            .Where(x => x.ApiTokenId == token.Id)
+            .Select(x => x.ProjectId)
+            .ToListAsync(cancellationToken);
+
+        if (scopedProjectIds.Count > 0 && !scopedProjectIds.Contains(projectId))
+            return (StatusCode(StatusCodes.Status403Forbidden, new { error = "project_out_of_scope" }), null);
+
+        token.LastUsedUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
 
         return (null, hash);
     }

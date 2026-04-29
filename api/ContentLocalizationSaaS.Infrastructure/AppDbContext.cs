@@ -39,6 +39,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<PluginSyncConflict> PluginSyncConflicts => Set<PluginSyncConflict>();
     public DbSet<ProjectKeyConvention> ProjectKeyConventions => Set<ProjectKeyConvention>();
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
+    public DbSet<ApiTokenProjectScope> ApiTokenProjectScopes => Set<ApiTokenProjectScope>();
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDeliveryLog> WebhookDeliveryLogs => Set<WebhookDeliveryLog>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
@@ -360,7 +361,15 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.Property(x => x.TokenHash).HasMaxLength(128).IsRequired();
             e.Property(x => x.Scope).HasMaxLength(128).HasDefaultValue(string.Empty);
             e.HasIndex(x => x.TokenHash).IsUnique();
-            e.HasIndex(x => new { x.IsRevoked, x.ExpiresUtc });
+            e.HasIndex(x => new { x.WorkspaceId, x.IsRevoked, x.ExpiresUtc });
+        });
+
+        builder.Entity<ApiTokenProjectScope>(e =>
+        {
+            e.ToTable("api_token_project_scopes");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.ApiTokenId, x.ProjectId }).IsUnique();
+            e.HasIndex(x => x.ProjectId);
         });
 
         builder.Entity<WebhookSubscription>(e =>
@@ -538,6 +547,24 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             .HasOne<Workspace>()
             .WithMany()
             .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ApiToken>()
+            .HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(x => x.WorkspaceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ApiTokenProjectScope>()
+            .HasOne<ApiToken>()
+            .WithMany()
+            .HasForeignKey(x => x.ApiTokenId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ApiTokenProjectScope>()
+            .HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(x => x.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<ContentItem>()

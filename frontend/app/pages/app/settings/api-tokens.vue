@@ -3,7 +3,13 @@ import UiButton from '~/components/ui/Button.vue'
 import UiCard from '~/components/ui/Card.vue'
 import UiInput from '~/components/ui/Input.vue'
 import { integrationTokensClient } from '~/api/integrationTokensClient'
-import type { IntegrationApiToken, IntegrationApiTokenSecret, RotateIntegrationApiTokenSecret } from '~/api/types'
+import { projectsClient } from '~/api/projectsClient'
+import type {
+  IntegrationApiToken,
+  IntegrationApiTokenSecret,
+  Project,
+  RotateIntegrationApiTokenSecret,
+} from '~/api/types'
 
 definePageMeta({
   layout: 'app',
@@ -14,10 +20,15 @@ useSeoMeta({
   title: 'API Tokens - InterCopy',
 })
 
+const auth = useAuth()
+
 const SUPPORTED_SCOPE = 'exports:read'
+const MAX_EXPIRY_YEARS = 3
 
 const tokens = ref<IntegrationApiToken[]>([])
+const projects = ref<Project[]>([])
 const isLoading = ref(false)
+const isLoadingProjects = ref(false)
 const isCreating = ref(false)
 const isRevoking = ref(false)
 const isRotating = ref(false)
@@ -34,11 +45,14 @@ const selectedToken = ref<IntegrationApiToken | null>(null)
 const createName = ref('')
 const createExpiry = ref('')
 const createScope = ref(SUPPORTED_SCOPE)
+const restrictToProjects = ref(false)
+const selectedProjectIds = ref<string[]>([])
 const createError = ref('')
 const extendExpiry = ref('')
 const extendError = ref('')
 const copyState = ref<'idle' | 'copied' | 'error'>('idle')
 
+const workspaceId = computed(() => auth.organization.value?.id ?? '')
 const activeTokens = computed(() => tokens.value.filter(token => !token.isRevoked))
 
 function showFeedback(type: 'success' | 'error', message: string) {
@@ -68,6 +82,12 @@ function toDefaultExpiryInput(days = 90) {
   return toLocalDateTimeInput(date.toISOString())
 }
 
+function toMaxExpiryInput() {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() + MAX_EXPIRY_YEARS)
+  return toLocalDateTimeInput(date.toISOString())
+}
+
 function toUtcIso(value: string) {
   return value ? new Date(value).toISOString() : null
 }
@@ -93,7 +113,36 @@ function relativeExpiry(token: IntegrationApiToken) {
   if (diffDays === 1) return 'Expires in 1 day'
   if (diffDays < 30) return `Expires in ${diffDays} days`
   const diffMonths = Math.round(diffDays / 30)
-  return diffMonths <= 1 ? 'Expires in ~1 month' : `Expires in ~${diffMonths} months`
+  if (diffMonths < 12) return diffMonths <= 1 ? 'Expires in ~1 month' : `Expires in ~${diffMonths} months`
+  const diffYears = Math.round(diffMonths / 12)
+  return diffYears <= 1 ? 'Expires in ~1 year' : `Expires in ~${diffYears} years`
+}
+
+function projectScopeSummary(token: IntegrationApiToken) {
+  if (!token.isProjectRestricted || token.projectScopes.length === 0) return 'All projects in organisation'
+  if (token.projectScopes.length === 1) return token.projectScopes[0].name
+  return `${token.projectScopes.length} projects`
+}
+
+function resetCreateForm() {
+  createName.value = ''
+  createScope.value = SUPPORTED_SCOPE
+  createExpiry.value = toDefaultExpiryInput()
+  restrictToProjects.value = false
+  selectedProjectIds.value = []
+  createError.value = ''
+}
+
+async function loadProjects() {
+  if (!workspaceId.value) return
+  isLoadingProjects.value = true
+  try {
+    projects.value = await projectsClient.list(workspaceId.value)
+  } catch (error: any) {
+    showFeedback('error', error?.message || 'Failed to load projects')
+  } finally {
+    isLoadingProjects.value = false
+  }
 }
 
 async function loadTokens() {
@@ -108,10 +157,7 @@ async function loadTokens() {
 }
 
 function openCreateModal() {
-  createName.value = ''
-  createScope.value = SUPPORTED_SCOPE
-  createExpiry.value = toDefaultExpiryInput()
-  createError.value = ''
+  resetCreateForm()
   showCreateModal.value = true
 }
 
@@ -137,10 +183,33 @@ function closeSecretModal() {
   copyState.value = 'idle'
 }
 
+function validateExpiryInput(value: string) {
+  if (!value) return 'Choose an expiry date.'
+  const chosen = new Date(value)
+  if (Number.isNaN(chosen.getTime())) return 'Enter a valid expiry date.'
+  if (chosen.getTime() <= Date.now()) return 'Expiry must be in the future.'
+  const max = new Date()
+  max.setFullYear(max.getFullYear() + MAX_EXPIRY_YEARS)
+  if (chosen.getTime() > max.getTime()) return `Expiry cannot be more than ${MAX_EXPIRY_YEARS} years from now.`
+  return ''
+}
+
 async function createToken() {
   createError.value = ''
   if (!createName.value.trim()) {
     createError.value = 'Token name is required.'
+    return
+  }
+
+  const expiryError = validateExpiryInput(createExpiry.value)
+  if (expiryError) {
+    createError.value = expiryError
+    return
+  }
+
+  const projectIds = restrictToProjects.value ? selectedProjectIds.value : []
+  if (restrictToProjects.value && projectIds.length === 0) {
+    createError.value = 'Select at least one project or disable project restriction.'
     return
   }
 
@@ -150,6 +219,7 @@ async function createToken() {
       createName.value.trim(),
       createScope.value,
       toUtcIso(createExpiry.value),
+      projectIds,
     )
     copyState.value = 'idle'
     showCreateModal.value = false
@@ -198,14 +268,27 @@ async function rotateToken() {
 async function extendToken() {
   extendError.value = ''
   if (!selectedToken.value) return
-  if (!extendExpiry.value) {
-    extendError.value = 'Choose a new expiry date.'
+
+  const expiryError = validateExpiryInput(extendExpiry.value)
+  if (expiryError) {
+    extendError.value = expiryError
+    return
+  }
+
+  const newExpiryUtc = toUtcIso(extendExpiry.value)
+  if (!newExpiryUtc) {
+    extendError.value = 'Choose a valid expiry date.'
+    return
+  }
+
+  if (new Date(newExpiryUtc).getTime() <= new Date(selectedToken.value.expiresUtc).getTime()) {
+    extendError.value = 'New expiry must be later than the current expiry.'
     return
   }
 
   isExtending.value = true
   try {
-    await integrationTokensClient.extend(selectedToken.value.id, toUtcIso(extendExpiry.value) || '')
+    await integrationTokensClient.extend(selectedToken.value.id, newExpiryUtc)
     showExtendModal.value = false
     showFeedback('success', `Extended ${selectedToken.value.name}`)
     selectedToken.value = null
@@ -227,8 +310,13 @@ async function copyTokenValue() {
   }
 }
 
-onMounted(() => {
-  loadTokens()
+watch(workspaceId, async value => {
+  if (!value) return
+  await loadProjects()
+}, { immediate: false })
+
+onMounted(async () => {
+  await Promise.all([loadProjects(), loadTokens()])
 })
 </script>
 
@@ -252,15 +340,15 @@ onMounted(() => {
     </div>
 
     <UiCard class="info-card">
-      <h2>How CI authenticates</h2>
+      <h2>Security model</h2>
       <p>
-        Use a dedicated token with the <code>exports:read</code> scope. Store the raw token in your CI provider as a
-        secret and send it in the <code>X-Api-Token</code> header or via the CLI environment variables.
+        Tokens are bound to the current organisation. By default they can read exports for any project in that
+        organisation, or you can restrict them to a project allowlist when creating the token.
       </p>
       <ul>
-        <li><strong>Recommended secrets:</strong> <code>CLSAAS_BASE_URL</code>, <code>CLSAAS_API_TOKEN</code>, <code>INTERCOPY_PROJECT_ID</code></li>
-        <li><strong>One-time visibility:</strong> raw token values are only shown when a token is created or rotated</li>
-        <li><strong>Scope today:</strong> export pulls only (<code>exports:read</code>)</li>
+        <li><strong>Supported scope:</strong> <code>exports:read</code></li>
+        <li><strong>Visibility:</strong> raw token values are shown once only, on create or rotate</li>
+        <li><strong>Lifetime:</strong> maximum expiry is <strong>3 years</strong> from the time you issue or extend the token</li>
       </ul>
     </UiCard>
 
@@ -283,6 +371,7 @@ onMounted(() => {
             <tr>
               <th>Name</th>
               <th>Scope</th>
+              <th>Project scope</th>
               <th>Status</th>
               <th>Created</th>
               <th>Last used</th>
@@ -297,6 +386,12 @@ onMounted(() => {
                 <div class="token-id">{{ token.id }}</div>
               </td>
               <td><code>{{ token.scope }}</code></td>
+              <td>
+                <div>{{ projectScopeSummary(token) }}</div>
+                <div v-if="token.isProjectRestricted && token.projectScopes.length > 1" class="token-meta">
+                  {{ token.projectScopes.map(project => project.name).join(', ') }}
+                </div>
+              </td>
               <td>
                 <span :class="['status-pill', token.isRevoked ? 'status-pill--revoked' : 'status-pill--active']">
                   {{ token.isRevoked ? 'Revoked' : 'Active' }}
@@ -322,7 +417,7 @@ onMounted(() => {
     </UiCard>
 
     <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
-      <div class="modal-card">
+      <div class="modal-card modal-card--wide">
         <div class="modal-card__header">
           <div>
             <h2>Create API token</h2>
@@ -340,22 +435,43 @@ onMounted(() => {
             <UiInput id="tokenName" v-model="createName" type="text" />
           </div>
 
-          <div class="form-group">
-            <label for="tokenScope" class="label-with-hint">
-              <span>Scope</span>
-              <span class="label-hint">Only export access is supported right now.</span>
-            </label>
-            <select id="tokenScope" v-model="createScope" class="form-select">
-              <option :value="SUPPORTED_SCOPE">exports:read</option>
-            </select>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="tokenScope" class="label-with-hint">
+                <span>Scope</span>
+                <span class="label-hint">Only export access is supported right now.</span>
+              </label>
+              <select id="tokenScope" v-model="createScope" class="form-select">
+                <option :value="SUPPORTED_SCOPE">exports:read</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="tokenExpiry" class="label-with-hint">
+                <span>Expiry</span>
+                <span class="label-hint">Maximum {{ MAX_EXPIRY_YEARS }} years from now. Default is 90 days.</span>
+              </label>
+              <input id="tokenExpiry" v-model="createExpiry" :max="toMaxExpiryInput()" type="datetime-local" class="form-input" />
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="tokenExpiry" class="label-with-hint">
-              <span>Expiry</span>
-              <span class="label-hint">Tokens expire automatically. Rotate before this date if the pipeline still needs access.</span>
+          <div class="scope-box">
+            <label class="toggle-row">
+              <input v-model="restrictToProjects" type="checkbox" />
+              <span>Restrict this token to specific projects</span>
             </label>
-            <input id="tokenExpiry" v-model="createExpiry" type="datetime-local" class="form-input" />
+            <p class="scope-box__hint">
+              Leave this off to allow export pulls from any project in the current organisation.
+            </p>
+
+            <div v-if="restrictToProjects" class="project-scope-list">
+              <div v-if="isLoadingProjects" class="project-scope-list__state">Loading projects…</div>
+              <div v-else-if="projects.length === 0" class="project-scope-list__state">No projects available in this organisation yet.</div>
+              <label v-for="project in projects" :key="project.id" class="project-scope-item">
+                <input v-model="selectedProjectIds" type="checkbox" :value="project.id" />
+                <span>{{ project.name }}</span>
+              </label>
+            </div>
           </div>
 
           <p v-if="createError" class="form-error">{{ createError }}</p>
@@ -391,8 +507,8 @@ onMounted(() => {
           <div>
             <h2>Rotate token</h2>
             <p>
-              This revokes <strong>{{ selectedToken.name }}</strong> and creates a replacement token with the same scope.
-              Update your CI secret immediately after rotation.
+              This revokes <strong>{{ selectedToken.name }}</strong> and creates a replacement token with the same
+              organisation and project scope. Update your CI secret immediately after rotation.
             </p>
           </div>
           <button class="modal-close" aria-label="Close" @click="showRotateModal = false">×</button>
@@ -419,9 +535,9 @@ onMounted(() => {
           <div class="form-group">
             <label for="extendExpiry" class="label-with-hint">
               <span>New expiry</span>
-              <span class="label-hint">Must be later than the token’s current expiry.</span>
+              <span class="label-hint">Must be later than the current expiry and no more than {{ MAX_EXPIRY_YEARS }} years from now.</span>
             </label>
-            <input id="extendExpiry" v-model="extendExpiry" type="datetime-local" class="form-input" />
+            <input id="extendExpiry" v-model="extendExpiry" :max="toMaxExpiryInput()" type="datetime-local" class="form-input" />
           </div>
           <p v-if="extendError" class="form-error">{{ extendError }}</p>
         </div>
@@ -692,6 +808,12 @@ onMounted(() => {
   gap: var(--spacing-4);
 }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-4);
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -719,6 +841,50 @@ onMounted(() => {
   padding: var(--spacing-3) var(--spacing-4);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.scope-box {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  background: color-mix(in srgb, var(--color-primary-50) 20%, var(--color-surface));
+}
+
+.scope-box__hint {
+  margin: var(--spacing-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.project-scope-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-4);
+}
+
+.project-scope-list__state {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.project-scope-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text-primary);
 }
@@ -775,15 +941,17 @@ onMounted(() => {
   .page-header,
   .tokens-card__header,
   .modal-actions,
-  .secret-actions {
+  .secret-actions,
+  .form-grid {
     flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: stretch;
   }
 
-  .tokens-table th:nth-child(4),
-  .tokens-table td:nth-child(4),
   .tokens-table th:nth-child(5),
-  .tokens-table td:nth-child(5) {
+  .tokens-table td:nth-child(5),
+  .tokens-table th:nth-child(6),
+  .tokens-table td:nth-child(6) {
     display: none;
   }
 }

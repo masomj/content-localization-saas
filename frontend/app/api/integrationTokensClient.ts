@@ -6,10 +6,10 @@ export const integrationTokensClient = {
     return apiRequest<IntegrationApiToken[]>('/integration/tokens')
   },
 
-  create(name: string, scope: string, expiresUtc?: string | null) {
+  create(name: string, scope: string, expiresUtc?: string | null, projectIds?: string[]) {
     return apiRequest<IntegrationApiTokenSecret>('/integration/tokens', {
       method: 'POST',
-      body: JSON.stringify({ name, scope, expiresUtc: expiresUtc ?? null }),
+      body: JSON.stringify({ name, scope, expiresUtc: expiresUtc ?? null, projectIds: projectIds ?? [] }),
     })
   },
 

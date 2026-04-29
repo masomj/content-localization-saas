@@ -247,6 +247,7 @@ public sealed class ProjectKeyConvention
 public sealed class ApiToken
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string TokenHash { get; set; } = string.Empty;
     public string Scope { get; set; } = string.Empty;
@@ -256,6 +257,15 @@ public sealed class ApiToken
     public DateTime? LastUsedUtc { get; set; }
     public DateTime? RevokedUtc { get; set; }
 }
+
+public sealed class ApiTokenProjectScope
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ApiTokenId { get; set; }
+    public Guid ProjectId { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
 public sealed class WebhookSubscription
 {
     public Guid Id { get; set; } = Guid.NewGuid();

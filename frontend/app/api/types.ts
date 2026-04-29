@@ -511,6 +511,11 @@ export interface GovernanceDashboard {
   }[]
 }
 
+export interface IntegrationApiTokenProjectScope {
+  projectId: string
+  name: string
+}
+
 export interface IntegrationApiToken {
   id: string
   name: string
@@ -520,6 +525,8 @@ export interface IntegrationApiToken {
   expiresUtc: string
   lastUsedUtc: string | null
   revokedUtc: string | null
+  isProjectRestricted: boolean
+  projectScopes: IntegrationApiTokenProjectScope[]
 }
 
 export interface IntegrationApiTokenSecret {
@@ -528,6 +535,8 @@ export interface IntegrationApiTokenSecret {
   name: string
   scope: string
   expiresUtc: string
+  workspaceId: string
+  projectIds: string[]
 }
 
 export interface RotateIntegrationApiTokenSecret extends IntegrationApiTokenSecret {
