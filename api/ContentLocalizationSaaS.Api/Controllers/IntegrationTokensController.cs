@@ -17,6 +17,11 @@ public sealed record ExtendApiTokenRequest(Guid TokenId, DateTime NewExpiresUtc)
 [Route("api/integration/tokens")]
 public sealed class IntegrationTokensController(AppDbContext db) : ControllerBase
 {
+    private static readonly HashSet<string> AllowedScopes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "exports:read"
+    };
+
     [HttpGet]
     [RequireAppRole(AppRole.Admin)]
     public async Task<IActionResult> List(CancellationToken cancellationToken)
@@ -32,17 +37,30 @@ public sealed class IntegrationTokensController(AppDbContext db) : ControllerBas
         if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Scope))
             return BadRequest(new { error = "name_and_scope_required" });
 
+        var scopes = request.Scope
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (scopes.Length == 0)
+            return BadRequest(new { error = "scope_required" });
+
+        var unsupportedScopes = scopes.Where(x => !AllowedScopes.Contains(x)).OrderBy(x => x).ToArray();
+        if (unsupportedScopes.Length > 0)
+            return BadRequest(new { error = "unsupported_scope", unsupportedScopes, allowedScopes = AllowedScopes.OrderBy(x => x) });
+
         var expiry = request.ExpiresUtc ?? DateTime.UtcNow.AddDays(90);
         if (expiry <= DateTime.UtcNow)
             return BadRequest(new { error = "expiry_must_be_in_future" });
 
         var rawToken = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Replace("=", string.Empty).Replace("/", "_").Replace("+", "-");
         var hash = Hash(rawToken);
+        var normalizedScope = string.Join(",", scopes.OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
 
         var row = new ApiToken
         {
             Name = request.Name.Trim(),
-            Scope = request.Scope.Trim(),
+            Scope = normalizedScope,
             TokenHash = hash,
             IsRevoked = false,
             ExpiresUtc = expiry

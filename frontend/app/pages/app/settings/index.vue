@@ -67,6 +67,19 @@ async function handleSave() {
       </UiCard>
 
       <UiCard class="settings-section">
+        <h2>Integrations &amp; CI</h2>
+        <p class="section-description">Manage machine access for export pulls and deployment pipelines</p>
+
+        <div class="settings-link-card">
+          <div>
+            <h3>API Tokens</h3>
+            <p>Create, rotate, extend, and revoke CI/CD tokens for export access.</p>
+          </div>
+          <NuxtLink to="/app/settings/api-tokens" class="settings-link-button">Manage tokens</NuxtLink>
+        </div>
+      </UiCard>
+
+      <UiCard class="settings-section">
         <h2>Danger Zone</h2>
         <p class="section-description">Irreversible and destructive actions</p>
         
@@ -161,6 +174,46 @@ async function handleSave() {
 .form-actions {
   display: flex;
   justify-content: flex-start;
+}
+
+.settings-link-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary-50) 25%, var(--color-surface));
+}
+
+.settings-link-card h3 {
+  margin: 0 0 var(--spacing-1) 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.settings-link-card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.settings-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-600);
+  color: white;
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.settings-link-button:hover {
+  background: var(--color-primary-700);
 }
 
 .danger-actions {

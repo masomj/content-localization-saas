@@ -510,3 +510,27 @@ export interface GovernanceDashboard {
     date: string
   }[]
 }
+
+export interface IntegrationApiToken {
+  id: string
+  name: string
+  scope: string
+  isRevoked: boolean
+  createdUtc: string
+  expiresUtc: string
+  lastUsedUtc: string | null
+  revokedUtc: string | null
+}
+
+export interface IntegrationApiTokenSecret {
+  token: string
+  id: string
+  name: string
+  scope: string
+  expiresUtc: string
+}
+
+export interface RotateIntegrationApiTokenSecret extends IntegrationApiTokenSecret {
+  status: string
+  revokedTokenId: string
+}

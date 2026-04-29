@@ -119,6 +119,10 @@ const breadcrumbs = computed(() => {
           <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
           <span v-if="!sidebarCollapsed">Tone Check</span>
         </NuxtLink>
+        <NuxtLink v-if="!auth.isLoading.value && auth.isAdmin.value" to="/app/settings/api-tokens" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 8a4 4 0 017.446-2.032l.78-.78a2.75 2.75 0 113.889 3.89l-1.6 1.6a2.75 2.75 0 01-3.89 0 .75.75 0 111.061-1.06 1.25 1.25 0 001.768 0l1.6-1.6a1.25 1.25 0 10-1.768-1.768l-.78.78A4 4 0 113 8zm5.5 1.25a.75.75 0 011.06 0 1.25 1.25 0 001.769 0l1.6-1.6a.75.75 0 111.06 1.06l-1.6 1.6a2.75 2.75 0 01-3.889 0 .75.75 0 010-1.06zM5 12a4 4 0 017.446-2.032.75.75 0 11-1.342.67A2.5 2.5 0 105 12a2.5 2.5 0 004.59 1.362.75.75 0 111.342.67A4 4 0 015 12z" /></svg>
+          <span v-if="!sidebarCollapsed">API Tokens</span>
+        </NuxtLink>
         <NuxtLink v-if="governance && !auth.isLoading.value && auth.isAdmin.value" to="/app/governance" class="nav-link" :class="{ 'nav-link--collapsed': sidebarCollapsed }">
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
           <span v-if="!sidebarCollapsed">Governance</span>
