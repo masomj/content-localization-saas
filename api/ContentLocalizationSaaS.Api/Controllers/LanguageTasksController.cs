@@ -49,6 +49,8 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
         if (request.ContentItemId == Guid.Empty || string.IsNullOrWhiteSpace(request.LanguageCode) || string.IsNullOrWhiteSpace(request.Status))
             return BadRequest(new { error = "contentItemId, languageCode and status required" });
 
+        var normalizedStatus = request.Status.Trim().ToLowerInvariant();
+
         var existing = await db.ContentItemLanguageTasks
             .FirstOrDefaultAsync(x => x.ContentItemId == request.ContentItemId && x.LanguageCode == request.LanguageCode, cancellationToken);
 
@@ -61,7 +63,7 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
                 AssigneeEmail = request.AssigneeEmail?.Trim().ToLowerInvariant() ?? string.Empty,
                 TranslationText = request.TranslationText?.Trim() ?? string.Empty,
                 DueUtc = request.DueUtc,
-                Status = request.Status.Trim()
+                Status = normalizedStatus
             };
             db.ContentItemLanguageTasks.Add(existing);
         }
@@ -70,7 +72,17 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
             existing.AssigneeEmail = request.AssigneeEmail?.Trim().ToLowerInvariant() ?? string.Empty;
             existing.TranslationText = request.TranslationText?.Trim() ?? existing.TranslationText;
             existing.DueUtc = request.DueUtc;
-            existing.Status = request.Status.Trim();
+            existing.Status = normalizedStatus;
+        }
+
+        var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == existing.ContentItemId, cancellationToken);
+
+        if (string.Equals(existing.Status, "pending_review", StringComparison.OrdinalIgnoreCase) && item is not null)
+        {
+            item.Status = "in_review";
+            item.ApprovedUtc = null;
+            item.ApprovedByEmail = string.Empty;
+            item.RejectionReason = string.Empty;
         }
 
         if (string.Equals(existing.Status, "approved", StringComparison.OrdinalIgnoreCase) ||
@@ -78,7 +90,6 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
         {
             existing.IsOutdated = false;
 
-            var item = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == existing.ContentItemId, cancellationToken);
             if (item is not null && !string.IsNullOrWhiteSpace(existing.TranslationText))
             {
                 db.TranslationMemoryEntries.Add(new TranslationMemoryEntry
@@ -93,27 +104,23 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
         }
 
         // Check for forbidden terms and set RequiresReview flag
-        if (!string.IsNullOrWhiteSpace(existing.TranslationText))
+        if (!string.IsNullOrWhiteSpace(existing.TranslationText) && item is not null)
         {
-            var contentItem = await db.ContentItems.FirstOrDefaultAsync(x => x.Id == existing.ContentItemId, cancellationToken);
-            if (contentItem is not null)
+            var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == item.ProjectId, cancellationToken);
+            if (project is not null)
             {
-                var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == contentItem.ProjectId, cancellationToken);
-                if (project is not null)
+                var glossaryIds = await db.Glossaries
+                    .Where(g => g.WorkspaceId == project.WorkspaceId)
+                    .Select(g => g.Id)
+                    .ToListAsync(cancellationToken);
+
+                if (glossaryIds.Count > 0)
                 {
-                    var glossaryIds = await db.Glossaries
-                        .Where(g => g.WorkspaceId == project.WorkspaceId)
-                        .Select(g => g.Id)
-                        .ToListAsync(cancellationToken);
+                    var hasForbidden = await db.GlossaryTerms
+                        .Where(t => glossaryIds.Contains(t.GlossaryId) && t.IsForbidden)
+                        .AnyAsync(t => EF.Functions.ILike(existing.TranslationText, "%" + t.SourceTerm + "%"), cancellationToken);
 
-                    if (glossaryIds.Count > 0)
-                    {
-                        var hasForbidden = await db.GlossaryTerms
-                            .Where(t => glossaryIds.Contains(t.GlossaryId) && t.IsForbidden)
-                            .AnyAsync(t => EF.Functions.ILike(existing.TranslationText, "%" + t.SourceTerm + "%"), cancellationToken);
-
-                        existing.RequiresReview = hasForbidden;
-                    }
+                    existing.RequiresReview = hasForbidden;
                 }
             }
         }
@@ -154,6 +161,10 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
 
             task.TranslationText = memory.TranslationText;
             task.Status = "pending_review";
+            item.Status = "in_review";
+            item.ApprovedUtc = null;
+            item.ApprovedByEmail = string.Empty;
+            item.RejectionReason = string.Empty;
             await db.SaveChangesAsync(cancellationToken);
             return Ok(new { status = "suggestion_applied", task.TranslationText, task.Status });
         }
@@ -165,6 +176,10 @@ public sealed class LanguageTasksController(AppDbContext db) : ControllerBase
 
         task.TranslationText = request.ManualTranslationText.Trim();
         task.Status = "pending_review";
+        item.Status = "in_review";
+        item.ApprovedUtc = null;
+        item.ApprovedByEmail = string.Empty;
+        item.RejectionReason = string.Empty;
 
         db.TranslationMemoryEntries.Add(new TranslationMemoryEntry
         {

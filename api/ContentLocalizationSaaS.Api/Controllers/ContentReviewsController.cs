@@ -55,7 +55,13 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
     [RequireAppRole(AppRole.Reviewer)]
     public async Task<IActionResult> GetQueue([FromQuery] string? reviewerEmail, CancellationToken cancellationToken)
     {
-        var query = db.ContentItems.Where(x => x.Status == "in_review");
+        var pendingReviewTaskItemIds = await db.ContentItemLanguageTasks
+            .Where(x => x.Status == "pending_review")
+            .Select(x => x.ContentItemId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var query = db.ContentItems.Where(x => x.Status == "in_review" || pendingReviewTaskItemIds.Contains(x.Id));
 
         if (!string.IsNullOrWhiteSpace(reviewerEmail))
         {
@@ -66,6 +72,13 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
 
         var items = await query.OrderByDescending(x => x.CreatedUtc).ToListAsync(cancellationToken);
         var itemIds = items.Select(x => x.Id).ToList();
+
+        var pendingReviewItems = await db.ContentItemLanguageTasks
+            .Where(x => itemIds.Contains(x.ContentItemId) && x.Status == "pending_review")
+            .Select(x => x.ContentItemId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var pendingReviewItemSet = pendingReviewItems.ToHashSet();
 
         // Get comment counts per content item (via threads)
         var threadIds = await db.DiscussionThreads
@@ -109,7 +122,7 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
                 Id = item.Id,
                 Key = item.Key,
                 Source = item.Source,
-                Status = item.Status,
+                Status = pendingReviewItemSet.Contains(item.Id) ? "pending_review" : item.Status,
                 ReviewAssigneeEmail = item.ReviewAssigneeEmail,
                 ProjectId = item.ProjectId,
                 CommentCount = commentCountByItem.GetValueOrDefault(item.Id, 0),
@@ -156,6 +169,11 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
         if (item is null)
             return NotFound();
 
+        var pendingReviewTasks = await db.ContentItemLanguageTasks
+            .Where(x => x.ContentItemId == item.Id && x.Status == "pending_review")
+            .ToListAsync(cancellationToken);
+        var hasPendingReviewTasks = pendingReviewTasks.Count > 0;
+
         // Create the review record
         var review = new ContentReview
         {
@@ -171,7 +189,7 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
         if (string.Equals(verdict, "approved", StringComparison.OrdinalIgnoreCase))
         {
             // Reuse approve logic from ReviewWorkflowController
-            if (!string.Equals(item.Status, "in_review", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(item.Status, "in_review", StringComparison.OrdinalIgnoreCase) && !hasPendingReviewTasks)
             {
                 return Conflict(new
                 {
@@ -194,6 +212,24 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
 
             if (updated == 0)
                 return Conflict(new { error = "stale_write", guidance = "Content item changed since read; refresh and retry." });
+
+            foreach (var task in pendingReviewTasks)
+            {
+                task.Status = "approved";
+                task.IsOutdated = false;
+
+                if (!string.IsNullOrWhiteSpace(task.TranslationText))
+                {
+                    db.TranslationMemoryEntries.Add(new TranslationMemoryEntry
+                    {
+                        ProjectId = item.ProjectId,
+                        SourceText = item.Source,
+                        LanguageCode = task.LanguageCode,
+                        TranslationText = task.TranslationText,
+                        IsApproved = true
+                    });
+                }
+            }
 
             // Audit trail
             db.ContentItemRevisions.Add(new ContentItemRevision
@@ -290,7 +326,7 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
         else if (string.Equals(verdict, "changes_requested", StringComparison.OrdinalIgnoreCase))
         {
             // Reuse reject logic from ReviewWorkflowController
-            if (!string.Equals(item.Status, "in_review", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(item.Status, "in_review", StringComparison.OrdinalIgnoreCase) && !hasPendingReviewTasks)
             {
                 return Conflict(new
                 {
@@ -311,6 +347,11 @@ public sealed class ContentReviewsController(AppDbContext db) : ControllerBase
 
             if (updated == 0)
                 return Conflict(new { error = "stale_write", guidance = "Content item changed since read; refresh and retry." });
+
+            foreach (var task in pendingReviewTasks)
+            {
+                task.Status = "draft";
+            }
 
             // Audit trail
             db.ContentItemRevisions.Add(new ContentItemRevision
