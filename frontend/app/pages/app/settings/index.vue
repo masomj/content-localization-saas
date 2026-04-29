@@ -96,7 +96,7 @@ async function handleSave() {
 .page-header h1 {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   margin: 0 0 var(--spacing-1) 0;
 }
 
@@ -118,7 +118,7 @@ async function handleSave() {
 .settings-section h2 {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-text-primary);
   margin: 0 0 var(--spacing-1) 0;
 }
 
@@ -143,7 +143,7 @@ async function handleSave() {
 .form-group label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-gray-700);
+  color: var(--color-text-primary);
 }
 
 .label-with-hint {

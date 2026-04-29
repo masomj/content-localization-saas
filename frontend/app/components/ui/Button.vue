@@ -114,22 +114,22 @@ function handleClick(event: MouseEvent) {
 }
 
 .ui-button--secondary {
-  background: var(--color-gray-100);
-  color: var(--color-gray-800);
-  border-color: var(--color-gray-300);
+  background: var(--color-surface-secondary, color-mix(in srgb, var(--color-surface) 60%, var(--color-border)));
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
 }
 
 .ui-button--secondary:hover:not(:disabled) {
-  background: var(--color-gray-200);
+  background: var(--color-surface-hover, color-mix(in srgb, var(--color-surface) 40%, var(--color-border)));
 }
 
 .ui-button--ghost {
   background: transparent;
-  color: var(--color-gray-700);
+  color: var(--color-text-secondary);
 }
 
 .ui-button--ghost:hover:not(:disabled) {
-  background: var(--color-gray-100);
+  background: color-mix(in srgb, var(--color-surface) 50%, var(--color-border));
 }
 
 .ui-button--danger {
