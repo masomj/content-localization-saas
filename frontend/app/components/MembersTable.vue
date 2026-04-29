@@ -180,10 +180,10 @@ function formatDate(dateStr: string): string {
 .members-table th {
   text-align: left;
   padding: var(--spacing-3) var(--spacing-4);
-  background: var(--color-gray-50);
+  background: var(--color-surface);
   font-weight: var(--font-weight-medium);
-  color: var(--color-gray-700);
-  border-bottom: 1px solid var(--color-gray-200);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .members-table td {
@@ -299,7 +299,7 @@ function formatDate(dateStr: string): string {
 }
 
 .icon-btn:hover {
-  color: var(--color-gray-700);
+  color: var(--color-text-primary);
 }
 
 .icon-btn.success {
