@@ -27,6 +27,13 @@ const isLoading = ref(false)
 const statusFilter = ref('')
 const searchQuery = ref('')
 
+const PAGE_SIZE_OPTIONS = [
+  { value: '10', label: '10 rows' },
+  { value: '20', label: '20 rows' },
+  { value: '50', label: '50 rows' },
+  { value: '100', label: '100 rows' },
+]
+
 /** Rows filtered to current folder (client-side) */
 const filteredRows = computed(() => {
   if (props.collectionId === undefined && !props.itemCollectionMap) {
@@ -161,6 +168,17 @@ watch(() => props.collectionId, () => {
   page.value = 1
 })
 
+watch(pageSize, () => {
+  page.value = 1
+})
+
+watch(total, (nextTotal) => {
+  const maxPage = Math.max(1, Math.ceil(nextTotal / pageSize.value))
+  if (page.value > maxPage) {
+    page.value = maxPage
+  }
+})
+
 defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } })
 </script>
 
@@ -188,6 +206,27 @@ defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } }
           @update:model-value="applyFilters"
         />
         <span class="label-hint">Filter rows by translation status</span>
+      </div>
+    </div>
+
+    <div v-if="!isLoading && total > 0" class="loc-grid-meta">
+      <p class="loc-grid-summary">Showing {{ paginatedRows.length }} of {{ total }} keys</p>
+      <div class="loc-grid-meta-controls">
+        <UiSelect
+          id="gridPageSize"
+          v-model="pageSize"
+          label="Rows per page"
+          :options="PAGE_SIZE_OPTIONS"
+        />
+        <div v-if="totalPages > 1" class="loc-pagination loc-pagination--compact">
+          <UiButton size="sm" variant="secondary" :disabled="page <= 1" @click="goToPage(page - 1)">
+            Previous
+          </UiButton>
+          <span class="loc-page-info">Page {{ page }} of {{ totalPages }}</span>
+          <UiButton size="sm" variant="secondary" :disabled="page >= totalPages" @click="goToPage(page + 1)">
+            Next
+          </UiButton>
+        </div>
       </div>
     </div>
 
@@ -270,6 +309,24 @@ defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } }
 .loc-grid-toolbar { display: flex; gap: var(--spacing-4); flex-wrap: wrap; }
 .loc-grid-search { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 200px; }
 .loc-grid-filter { display: flex; flex-direction: column; gap: 2px; min-width: 180px; }
+.loc-grid-meta {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+.loc-grid-meta-controls {
+  display: flex;
+  align-items: end;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+.loc-grid-summary {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
 .loc-field-label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -383,8 +440,23 @@ defineExpose({ reload: async () => { await loadLanguages(); await loadGrid() } }
   justify-content: center;
   gap: var(--spacing-3);
 }
+.loc-pagination--compact {
+  justify-content: flex-end;
+}
 .loc-page-info {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
+}
+
+@media (max-width: 900px) {
+  .loc-grid-meta {
+    align-items: stretch;
+  }
+  .loc-grid-meta-controls {
+    align-items: stretch;
+  }
+  .loc-pagination--compact {
+    justify-content: flex-start;
+  }
 }
 </style>

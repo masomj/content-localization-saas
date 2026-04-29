@@ -25,6 +25,7 @@ const contents = ref<Array<Pick<ContentItem, 'id' | 'key' | 'source' | 'status' 
 const showExport = ref(false)
 const showImportModal = ref(false)
 const lastImportResult = ref<LocaleImportResult | null>(null)
+const isFolderViewCollapsed = ref(false)
 const showAddContentForm = ref(false)
 const newContentKey = ref('')
 const newContentSource = ref('')
@@ -699,119 +700,133 @@ watch(selectedProjectId, async () => {
       <!-- ============================================================ -->
       <!-- LIST VIEW                                                    -->
       <!-- ============================================================ -->
-        <div v-if="isLoading" class="content-list">
-          <div v-for="i in 3" :key="i" class="content-item"><AppSkeleton lines="2" height="1rem" /></div>
+      <section class="explorer-section">
+        <div class="explorer-section-header">
+          <div>
+            <h2 class="explorer-section-title">Folder view</h2>
+            <p class="explorer-section-hint">Browse folders and keys here, or collapse this section to get to the translations grid faster.</p>
+          </div>
+          <UiButton size="sm" variant="secondary" @click="isFolderViewCollapsed = !isFolderViewCollapsed">
+            {{ isFolderViewCollapsed ? 'Expand folders' : 'Collapse folders' }}
+          </UiButton>
         </div>
 
-        <template v-else>
-          <AppEmptyState
-            v-if="currentFolders.length === 0 && folderContentItems.length === 0 && currentFolderId === null"
-            title="No content in this project"
-            description="Add content items linked to this project"
-          >
-            <template #action>
-              <UiButton @click="openAddContentForm">Add Content</UiButton>
-            </template>
-          </AppEmptyState>
-
-          <div v-else class="explorer-list">
-            <!-- Parent navigation -->
-            <button
-              v-if="currentFolderId !== null"
-              class="folder-row folder-row--parent"
-              :class="{ 'folder-row--drag-over': dragOverFolderId === '__parent__' }"
-              @click="navigateUp"
-              @dragover.prevent
-              @dragenter="onFolderDragEnter('__parent__')"
-              @dragleave="onFolderDragLeave('__parent__', $event)"
-              @drop.prevent="onDropOnFolder(breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2]!.id : null)"
-            >
-              <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-              <span class="folder-name">..</span>
-            </button>
-
-            <!-- Folders -->
-            <button
-              v-for="folder in currentFolders"
-              :key="folder.id"
-              class="folder-row"
-              :class="{ 'folder-row--drag-over': dragOverFolderId === folder.id }"
-              @click="navigateToFolder(folder.id)"
-              @dragover.prevent
-              @dragenter="onFolderDragEnter(folder.id)"
-              @dragleave="onFolderDragLeave(folder.id, $event)"
-              @drop.prevent="onDropOnFolder(folder.id)"
-            >
-              <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-              </svg>
-              <span class="folder-name">{{ folder.name }}</span>
-              <span class="folder-count">{{ folderChildCount(folder) }} items</span>
-              <svg class="folder-chevron" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-              </svg>
-            </button>
-
-            <!-- Content items (paginated) -->
-            <button
-              v-for="(item, idx) in paginatedContentItems"
-              :key="item.id"
-              class="content-row content-row--clickable"
-              :class="{ 'content-row--alt': idx % 2 === 1 }"
-              draggable="true"
-              @dragstart="onDragStart(item.id)"
-              @dragend="onDragEnd"
-              @click="openSidePanel(item)"
-            >
-              <div class="content-row-main">
-                <span class="content-key">{{ item.key }}</span>
-                <span class="content-source">{{ truncate(item.source, 80) }}</span>
-              </div>
-              <span class="content-badge" :class="statusBadgeClass(item.status)">
-                {{ item.status }}
-              </span>
-              <div class="content-row-actions">
-                <button
-                  class="row-action-btn row-action-btn--edit"
-                  title="Edit content"
-                  @click.stop="openSidePanel(item)"
-                >
-                  <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-                </button>
-                <button
-                  class="row-action-btn row-action-btn--delete"
-                  title="Delete content"
-                  @click="openDeleteConfirm(item, $event)"
-                >
-                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                </button>
-              </div>
-            </button>
-
-            <!-- Empty folder state -->
-            <div
-              v-if="currentFolders.length === 0 && folderContentItems.length === 0 && currentFolderId !== null"
-              class="explorer-empty"
-            >
-              This folder is empty. Add content items or create subfolders.
-            </div>
-
-            <!-- Pagination -->
-            <div v-if="listTotalPages > 1" class="list-pagination">
-              <UiButton size="sm" variant="secondary" :disabled="listPage <= 1" @click="listPage--">
-                Previous
-              </UiButton>
-              <span class="list-page-info">
-                Page {{ listPage }} of {{ listTotalPages }} ({{ folderContentItems.length }} items)
-              </span>
-              <UiButton size="sm" variant="secondary" :disabled="listPage >= listTotalPages" @click="listPage++">
-                Next
-              </UiButton>
-            </div>
+        <div v-if="!isFolderViewCollapsed">
+          <div v-if="isLoading" class="content-list">
+            <div v-for="i in 3" :key="i" class="content-item"><AppSkeleton lines="2" height="1rem" /></div>
           </div>
-        </template>
+
+          <template v-else>
+            <AppEmptyState
+              v-if="currentFolders.length === 0 && folderContentItems.length === 0 && currentFolderId === null"
+              title="No content in this project"
+              description="Add content items linked to this project"
+            >
+              <template #action>
+                <UiButton @click="openAddContentForm">Add Content</UiButton>
+              </template>
+            </AppEmptyState>
+
+            <div v-else class="explorer-list">
+              <!-- Parent navigation -->
+              <button
+                v-if="currentFolderId !== null"
+                class="folder-row folder-row--parent"
+                :class="{ 'folder-row--drag-over': dragOverFolderId === '__parent__' }"
+                @click="navigateUp"
+                @dragover.prevent
+                @dragenter="onFolderDragEnter('__parent__')"
+                @dragleave="onFolderDragLeave('__parent__', $event)"
+                @drop.prevent="onDropOnFolder(breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2]!.id : null)"
+              >
+                <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                <span class="folder-name">..</span>
+              </button>
+
+              <!-- Folders -->
+              <button
+                v-for="folder in currentFolders"
+                :key="folder.id"
+                class="folder-row"
+                :class="{ 'folder-row--drag-over': dragOverFolderId === folder.id }"
+                @click="navigateToFolder(folder.id)"
+                @dragover.prevent
+                @dragenter="onFolderDragEnter(folder.id)"
+                @dragleave="onFolderDragLeave(folder.id, $event)"
+                @drop.prevent="onDropOnFolder(folder.id)"
+              >
+                <svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                </svg>
+                <span class="folder-name">{{ folder.name }}</span>
+                <span class="folder-count">{{ folderChildCount(folder) }} items</span>
+                <svg class="folder-chevron" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+
+              <!-- Content items (paginated) -->
+              <button
+                v-for="(item, idx) in paginatedContentItems"
+                :key="item.id"
+                class="content-row content-row--clickable"
+                :class="{ 'content-row--alt': idx % 2 === 1 }"
+                draggable="true"
+                @dragstart="onDragStart(item.id)"
+                @dragend="onDragEnd"
+                @click="openSidePanel(item)"
+              >
+                <div class="content-row-main">
+                  <span class="content-key">{{ item.key }}</span>
+                  <span class="content-source">{{ truncate(item.source, 80) }}</span>
+                </div>
+                <span class="content-badge" :class="statusBadgeClass(item.status)">
+                  {{ item.status }}
+                </span>
+                <div class="content-row-actions">
+                  <button
+                    class="row-action-btn row-action-btn--edit"
+                    title="Edit content"
+                    @click.stop="openSidePanel(item)"
+                  >
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                  </button>
+                  <button
+                    class="row-action-btn row-action-btn--delete"
+                    title="Delete content"
+                    @click="openDeleteConfirm(item, $event)"
+                  >
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                  </button>
+                </div>
+              </button>
+
+              <!-- Empty folder state -->
+              <div
+                v-if="currentFolders.length === 0 && folderContentItems.length === 0 && currentFolderId !== null"
+                class="explorer-empty"
+              >
+                This folder is empty. Add content items or create subfolders.
+              </div>
+
+              <!-- Pagination -->
+              <div v-if="listTotalPages > 1" class="list-pagination">
+                <UiButton size="sm" variant="secondary" :disabled="listPage <= 1" @click="listPage--">
+                  Previous
+                </UiButton>
+                <span class="list-page-info">
+                  Page {{ listPage }} of {{ listTotalPages }} ({{ folderContentItems.length }} items)
+                </span>
+                <UiButton size="sm" variant="secondary" :disabled="listPage >= listTotalPages" @click="listPage++">
+                  Next
+                </UiButton>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
     </template>
 
     <!-- ============================================================ -->
@@ -955,7 +970,7 @@ watch(selectedProjectId, async () => {
             <span>Source text</span>
             <span class="label-hint">The default text in the source language</span>
           </label>
-          <textarea id="panelSource" v-model="panelSource" rows="6" class="side-panel-textarea" />
+          <textarea id="panelSource" v-model="panelSource" rows="10" class="side-panel-textarea side-panel-textarea--source" />
 
           <label for="panelStatus" class="label-with-hint">
             <span>Status</span>
@@ -1079,6 +1094,29 @@ watch(selectedProjectId, async () => {
 
 <style scoped>
 .content-page { max-width: 1200px; }
+
+/* Explorer section */
+.explorer-section {
+  margin-bottom: var(--spacing-6);
+}
+.explorer-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+.explorer-section-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+.explorer-section-hint {
+  margin: var(--spacing-1) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
 
 /* Localization grid section */
 .loc-grid-section {
@@ -1520,6 +1558,10 @@ watch(selectedProjectId, async () => {
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
   resize: vertical;
+  min-height: 96px;
+}
+.side-panel-textarea--source {
+  min-height: 240px;
 }
 .side-panel-textarea:focus {
   outline: none;
@@ -1647,5 +1689,12 @@ watch(selectedProjectId, async () => {
 .side-panel-enter-from .side-panel,
 .side-panel-leave-to .side-panel {
   transform: translateX(100%);
+}
+
+@media (max-width: 640px) {
+  .explorer-section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>
