@@ -2,6 +2,8 @@
 import UiButton from '~/components/ui/Button.vue'
 import UiCard from '~/components/ui/Card.vue'
 import UiInput from '~/components/ui/Input.vue'
+import { projectsClient } from '~/api/projectsClient'
+import type { Project } from '~/api/types'
 
 definePageMeta({
   layout: 'app',
@@ -18,10 +20,46 @@ const router = useRouter()
 const orgName = ref('')
 const isSaving = ref(false)
 
+const projects = ref<Project[]>([])
+const projectsLoading = ref(false)
+const projectsError = ref('')
+const copiedId = ref<string | null>(null)
+
+async function loadProjects() {
+  if (!auth.organization.value?.id) {
+    projects.value = []
+    return
+  }
+  projectsLoading.value = true
+  projectsError.value = ''
+  try {
+    const data = await projectsClient.list(auth.organization.value.id)
+    projects.value = Array.isArray(data) ? data : []
+  } catch (err: any) {
+    projectsError.value = err?.message || 'Failed to load projects'
+    projects.value = []
+  } finally {
+    projectsLoading.value = false
+  }
+}
+
+async function copyProjectId(id: string) {
+  try {
+    await navigator.clipboard.writeText(id)
+    copiedId.value = id
+    setTimeout(() => {
+      if (copiedId.value === id) copiedId.value = null
+    }, 1500)
+  } catch {
+    // ignore — browser clipboard not available
+  }
+}
+
 onMounted(() => {
   if (auth.organization.value) {
     orgName.value = auth.organization.value.name
   }
+  loadProjects()
 })
 
 async function handleSave() {
@@ -76,6 +114,40 @@ async function handleSave() {
             <p>Create, rotate, extend, and revoke CI/CD tokens for export access.</p>
           </div>
           <NuxtLink to="/app/settings/api-tokens" class="settings-link-button">Manage tokens</NuxtLink>
+        </div>
+
+        <div class="ci-projects">
+          <div class="ci-projects-header">
+            <h3>Project IDs</h3>
+            <span class="ci-required-badge">Required for CI/CD</span>
+          </div>
+          <p class="ci-projects-blurb">
+            Your CI pipeline needs a project ID alongside an API token to call
+            <code>GET /api/integration/exports/locales?projectId=&lt;id&gt;</code>.
+            Copy the ID for the project you want to export and store it as a secret
+            (e.g. <code>INTERCOPY_PROJECT_ID</code>) in your CI provider.
+          </p>
+
+          <div v-if="projectsLoading" class="ci-projects-state">Loading projects…</div>
+          <div v-else-if="projectsError" class="ci-projects-state ci-projects-state--error">{{ projectsError }}</div>
+          <p v-else-if="projects.length === 0" class="ci-projects-state">
+            No projects yet — create one from
+            <NuxtLink to="/app/projects">Projects</NuxtLink>.
+          </p>
+          <ul v-else class="ci-projects-list">
+            <li v-for="project in projects" :key="project.id" class="ci-project-row">
+              <div class="ci-project-name">{{ project.name }}</div>
+              <code class="ci-project-id">{{ project.id }}</code>
+              <button
+                type="button"
+                class="ci-copy-button"
+                :class="{ 'ci-copy-button--copied': copiedId === project.id }"
+                @click="copyProjectId(project.id)"
+              >
+                {{ copiedId === project.id ? 'Copied' : 'Copy ID' }}
+              </button>
+            </li>
+          </ul>
         </div>
       </UiCard>
 
@@ -214,6 +286,126 @@ async function handleSave() {
 
 .settings-link-button:hover {
   background: var(--color-primary-700);
+}
+
+.ci-projects {
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.ci-projects-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-2);
+}
+
+.ci-projects-header h3 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.ci-required-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px var(--spacing-2);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary-600) 18%, var(--color-surface));
+  color: var(--color-primary-700, var(--color-primary-600));
+  border: 1px solid color-mix(in srgb, var(--color-primary-600) 35%, transparent);
+}
+
+.ci-projects-blurb {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.ci-projects-blurb code {
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.85em;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-border));
+  color: var(--color-text-primary);
+}
+
+.ci-projects-state {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  padding: var(--spacing-3) 0;
+}
+
+.ci-projects-state--error {
+  color: var(--color-error);
+}
+
+.ci-projects-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.ci-project-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.ci-project-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-project-id {
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-border));
+  user-select: all;
+}
+
+.ci-copy-button {
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 6px var(--spacing-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ci-copy-button:hover {
+  border-color: var(--color-primary-600);
+  color: var(--color-primary-600);
+}
+
+.ci-copy-button--copied {
+  background: var(--color-primary-600);
+  color: var(--color-white, #fff);
+  border-color: var(--color-primary-600);
 }
 
 .danger-actions {
