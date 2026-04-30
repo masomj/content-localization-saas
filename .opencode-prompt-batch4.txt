@@ -1,0 +1,118 @@
+## Batch 4: EP5-S4 (AI-Assisted Tone Check) + EP5-S5 (Governance Dashboard)
+
+Read CONTRIBUTING.md first.
+
+### EP5-S4: AI-Assisted Tone Check
+
+Add async AI tone checking for translations using a configurable LLM provider.
+
+#### Backend — New Entities (add to END of Entities.cs)
+
+```csharp
+public sealed class ProjectToneConfig
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string ToneDescription { get; set; }  // "Friendly and informal", "Professional and technical"
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class ToneCheckResult
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemLanguageTaskId { get; set; }
+    public required string OriginalText { get; set; }
+    public string SuggestedText { get; set; } = string.Empty;
+    public double ConfidenceScore { get; set; }
+    public string Reasoning { get; set; } = string.Empty;
+    public bool Applied { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+```
+
+#### Backend — Tone Check Service (Stubbed)
+
+Create `IToneCheckService` interface and `StubToneCheckService`:
+- `Task<ToneCheckResponse> CheckAsync(string text, string toneDescription, string language)`
+- Stub returns: `{ HasMismatch = false, Suggestion = "", Confidence = 0, Reasoning = "Stub: no LLM configured" }`
+- Mark TODO for real LLM integration (OpenAI, Anthropic)
+
+#### Backend — Controllers
+
+**ProjectToneConfigController** (`/api/projects/{projectId}/tone-config`):
+- GET — get current config
+- POST/PUT — create/update tone description
+- DELETE — deactivate
+
+**ToneCheckController** (`/api/tone-check`):
+- POST — body: `{ contentItemLanguageTaskId, text, language, projectId }` → trigger async tone check, return result
+- POST `/{resultId}/apply` — apply suggestion (update translation text)
+- GET `/results?contentItemLanguageTaskId=...` — get results for a task
+
+#### Frontend
+
+**Project Settings** — add tone config section to project settings or create `/app/settings/tone.vue`:
+- Textarea for tone description ("Describe your brand voice...")
+- Active toggle
+- Predefined tone presets: Friendly, Professional, Technical, Casual, Formal
+
+**Translation Editor** — after saving, trigger tone check:
+- Call tone check endpoint async (non-blocking, result appears after save)
+- Show suggestion below: "💡 Tone suggestion: '{suggested}' (confidence: X%)"
+- "Apply" button replaces translation text
+- Only show when confidence ≥ 70%
+
+**API clients**: `toneCheckClient.ts`
+
+### EP5-S5: Governance Dashboard
+
+#### Backend — Controllers
+
+**GovernanceDashboardController** (`/api/governance/dashboard`):
+- GET `?workspaceId=...` — returns:
+  - `glossaryAdoptionRate`: % of eligible translations using approved glossary terms
+  - `styleRuleComplianceRate`: % of translations passing style rules
+  - `forbiddenTermIncidentCount`: number of forbidden term incidents
+  - `topNonAdoptedTerms`: array of `{ term, adoptionRate }` sorted ascending
+  - `recentForbiddenIncidents`: array of `{ contentItemKey, language, term, translatorEmail, date }`
+
+**GovernanceDashboardController** (`/api/governance/export`):
+- GET `/csv?workspaceId=...` — export dashboard data as CSV
+- GET `/pdf` — (stub: return 501 Not Implemented for MVP)
+
+For MVP, these metrics can be simple queries:
+- Adoption rate: count translations containing glossary terms / total translations
+- Compliance: just return 100% (stub, would need to run style checks on all translations)
+- Forbidden incidents: count from ContentItemLanguageTask where RequiresReview = true
+
+#### Frontend — Governance Dashboard Page
+
+Create `frontend/app/pages/app/governance/index.vue`:
+- Three metric cards at top: Adoption Rate (%), Compliance Rate (%), Forbidden Incidents (#)
+- Bar chart or simple visual for top non-adopted terms (can use CSS bars, no chart library needed)
+- Table of recent forbidden term incidents (key, language, term, translator, date)
+- Click incident → navigate to content item
+- Export CSV button
+- Refresh button
+- All CSS variables, dark mode compatible
+
+**Sidebar Navigation**: Add "Governance" link (admin-gated)
+
+### Backend — AppDbContext + Migration
+- Add DbSets for ProjectToneConfig and ToneCheckResult
+- Configure constraints and indexes
+- Register IToneCheckService → StubToneCheckService in DI
+- Migration: `AddToneCheckAndGovernance`
+
+### Validation
+- `cd api && dotnet build`
+- `cd frontend && npm run build`
+- Commit: `feat(governance): add AI tone checking and governance dashboard`
+- Push to current branch
+
+### IMPORTANT
+- LLM/AI integration is STUBBED — no actual API calls to OpenAI/Anthropic
+- No window.alert/confirm/prompt
+- CSS variables from tokens.css, dark mode
+- Update CONTRIBUTING.md

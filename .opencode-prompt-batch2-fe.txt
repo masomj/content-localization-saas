@@ -1,0 +1,90 @@
+## Batch 2 Frontend: Forbidden Terms UI + Style Rules Page + Translation Editor Integration
+
+Read CONTRIBUTING.md first.
+
+### Context
+Backend is already done:
+- StyleRule + StyleOverride entities exist
+- ForbiddenCheckController at /api/forbidden-check (POST: {text, languageCode, workspaceId} → matches)
+- StyleCheckController at /api/style-check (POST: {text, projectId, contentType} → violations)
+- StyleRulesController at /api/projects/{projectId}/style-rules (CRUD)
+- ContentItemLanguageTask has RequiresReview bool field
+- GlossaryTerm has IsForbidden + ForbiddenReplacement fields (already in glossary page)
+
+### Task 1: Style Rules API Client
+
+Create `frontend/app/api/styleRulesClient.ts`:
+```typescript
+export interface StyleRuleDto { id: string; projectId: string; name: string; ruleType: string; pattern: string; scope: string; message: string; isActive: boolean; createdUtc: string }
+export interface StyleViolation { ruleId: string; ruleName: string; message: string; ruleType: string }
+export interface StyleOverrideDto { id: string; contentItemLanguageTaskId: string; styleRuleId: string; overriddenByEmail: string; createdUtc: string }
+
+export const styleRulesClient = {
+  list: (projectId: string) => apiRequest<StyleRuleDto[]>(`/projects/${projectId}/style-rules`),
+  create: (projectId: string, rule: Partial<StyleRuleDto>) => apiRequest<StyleRuleDto>(`/projects/${projectId}/style-rules`, { method: 'POST', body: JSON.stringify(rule) }),
+  update: (projectId: string, ruleId: string, rule: Partial<StyleRuleDto>) => apiRequest<StyleRuleDto>(`/projects/${projectId}/style-rules/${ruleId}`, { method: 'PUT', body: JSON.stringify(rule) }),
+  delete: (projectId: string, ruleId: string) => apiRequest<void>(`/projects/${projectId}/style-rules/${ruleId}`, { method: 'DELETE' }),
+  check: (text: string, projectId: string, contentType: string) => apiRequest<StyleViolation[]>('/style-check', { method: 'POST', body: JSON.stringify({ text, projectId, contentType }) }),
+}
+```
+Import apiRequest from ~/api/client.
+
+### Task 2: Forbidden Check Client
+
+Add to existing `glossaryClient.ts`:
+```typescript
+export interface ForbiddenMatch { term: string; replacement: string; position: number }
+forbiddenCheck: (text: string, languageCode: string) => apiRequest<ForbiddenMatch[]>('/forbidden-check', { method: 'POST', body: JSON.stringify({ text, languageCode }) }),
+```
+
+### Task 3: Style Rules Settings Page
+
+Create `frontend/app/pages/app/settings/style-rules.vue`:
+- Needs a project selector at top (load projects from projectsClient)
+- List rules for selected project
+- Add/Edit rule modal (no window.confirm!):
+  - Name (text input)
+  - Rule Type dropdown: Case Check, Regex, No Trailing Punctuation, Max Words
+  - Pattern input (shown for regex and max_words types only)
+  - Scope dropdown: All, Button Label, Error Message, Heading, Body Text, Placeholder, Tooltip, Menu Item
+  - Message textarea
+  - Active toggle
+- Delete with styled confirmation modal
+- All CSS via tokens.css variables, dark mode compatible
+
+### Task 4: Glossary Page — Forbidden Terms Filter
+
+Update `frontend/app/pages/app/settings/glossary.vue`:
+- Add a filter toggle/tab at top of terms list: "All Terms" | "Forbidden Only"
+- When "Forbidden Only" is selected, filter terms to show only IsForbidden=true
+
+### Task 5: Translation Editor — Forbidden + Style Integration
+
+Update `frontend/app/components/projects/TranslationEditor.vue`:
+
+**Forbidden terms (real-time, debounced 500ms):**
+- On translation text change, call glossaryClient.forbiddenCheck
+- Show error-level warnings below textarea: "❌ '{term}' → use '{replacement}' instead"
+- Red styling (var(--color-error))
+
+**Style rules (on save):**
+- After successful save, call styleRulesClient.check with the translation text, projectId, and contentType
+- Show style warnings below textarea: "⚠️ {message}"
+- Each warning has a "Dismiss" button
+- Yellow/warning styling
+
+The TranslationEditor needs access to projectId and contentType. Add these as optional props if not already present. The parent pages should pass them down.
+
+### Task 6: Sidebar Navigation
+
+Add "Style Rules" link to sidebar in `frontend/app/layouts/app.vue`, admin-gated, with a ruler/checklist icon.
+
+### Task 7: Update CONTRIBUTING.md
+
+Add `styleRulesClient` to the API clients list.
+
+### Validation
+- `cd frontend && npm run build`
+- Single commit: `feat(terminology): add forbidden term checking UI and style rules management`
+- Push to current branch
+- Do NOT touch backend files — they are already done and building

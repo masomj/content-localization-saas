@@ -1,0 +1,117 @@
+## Batch 3: EP4-S2 (In-Context Editor) + EP4-S3 (Visual Context in Review) + EP4-S4 (Figma Screenshot Sync)
+
+Read CONTRIBUTING.md first.
+
+### EP4-S2: In-Context Editor
+
+Create a visual editor where translators can edit translations directly on a screenshot with editable text overlays.
+
+#### Frontend — New Page
+
+Create `frontend/app/pages/app/screenshots/[id]/edit.vue`:
+- Load screenshot detail (with regions) from `screenshotsClient.get(projectId, id)`
+- Display the screenshot image full-width in a zoomable container (reuse the zoom pattern from component canvas)
+- For each linked region (has contentItemId), render an editable text overlay positioned at the region's x/y/width/height
+- Overlay is a textarea sized to the bounding box, semi-transparent background
+- When user types in overlay and text exceeds bounding box width, show a red border (truncation warning)
+- On blur, auto-save the translation via `translationClient`
+- Keyboard navigation: Tab/Shift+Tab between regions in visual order (top-to-bottom, left-to-right)
+- Zoom controls: 25%-400% range
+- Save indicator: small green checkmark appears briefly after successful save
+
+#### Backend — New Endpoint
+
+Add to ScreenshotsController:
+- GET `/api/projects/{projectId}/screenshots/{id}/context` — returns screenshot with regions AND their current translations for a given language (query param: `?language=de`)
+  - Response: screenshot fields + regions array where each region includes `{ ...region, translationText, translationStatus }` from ContentItemLanguageTask
+
+#### Frontend — Navigation
+- Link from screenshot detail page (the overlay view) → "Edit in Context" button
+- Back button to return to screenshot detail
+
+### EP4-S3: Visual Context in Review Mode
+
+Add screenshot context to the review panel.
+
+#### Frontend Changes
+
+Update `frontend/app/pages/app/review/[id].vue`:
+- When loading a review item, check if the content item has linked screenshot regions
+- Add a new endpoint or use existing: GET `/api/content-items/{id}/screenshots` → returns screenshots that have regions linked to this content item
+- Show a "Visual Context" collapsible panel in the review page
+- Panel shows: screenshot thumbnail with the relevant region highlighted (bright border)
+- If multiple screenshots, show arrow navigation between them
+- If no screenshots, show "No visual context available" with a subtle prompt
+- Panel is resizable (drag handle on the left edge)
+
+#### Backend — New Endpoint
+
+Add to ContentItemsController or a new controller:
+- GET `/api/content-items/{contentItemId}/screenshots` — returns screenshots that have at least one region linked to this content item, with the specific linked regions highlighted
+
+### EP4-S4: Figma Screenshot Sync
+
+Sync screenshots from Figma REST API. This builds on the existing Figma plugin infrastructure.
+
+#### Backend — New Entity
+
+Add to Entities.cs:
+```csharp
+public sealed class FigmaScreenshotSync
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string FigmaFileKey { get; set; }
+    public string FigmaFileName { get; set; } = string.Empty;
+    public DateTime? LastSyncUtc { get; set; }
+    public string SyncStatus { get; set; } = "idle";  // idle, syncing, completed, failed
+    public int FrameCount { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+```
+
+#### Backend — Controller
+
+**FigmaScreenshotSyncController** (`/api/projects/{projectId}/figma-sync`):
+- POST `/connect` — body: `{ figmaFileKey }` — create a FigmaScreenshotSync record
+- POST `/{syncId}/sync` — trigger sync (MVP: stub that creates Screenshot entities from Figma frame metadata but doesn't actually call Figma API — mark TODO)
+- GET — list sync connections for project
+- DELETE `/{syncId}` — remove connection
+
+#### Frontend — Figma Sync UI
+
+Create `frontend/app/pages/app/screenshots/figma-sync.vue`:
+- List connected Figma files for current project
+- "Connect Figma File" button → modal with file key input
+- For each connection: show file name, last sync time, frame count, sync status
+- "Sync Now" button triggers sync
+- Status badges: idle (gray), syncing (blue spinner), completed (green), failed (red)
+
+#### Backend — AppDbContext + Migration
+- Add DbSet for FigmaScreenshotSync
+- Configure: FigmaFileKey max 200, FigmaFileName max 500, SyncStatus max 20, index on ProjectId
+- FK to Project (cascade)
+- Migration: `AddFigmaScreenshotSync`
+
+### Frontend — API Clients
+
+Add to `screenshotsClient.ts`:
+- `getContext(projectId, id, language)` — GET with language query param
+- `getForContentItem(contentItemId)` — GET /api/content-items/{id}/screenshots
+
+Create `frontend/app/api/figmaSyncClient.ts` for the Figma sync endpoints.
+
+Update types.ts with new interfaces.
+
+### Validation
+- `cd api && dotnet build`
+- `cd frontend && npm run build`
+- Single commit: `feat(context): add in-context editor, review visual context, and Figma screenshot sync`
+- Push to current branch
+
+### IMPORTANT
+- No window.alert/confirm/prompt — styled modals only
+- CSS variables from tokens.css, dark mode compatible
+- Helper text under labels
+- Update CONTRIBUTING.md with new API clients
+- Figma API integration is STUBBED for MVP — just save metadata, don't call external API

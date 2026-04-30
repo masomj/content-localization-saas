@@ -1,0 +1,55 @@
+## EP4-S5: Context Metadata Fields — Backend + Frontend Implementation
+
+Read CONTRIBUTING.md first.
+
+### Task
+Add context metadata fields to ContentItem: Description (500 char max), MaxLength (nullable int), ContentType (string enum).
+
+### Backend Changes Required
+
+1. **Entities.cs** — Add to `ContentItem` class (after the existing `Notes` property):
+   - `public string Description { get; set; } = string.Empty;`
+   - `public int? MaxLength { get; set; }`
+   - `public string ContentType { get; set; } = string.Empty;`
+   
+   Valid ContentType values: "button_label", "error_message", "heading", "body_text", "placeholder", "tooltip", "menu_item", "" (empty = unspecified)
+
+2. **Migration** — Create a new EF Core migration:
+   - Run from `api/` directory: `dotnet ef migrations add AddContextMetadataFields --project ContentLocalizationSaaS.Infrastructure --startup-project ContentLocalizationSaaS.Api`
+   - Description: nvarchar(500), MaxLength: nullable int, ContentType: nvarchar(50)
+
+3. **ContentItemsController** — Update:
+   - POST create endpoint: accept Description, MaxLength, ContentType in request body
+   - PUT update endpoint: accept Description, MaxLength, ContentType
+   - GET responses already return the full entity so new fields auto-included
+
+4. **NeutralExportController** — Update export to include context metadata:
+   - Add `description`, `maxLength`, `contentType` to export JSON per key
+
+5. **DO NOT** touch auth, do not change existing field types, do not break existing tests.
+
+### Frontend Changes Required
+
+6. **api/types.ts** — Add to ContentItem interface:
+   - `description?: string`
+   - `maxLength?: number | null`
+   - `contentType?: string`
+
+7. **Content side panel** (in `pages/app/content/index.vue`) — Add a "Context" section below the source text editor in the side panel:
+   - Description textarea (500 char limit with counter)
+   - Max Length number input
+   - Content Type dropdown with options: (empty), Button Label, Error Message, Heading, Body Text, Placeholder, Tooltip, Menu Item
+   - Save button updates via contentClient
+   - Use existing UI components (Input, Select) from components/ui/
+
+8. **Translation editor** (`components/projects/TranslationEditor.vue`) — Add max length warning:
+   - If contentItem has maxLength set, show character count "X / Y" below translation input
+   - Yellow text when within 90% of limit
+   - Red text + warning icon when exceeding limit
+   - Warning only, NOT blocking
+
+### Validation
+- `cd api && dotnet build`
+- `cd frontend && npm run build`
+- Single commit with message: `feat(content): add context metadata fields (description, maxLength, contentType)`
+- Push to main

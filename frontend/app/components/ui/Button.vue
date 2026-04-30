@@ -48,7 +48,7 @@ function handleClick(event: MouseEvent) {
         </circle>
       </svg>
     </span>
-    <span :class="{ 'ui-button__content--hidden': loading }">
+    <span class="ui-button__content" :class="{ 'ui-button__content--hidden': loading }">
       <slot />
     </span>
   </button>
@@ -146,6 +146,19 @@ function handleClick(event: MouseEvent) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.ui-button__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  line-height: 1;
+}
+
+.ui-button__content > svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .ui-button__content--hidden {

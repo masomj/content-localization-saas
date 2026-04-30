@@ -1,0 +1,144 @@
+## EP5-S1: Glossary / Termbase — Full Stack Implementation
+
+Read CONTRIBUTING.md first.
+
+### Overview
+Build a full glossary/termbase system: new entities, CRUD API, CSV/TBX import/export, frontend glossary management page, and term suggestions in the translation editor.
+
+### Backend — New Entities (add to Entities.cs)
+
+```csharp
+public sealed class Glossary
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid WorkspaceId { get; set; }
+    public required string Name { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class GlossaryTerm
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid GlossaryId { get; set; }
+    public required string SourceTerm { get; set; }
+    public string Definition { get; set; } = string.Empty;
+    public bool IsForbidden { get; set; }
+    public string ForbiddenReplacement { get; set; } = string.Empty;
+    public bool CaseSensitive { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class GlossaryTermTranslation
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid GlossaryTermId { get; set; }
+    public required string LanguageCode { get; set; }
+    public required string TranslatedTerm { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+```
+
+### Backend — AppDbContext Configuration
+
+Add DbSets and configure in OnModelCreating:
+- Glossary: Name max 200, Description max 1000, index on WorkspaceId
+- GlossaryTerm: SourceTerm max 500, Definition max 1000, ForbiddenReplacement max 500, index on GlossaryId, index on SourceTerm
+- GlossaryTermTranslation: LanguageCode max 10, TranslatedTerm max 500, unique index on (GlossaryTermId, LanguageCode)
+
+### Backend — Controllers
+
+**GlossariesController** (`/api/glossaries`):
+- GET — list glossaries for workspace (use X-Workspace-Id header)
+- POST — create glossary (name, description)
+- PUT `/{id}` — update name/description
+- DELETE `/{id}` — cascade delete terms + translations
+
+**GlossaryTermsController** (`/api/glossaries/{glossaryId}/terms`):
+- GET — list terms (paginated: page, pageSize params; search: q param for full-text on SourceTerm)
+- POST — create term with translations array: `{ sourceTerm, definition, caseSensitive, isForbidden, forbiddenReplacement, translations: [{languageCode, translatedTerm}] }`
+- PUT `/{termId}` — update term + upsert translations
+- DELETE `/{termId}` — delete term + translations
+- POST `/import/csv` — parse CSV (columns: sourceTerm, definition, lang1, lang2...), upsert terms
+- GET `/export/csv` — export all terms as CSV
+- POST `/import/tbx` — parse TBX XML format, upsert terms
+- GET `/export/tbx` — export as TBX XML
+
+**GlossarySuggestionsController** (`/api/glossary-suggestions`):
+- POST — body: `{ sourceText, languageCode, workspaceId }` → return matching terms with translations
+- Match: case-insensitive substring search of sourceText against all workspace glossary terms
+- Return: array of `{ term, definition, translatedTerm, glossaryName }`
+- Must be fast (target <500ms)
+
+### Backend — Migration
+Run: `dotnet ef migrations add AddGlossaryEntities --project ContentLocalizationSaaS.Infrastructure --startup-project ContentLocalizationSaaS.Api`
+
+### Frontend — New API Client
+
+Create `frontend/app/api/glossaryClient.ts`:
+```typescript
+import { apiRequest } from '~/api/client'
+
+export interface GlossaryDto { id: string; workspaceId: string; name: string; description: string; createdUtc: string; updatedUtc: string }
+export interface GlossaryTermDto { id: string; glossaryId: string; sourceTerm: string; definition: string; isForbidden: boolean; forbiddenReplacement: string; caseSensitive: boolean; translations: GlossaryTermTranslationDto[]; createdUtc: string; updatedUtc: string }
+export interface GlossaryTermTranslationDto { id: string; languageCode: string; translatedTerm: string }
+export interface GlossarySuggestion { term: string; definition: string; translatedTerm: string; glossaryName: string }
+
+export const glossaryClient = {
+  list: () => apiRequest<GlossaryDto[]>('/glossaries'),
+  create: (name: string, description: string) => apiRequest<GlossaryDto>('/glossaries', { method: 'POST', body: JSON.stringify({ name, description }) }),
+  update: (id: string, name: string, description: string) => apiRequest<GlossaryDto>(`/glossaries/${id}`, { method: 'PUT', body: JSON.stringify({ name, description }) }),
+  delete: (id: string) => apiRequest<void>(`/glossaries/${id}`, { method: 'DELETE' }),
+  
+  listTerms: (glossaryId: string, page = 1, pageSize = 50, search = '') => apiRequest<{ items: GlossaryTermDto[]; total: number }>(`/glossaries/${glossaryId}/terms?page=${page}&pageSize=${pageSize}&q=${encodeURIComponent(search)}`),
+  createTerm: (glossaryId: string, term: any) => apiRequest<GlossaryTermDto>(`/glossaries/${glossaryId}/terms`, { method: 'POST', body: JSON.stringify(term) }),
+  updateTerm: (glossaryId: string, termId: string, term: any) => apiRequest<GlossaryTermDto>(`/glossaries/${glossaryId}/terms/${termId}`, { method: 'PUT', body: JSON.stringify(term) }),
+  deleteTerm: (glossaryId: string, termId: string) => apiRequest<void>(`/glossaries/${glossaryId}/terms/${termId}`, { method: 'DELETE' }),
+  importCsv: (glossaryId: string, file: File) => { const form = new FormData(); form.append('file', file); return apiRequest<{ imported: number }>(`/glossaries/${glossaryId}/terms/import/csv`, { method: 'POST', body: form }) },
+  exportCsv: (glossaryId: string) => apiRequest<Blob>(`/glossaries/${glossaryId}/terms/export/csv`),
+  importTbx: (glossaryId: string, file: File) => { const form = new FormData(); form.append('file', file); return apiRequest<{ imported: number }>(`/glossaries/${glossaryId}/terms/import/tbx`, { method: 'POST', body: form }) },
+  exportTbx: (glossaryId: string) => apiRequest<Blob>(`/glossaries/${glossaryId}/terms/export/tbx`),
+  
+  suggest: (sourceText: string, languageCode: string) => apiRequest<GlossarySuggestion[]>('/glossary-suggestions', { method: 'POST', body: JSON.stringify({ sourceText, languageCode }) }),
+}
+```
+
+### Frontend — Glossary Settings Page
+
+Create `frontend/app/pages/app/settings/glossary.vue`:
+- List glossaries for workspace with create/edit/delete
+- Click glossary → term list with search, pagination (50 per page)
+- Add/Edit term modal: source term, definition, case-sensitive toggle, forbidden toggle + replacement, translations per active language
+- Import CSV/TBX buttons (file upload)
+- Export CSV/TBX buttons
+- Use existing UI components (Button, Input, Select, Card, FormError)
+- Dark mode support via CSS variables (check tokens.css)
+- Use `label-with-hint` pattern for form fields
+- No browser native alerts/confirms — use styled modals
+
+### Frontend — Translation Editor Integration
+
+Update `components/projects/TranslationEditor.vue`:
+- When translator focuses translation textarea, call `glossaryClient.suggest(sourceText, languageCode)`
+- Show matching terms as small badges/chips below the source text area
+- Each badge shows: term → translatedTerm (click to insert into translation)
+- Style: subtle, don't crowd the editor
+
+### Navigation
+
+Add "Glossary" link to settings navigation (if there's a settings nav in the settings layout/page).
+
+### Validation
+- `cd api && dotnet build`
+- `cd frontend && npm run build`
+- Single commit: `feat(glossary): add glossary/termbase with CRUD, import/export, and editor suggestions`
+- Push to current branch
+
+### IMPORTANT
+- Do NOT use window.alert/confirm/prompt
+- Use CSS variables from tokens.css for all styling
+- Helper text under labels, not placeholders
+- Check CONTRIBUTING.md for component inventory before creating new components
+- Update CONTRIBUTING.md if you add new shared components or API clients

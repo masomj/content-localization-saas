@@ -1,0 +1,118 @@
+## EP5-S3: Forbidden Terms + EP5-S2: Style Rules Engine — Full Stack
+
+Read CONTRIBUTING.md first.
+
+### EP5-S3: Forbidden Terms
+
+The glossary infrastructure (Glossary, GlossaryTerm) already exists with `IsForbidden` and `ForbiddenReplacement` fields. Build on top of it.
+
+#### Backend
+
+1. **ForbiddenCheckController** (`/api/forbidden-check`):
+   - POST — body: `{ text, languageCode, workspaceId }` → return array of `{ term, replacement, position }`
+   - Case-insensitive matching of text against all forbidden terms (where IsForbidden=true) in workspace glossaries
+   - Return each match with the forbidden term, its replacement, and character position in text
+
+2. **ContentItemLanguageTask update** — when saving a translation, if forbidden terms detected, set a `RequiresReview` flag. Add `RequiresReview` bool property to `ContentItemLanguageTask` entity if not present.
+
+3. Add EF migration if entity changes needed.
+
+#### Frontend
+
+4. **Glossary page** — add a "Forbidden" tab/filter view that shows only forbidden terms (filter by IsForbidden=true). The add/edit term modal already has forbidden toggle + replacement from EP5-S1.
+
+5. **Translation editor** — add real-time forbidden term checking:
+   - On translation text change (debounced 500ms), call forbidden-check endpoint
+   - Show error-level inline warnings below the textarea for each match
+   - Each warning shows: "❌ Forbidden: '{term}' → suggested replacement: '{replacement}'"
+   - Style: red/error color, not blocking save but flagged
+
+6. **CSV import** for forbidden terms — extend existing CSV import to handle forbidden terms (add `is_forbidden` and `replacement` columns)
+
+### EP5-S2: Style Rules Engine
+
+#### Backend — New Entities (add to Entities.cs)
+
+```csharp
+public sealed class StyleRule
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string Name { get; set; }
+    public required string RuleType { get; set; }  // "case_check", "regex", "no_trailing_punctuation", "max_words"
+    public string Pattern { get; set; } = string.Empty;  // regex for "regex" type
+    public string Scope { get; set; } = string.Empty;  // content type filter or empty for all
+    public string Message { get; set; } = string.Empty;  // warning message
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class StyleOverride
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ContentItemLanguageTaskId { get; set; }
+    public Guid StyleRuleId { get; set; }
+    public required string OverriddenByEmail { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+```
+
+#### Backend — AppDbContext
+- Add DbSets for StyleRule and StyleOverride
+- StyleRule: Name max 200, RuleType max 50, Pattern max 1000, Scope max 50, Message max 500, index on ProjectId
+- StyleOverride: unique index on (ContentItemLanguageTaskId, StyleRuleId), FK to both
+
+#### Backend — Controllers
+
+**StyleRulesController** (`/api/projects/{projectId}/style-rules`):
+- GET — list rules for project
+- POST — create rule
+- PUT `/{ruleId}` — update
+- DELETE `/{ruleId}` — delete
+
+**StyleCheckController** (`/api/style-check`):
+- POST — body: `{ text, projectId, contentType }` → return violations array: `[{ ruleId, ruleName, message, ruleType }]`
+- Rule evaluation logic:
+  - `case_check`: if text has Title Case words, warn for sentence case
+  - `regex`: test text against Pattern, if matches → violation
+  - `no_trailing_punctuation`: check if text ends with . or !
+  - `max_words`: count words, if exceeds limit (stored in Pattern as number) → violation
+- Only evaluate rules where Scope matches contentType (or Scope is empty = applies to all)
+
+#### Backend — Migration
+Run: `dotnet ef migrations add AddStyleRuleEntities --project ContentLocalizationSaaS.Infrastructure --startup-project ContentLocalizationSaaS.Api`
+
+#### Frontend — Style Rules Page
+
+Create `frontend/app/pages/app/settings/style-rules.vue` or add as a section in project settings:
+- List rules for current project
+- Add/Edit rule modal: name, type dropdown (case_check, regex, no_trailing_punctuation, max_words), pattern input (for regex/max_words), scope dropdown (content types from EP4-S5 + "All"), message
+- Toggle active/inactive
+- Delete with confirmation modal (no window.confirm!)
+
+#### Frontend — Translation Editor Integration
+
+Update `TranslationEditor.vue`:
+- On save (not real-time — evaluate on save to stay under 2s), call style-check endpoint
+- Show style warnings below translation textarea
+- Each warning shows: "⚠️ {message}" with dismiss/override button
+- Override saves a StyleOverride record via API
+- Show override badge in review mode
+
+#### Frontend — API Client
+
+Create `frontend/app/api/styleRulesClient.ts` with all endpoints.
+
+Add "Style Rules" nav link to sidebar (admin-gated).
+
+### Validation
+- `cd api && dotnet build`
+- `cd frontend && npm run build`
+- Single commit: `feat(terminology): add forbidden term checking and style rules engine`
+- Push to current branch
+
+### IMPORTANT
+- No window.alert/confirm/prompt — styled modals only
+- CSS variables from tokens.css
+- Helper text under labels
+- Update CONTRIBUTING.md with new API clients

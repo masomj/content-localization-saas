@@ -1,0 +1,109 @@
+## EP4-S1: Screenshot Upload + OCR Tagging — Full Stack
+
+Read CONTRIBUTING.md first.
+
+### Overview
+Upload screenshots to projects, process with OCR to detect text regions, auto-link detected text to existing content keys, allow manual linking of unmatched regions.
+
+### Backend — New Entities (add to END of Entities.cs, after StyleOverride)
+
+```csharp
+public sealed class Screenshot
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public required string FileName { get; set; }
+    public required string StoragePath { get; set; }
+    public string MimeType { get; set; } = "image/png";
+    public long FileSizeBytes { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public string OcrStatus { get; set; } = "pending";
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class ScreenshotRegion
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ScreenshotId { get; set; }
+    public Guid? ContentItemId { get; set; }
+    public required string DetectedText { get; set; }
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public double Confidence { get; set; }
+    public bool IsManualLink { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+```
+
+### Backend — AppDbContext
+- Add DbSets for Screenshot and ScreenshotRegion
+- Screenshot: FileName max 500, StoragePath max 1000, MimeType max 50, OcrStatus max 20, index on ProjectId
+- ScreenshotRegion: DetectedText max 2000, index on ScreenshotId, index on ContentItemId
+- FK: Screenshot → Project (cascade), ScreenshotRegion → Screenshot (cascade)
+
+### Backend — Storage
+- Save uploaded files to `wwwroot/screenshots/{projectId}/{screenshotId}.{ext}`
+- Create the directory if it doesn't exist
+- Max 10MB per file, accept PNG/JPG/WebP
+
+### Backend — OCR Strategy (MVP)
+- Do NOT use Tesseract or any NuGet OCR package (avoid native dependency issues on Windows)
+- Instead, create a **stub OCR service** that simulates OCR:
+  - Interface: `IOcrService` with `Task<List<OcrResult>> ProcessAsync(string imagePath)`
+  - OcrResult: `{ Text, X, Y, Width, Height, Confidence }`
+  - Stub implementation returns empty results (status = "completed" with 0 regions)
+  - Mark as TODO for real OCR integration later
+- After OCR, fuzzy-match detected text against project content items (Levenshtein or contains)
+- Auto-link when match confidence > 0.85
+
+### Backend — Controllers
+
+**ScreenshotsController** (`/api/projects/{projectId}/screenshots`):
+- POST — multipart upload, save file, create Screenshot entity, trigger OCR (async/fire-and-forget)
+- GET — list screenshots for project (with region counts)
+- GET `/{id}` — get screenshot with all regions
+- DELETE `/{id}` — delete screenshot file + entity + regions
+
+**ScreenshotRegionsController** (`/api/screenshot-regions`):
+- PUT `/{regionId}/link` — body: { contentItemId } — manually link region to content key
+- PUT `/{regionId}/unlink` — remove link (set ContentItemId to null)
+
+### Backend — Migration
+Run: `dotnet ef migrations add AddScreenshotEntities --project ContentLocalizationSaaS.Infrastructure --startup-project ContentLocalizationSaaS.Api`
+
+### Frontend — API Client
+
+Create `frontend/app/api/screenshotsClient.ts` with all endpoints.
+
+### Frontend — Screenshots Page
+
+Create `frontend/app/pages/app/screenshots/index.vue`:
+- Project selector at top
+- Upload area (drag & drop or file picker, max 10MB, PNG/JPG/WebP)
+- Grid of screenshot thumbnails with OCR status badge
+- Click thumbnail → detail view with bounding box overlays
+- Detail view: screenshot image with colored bounding boxes:
+  - Green = auto-linked (show linked key name)
+  - Yellow = unmatched (click to search and link)
+  - Blue = manually linked
+- Click unmatched region → search modal to find and link content key
+- Delete screenshot button with confirmation modal (no window.confirm!)
+
+### Frontend — Navigation
+Add "Screenshots" link to sidebar in `layouts/app.vue` (not admin-gated — available to editors+)
+
+### Validation
+- `cd api && dotnet build`
+- `cd frontend && npm run build`
+- Commit: `feat(screenshots): add screenshot upload with OCR stub and region linking`
+- Push to current branch
+
+### IMPORTANT
+- Do NOT add Tesseract or any heavy OCR NuGet package
+- Stub the OCR service — just save the file and mark status as "completed"
+- No window.alert/confirm/prompt
+- CSS variables from tokens.css, dark mode compatible
+- Update CONTRIBUTING.md with screenshotsClient
