@@ -300,6 +300,145 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         return Ok(responseObj);
     }
 
+    [HttpGet("locales")]
+    public async Task<IActionResult> Locales(
+        [FromQuery] Guid projectId,
+        [FromQuery] string? version,
+        CancellationToken cancellationToken)
+    {
+        if (projectId == Guid.Empty) return BadRequest(new { error = "projectId_required" });
+
+        var auth = await ValidateTokenAsync(requiredScope: "exports:read", projectId, cancellationToken);
+        if (auth.Result is not null) return auth.Result;
+
+        // Resolve which version to serve from
+        var useSnapshot = false;
+        Guid? resolvedVersionId = null;
+        var normalizedVersion = version?.Trim().ToLowerInvariant();
+
+        if (normalizedVersion == "working")
+        {
+            useSnapshot = false;
+        }
+        else if (!string.IsNullOrWhiteSpace(normalizedVersion) && normalizedVersion != "live" && Guid.TryParse(normalizedVersion, out var specificVersionId))
+        {
+            var versionExists = await db.ProjectVersions.AnyAsync(x => x.Id == specificVersionId && x.ProjectId == projectId, cancellationToken);
+            if (!versionExists) return NotFound(new { error = "version_not_found" });
+            resolvedVersionId = specificVersionId;
+            useSnapshot = true;
+        }
+        else
+        {
+            var liveVersion = await db.ProjectVersions.FirstOrDefaultAsync(x => x.ProjectId == projectId && x.IsLive, cancellationToken);
+            if (liveVersion is not null)
+            {
+                resolvedVersionId = liveVersion.Id;
+                useSnapshot = true;
+            }
+        }
+
+        var languages = await db.ProjectLanguages
+            .AsNoTracking()
+            .Where(x => x.ProjectId == projectId && x.IsActive)
+            .OrderBy(x => x.Bcp47Code)
+            .ToListAsync(cancellationToken);
+
+        // (key, languageCode-or-null) -> value
+        var sourceByKey = new Dictionary<string, string>(StringComparer.Ordinal);
+        var translationsByKey = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+
+        if (useSnapshot && resolvedVersionId.HasValue)
+        {
+            var snapshots = await db.ProjectVersionSnapshots
+                .AsNoTracking()
+                .Where(x => x.VersionId == resolvedVersionId.Value)
+                .OrderBy(x => x.Key)
+                .ToListAsync(cancellationToken);
+
+            foreach (var snap in snapshots)
+            {
+                sourceByKey[snap.Key] = snap.Source ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(snap.TranslationsJson) && snap.TranslationsJson != "{}")
+                {
+                    try
+                    {
+                        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(snap.TranslationsJson);
+                        if (dict is not null) translationsByKey[snap.Key] = dict;
+                    }
+                    catch (JsonException) { }
+                }
+            }
+        }
+        else
+        {
+            var items = await db.ContentItems
+                .AsNoTracking()
+                .Where(x => x.ProjectId == projectId)
+                .OrderBy(x => x.Key)
+                .ToListAsync(cancellationToken);
+            var itemIds = items.Select(x => x.Id).ToList();
+            var tasks = await db.ContentItemLanguageTasks
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ContentItemId))
+                .ToListAsync(cancellationToken);
+
+            foreach (var item in items)
+            {
+                sourceByKey[item.Key] = item.Source ?? string.Empty;
+                var perLang = tasks
+                    .Where(t => t.ContentItemId == item.Id && !string.IsNullOrWhiteSpace(t.TranslationText))
+                    .ToDictionary(t => t.LanguageCode, t => t.TranslationText!, StringComparer.Ordinal);
+                if (perLang.Count > 0) translationsByKey[item.Key] = perLang;
+            }
+        }
+
+        var sourceCode = languages.FirstOrDefault(x => x.IsSource)?.Bcp47Code ?? "en";
+        var result = new Dictionary<string, object>(StringComparer.Ordinal);
+
+        // source -> nested
+        var sourceNested = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var kvp in sourceByKey) SetNested(sourceNested, kvp.Key, kvp.Value);
+        result["source"] = sourceNested;
+        result[sourceCode] = sourceNested;
+
+        foreach (var lang in languages.Where(x => !x.IsSource))
+        {
+            var nested = new Dictionary<string, object?>(StringComparer.Ordinal);
+            foreach (var kvp in sourceByKey)
+            {
+                var value = kvp.Value;
+                if (translationsByKey.TryGetValue(kvp.Key, out var perLang)
+                    && perLang.TryGetValue(lang.Bcp47Code, out var translated)
+                    && !string.IsNullOrWhiteSpace(translated))
+                {
+                    value = translated;
+                }
+                SetNested(nested, kvp.Key, value);
+            }
+            result[lang.Bcp47Code] = nested;
+        }
+
+        return Ok(result);
+    }
+
+    private static void SetNested(Dictionary<string, object?> root, string dottedKey, string value)
+    {
+        if (string.IsNullOrWhiteSpace(dottedKey)) return;
+        var parts = dottedKey.Split('.');
+        var current = root;
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            var part = parts[i];
+            if (!current.TryGetValue(part, out var next) || next is not Dictionary<string, object?> nextDict)
+            {
+                nextDict = new Dictionary<string, object?>(StringComparer.Ordinal);
+                current[part] = nextDict;
+            }
+            current = nextDict;
+        }
+        current[parts[^1]] = value;
+    }
+
     private async Task<(IActionResult? Result, string? TokenHash)> ValidateTokenAsync(string requiredScope, Guid projectId, CancellationToken cancellationToken)
     {
         var raw = Request.Headers["X-Api-Token"].ToString();
