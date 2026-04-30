@@ -69,6 +69,7 @@ const sections: NavSection[] = [
     label: 'Integrations',
     children: [
       { label: 'Overview', to: '/docs/integrations' },
+      { label: 'CI/CD Pipelines', to: '/docs/integrations/ci-cd' },
       { label: 'i18next', to: '/docs/integrations/i18next' },
       { label: 'vue-i18n', to: '/docs/integrations/vue-i18n' },
       { label: 'react-intl', to: '/docs/integrations/react-intl' },

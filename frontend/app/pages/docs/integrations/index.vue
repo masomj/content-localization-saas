@@ -18,6 +18,10 @@ useSeoMeta({
     <h2>Available guides</h2>
     <ul>
       <li>
+        <NuxtLink to="/docs/integrations/ci-cd"><strong>CI/CD Pipelines</strong></NuxtLink> &mdash;
+        Pull live translations into GitHub Actions, GitLab CI, or any pipeline using an API token + project ID.
+      </li>
+      <li>
         <NuxtLink to="/docs/integrations/i18next"><strong>i18next</strong></NuxtLink> &mdash;
         The most popular JavaScript i18n framework. Works with React, Next.js, Node.js, and more.
       </li>
