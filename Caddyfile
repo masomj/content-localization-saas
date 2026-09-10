@@ -1,4 +1,4 @@
-intercopy.co.uk {
+dev.intercopy.co.uk {
     handle /api/* {
         reverse_proxy api:5135
     }
@@ -7,10 +7,10 @@ intercopy.co.uk {
     }
 }
 
-api.intercopy.co.uk {
+dev.api.intercopy.co.uk {
     reverse_proxy api:5135
 }
 
-auth.intercopy.co.uk {
+dev.auth.intercopy.co.uk {
     reverse_proxy keycloak:8080
 }
