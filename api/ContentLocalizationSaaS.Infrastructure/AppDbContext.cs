@@ -27,6 +27,7 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
     public DbSet<ContentItemRevision> ContentItemRevisions => Set<ContentItemRevision>();
     public DbSet<ProjectLanguage> ProjectLanguages => Set<ProjectLanguage>();
     public DbSet<ContentItemLanguageTask> ContentItemLanguageTasks => Set<ContentItemLanguageTask>();
+    public DbSet<ContentEnvironmentOverride> ContentEnvironmentOverrides => Set<ContentEnvironmentOverride>();
     public DbSet<TranslationMemoryEntry> TranslationMemoryEntries => Set<TranslationMemoryEntry>();
     public DbSet<DiscussionThread> DiscussionThreads => Set<DiscussionThread>();
     public DbSet<DiscussionComment> DiscussionComments => Set<DiscussionComment>();
@@ -241,6 +242,22 @@ public sealed class AppDbContext : IdentityDbContext<IdentityUser, IdentityRole,
             e.HasIndex(x => x.DueUtc);
             e.HasIndex(x => x.IsOutdated);
             e.HasIndex(x => x.RequiresReview);
+        });
+
+        builder.Entity<ContentEnvironmentOverride>(e =>
+        {
+            e.ToTable("content_environment_overrides");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Environment).HasMaxLength(32).IsRequired();
+            e.Property(x => x.LanguageCode).HasMaxLength(35).HasDefaultValue(string.Empty);
+            e.Property(x => x.Value).HasMaxLength(4000).IsRequired();
+            e.Property(x => x.UpdatedByEmail).HasMaxLength(320).HasDefaultValue(string.Empty);
+            e.HasIndex(x => new { x.ContentItemId, x.Environment, x.LanguageCode }).IsUnique();
+            e.HasIndex(x => new { x.ProjectId, x.Environment });
+            e.HasOne<ContentItem>()
+                .WithMany()
+                .HasForeignKey(x => x.ContentItemId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<TranslationMemoryEntry>(e =>

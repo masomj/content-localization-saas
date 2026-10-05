@@ -2,8 +2,10 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using ContentLocalizationSaaS.Api.Authorization;
+using ContentLocalizationSaaS.Application;
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
+using ContentLocalizationSaaS.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -86,6 +88,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         [FromQuery] string? language,
         [FromQuery] string? @namespace,
         [FromQuery] string? version,
+        [FromQuery] string? environment,
         CancellationToken cancellationToken)
     {
         if (projectId == Guid.Empty) return BadRequest(new { error = "projectId_required" });
@@ -93,8 +96,13 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         var auth = await ValidateTokenAsync(requiredScope: "exports:read", projectId, cancellationToken);
         if (auth.Result is not null) return auth.Result;
 
+        var resolvedEnvironment = CopyEnvironments.NormalizeForExport(environment);
         var requestId = Request.Headers["X-Request-Id"].ToString().Trim();
-        var idempotencyKey = string.IsNullOrWhiteSpace(requestId) ? null : $"{auth.TokenHash}:{requestId}";
+        var idempotencyKey = string.IsNullOrWhiteSpace(requestId)
+            ? null
+            : resolvedEnvironment is null
+                ? $"{auth.TokenHash}:{requestId}"
+                : $"{auth.TokenHash}:{resolvedEnvironment}:{requestId}";
         if (!string.IsNullOrWhiteSpace(idempotencyKey))
         {
             var existing = await db.IdempotencyRecords.FirstOrDefaultAsync(x => x.Operation == "export_bundle" && x.Key == idempotencyKey, cancellationToken);
@@ -162,6 +170,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         }
 
         var payload = new Dictionary<string, Dictionary<string, string>>();
+        var variants = await db.LoadEnvironmentVariantsAsync(projectId, resolvedEnvironment, cancellationToken);
 
         if (useSnapshot && resolvedVersionId.HasValue)
         {
@@ -183,22 +192,25 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             foreach (var snap in snapshots)
             {
                 var key = snap.Key;
-                var value = snap.Source;
+                var value = variants.ResolveSource(snap.OriginalContentItemId, snap.Source);
 
-                if (!string.IsNullOrWhiteSpace(language) && !string.IsNullOrWhiteSpace(snap.TranslationsJson) && snap.TranslationsJson != "{}")
+                if (!string.IsNullOrWhiteSpace(language))
                 {
-                    try
+                    string? translatedText = null;
+                    if (!string.IsNullOrWhiteSpace(snap.TranslationsJson) && snap.TranslationsJson != "{}")
                     {
-                        var translations = JsonSerializer.Deserialize<Dictionary<string, string>>(snap.TranslationsJson);
-                        if (translations is not null && translations.TryGetValue(language, out var translatedText) && !string.IsNullOrWhiteSpace(translatedText))
+                        try
                         {
-                            value = translatedText;
+                            var translations = JsonSerializer.Deserialize<Dictionary<string, string>>(snap.TranslationsJson);
+                            translations?.TryGetValue(language, out translatedText);
+                        }
+                        catch (JsonException)
+                        {
+                            // Ignore malformed JSON, fall back to source
                         }
                     }
-                    catch (JsonException)
-                    {
-                        // Ignore malformed JSON, fall back to source
-                    }
+
+                    value = variants.ResolveTranslation(snap.OriginalContentItemId, language, translatedText, snap.Source);
                 }
 
                 var ns = "common";
@@ -242,12 +254,12 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             foreach (var item in items)
             {
                 var key = item.Key;
-                var value = item.Source;
+                var value = variants.ResolveSource(item.Id, item.Source);
 
                 if (!string.IsNullOrWhiteSpace(language))
                 {
                     var t = tasks.FirstOrDefault(x => x.ContentItemId == item.Id && x.LanguageCode == language && (x.Status == "approved" || x.Status == "done"));
-                    if (t is not null && !string.IsNullOrWhiteSpace(t.TranslationText)) value = t.TranslationText;
+                    value = variants.ResolveTranslation(item.Id, language, t?.TranslationText, item.Source);
                 }
 
                 var ns = "common";
@@ -274,6 +286,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             schema = "neutral.v1",
             projectId,
             language = language ?? "source",
+            environment = resolvedEnvironment ?? "production",
             files = payload
         };
 
@@ -304,12 +317,15 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> Locales(
         [FromQuery] Guid projectId,
         [FromQuery] string? version,
+        [FromQuery] string? environment,
         CancellationToken cancellationToken)
     {
         if (projectId == Guid.Empty) return BadRequest(new { error = "projectId_required" });
 
         var auth = await ValidateTokenAsync(requiredScope: "exports:read", projectId, cancellationToken);
         if (auth.Result is not null) return auth.Result;
+
+        var variants = await db.LoadEnvironmentVariantsAsync(projectId, environment, cancellationToken);
 
         // Resolve which version to serve from
         var useSnapshot = false;
@@ -346,6 +362,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
         // (key, languageCode-or-null) -> value
         var sourceByKey = new Dictionary<string, string>(StringComparer.Ordinal);
         var translationsByKey = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+        var itemIdByKey = new Dictionary<string, Guid>(StringComparer.Ordinal);
 
         if (useSnapshot && resolvedVersionId.HasValue)
         {
@@ -358,6 +375,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             foreach (var snap in snapshots)
             {
                 sourceByKey[snap.Key] = snap.Source ?? string.Empty;
+                itemIdByKey[snap.Key] = snap.OriginalContentItemId;
                 if (!string.IsNullOrWhiteSpace(snap.TranslationsJson) && snap.TranslationsJson != "{}")
                 {
                     try
@@ -385,6 +403,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             foreach (var item in items)
             {
                 sourceByKey[item.Key] = item.Source ?? string.Empty;
+                itemIdByKey[item.Key] = item.Id;
                 var perLang = tasks
                     .Where(t => t.ContentItemId == item.Id && !string.IsNullOrWhiteSpace(t.TranslationText))
                     .ToDictionary(t => t.LanguageCode, t => t.TranslationText!, StringComparer.Ordinal);
@@ -397,7 +416,7 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
 
         // source -> nested
         var sourceNested = new Dictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var kvp in sourceByKey) SetNested(sourceNested, kvp.Key, kvp.Value);
+        foreach (var kvp in sourceByKey) SetNested(sourceNested, kvp.Key, variants.ResolveSource(itemIdByKey[kvp.Key], kvp.Value));
         result["source"] = sourceNested;
         result[sourceCode] = sourceNested;
 
@@ -406,14 +425,12 @@ public sealed class ExportBundlesController(AppDbContext db) : ControllerBase
             var nested = new Dictionary<string, object?>(StringComparer.Ordinal);
             foreach (var kvp in sourceByKey)
             {
-                var value = kvp.Value;
-                if (translationsByKey.TryGetValue(kvp.Key, out var perLang)
-                    && perLang.TryGetValue(lang.Bcp47Code, out var translated)
-                    && !string.IsNullOrWhiteSpace(translated))
+                string? translated = null;
+                if (translationsByKey.TryGetValue(kvp.Key, out var perLang))
                 {
-                    value = translated;
+                    perLang.TryGetValue(lang.Bcp47Code, out translated);
                 }
-                SetNested(nested, kvp.Key, value);
+                SetNested(nested, kvp.Key, variants.ResolveTranslation(itemIdByKey[kvp.Key], lang.Bcp47Code, translated, kvp.Value));
             }
             result[lang.Bcp47Code] = nested;
         }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppEmptyState from '~/components/AppEmptyState.vue'
 import AppSkeleton from '~/components/AppSkeleton.vue'
+import EnvironmentVariantsPanel from '~/components/projects/EnvironmentVariantsPanel.vue'
 import ExportPanel from '~/components/projects/ExportPanel.vue'
 import LocalizationGrid from '~/components/projects/LocalizationGrid.vue'
 import LocaleImportModal from '~/components/projects/LocaleImportModal.vue'
@@ -1113,6 +1114,12 @@ watch(selectedProjectId, async () => {
               </div>
             </div>
           </div>
+
+          <EnvironmentVariantsPanel
+            :content-item-id="selectedItem.id"
+            :project-id="selectedProjectId"
+            :target-languages="panelTargetLanguages.map(l => l.bcp47Code)"
+          />
 
           <p v-if="panelError" class="field-error">{{ panelError }}</p>
 

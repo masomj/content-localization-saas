@@ -151,6 +151,26 @@ public sealed class ContentItemLanguageTask
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>
+/// An environment-specific variant of a content item's copy (e.g. "dev", "staging").
+/// The content item's own Source/translations are the production copy; a variant only
+/// replaces it when an export asks for that environment.
+/// </summary>
+public sealed class ContentEnvironmentOverride
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ProjectId { get; set; }
+    public Guid ContentItemId { get; set; }
+    /// <summary>Lowercase slug, e.g. "dev" or "staging". Never a production alias.</summary>
+    public required string Environment { get; set; }
+    /// <summary>BCP-47 code of the target language, or empty for the source text.</summary>
+    public string LanguageCode { get; set; } = string.Empty;
+    public required string Value { get; set; }
+    public string UpdatedByEmail { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
 public sealed class TranslationMemoryEntry
 {
     public Guid Id { get; set; } = Guid.NewGuid();

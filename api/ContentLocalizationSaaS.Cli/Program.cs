@@ -56,7 +56,7 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine("Commands:");
         Console.WriteLine("  configure --base-url <url> --api-token <token>");
-        Console.WriteLine("  pull --project-id <guid> [--language <code>] [--namespace <ns>] [--out <file>]");
+        Console.WriteLine("  pull --project-id <guid> [--language <code>] [--namespace <ns>] [--version <live|working|id>] [--environment <name>] [--out <file>]");
         Console.WriteLine();
         Console.WriteLine("Environment fallback:");
         Console.WriteLine("  CLSAAS_BASE_URL, CLSAAS_API_TOKEN");
@@ -102,6 +102,10 @@ internal static class Program
         var query = new List<string> { $"projectId={projectId}" };
         if (!string.IsNullOrWhiteSpace(language)) query.Add($"language={Uri.EscapeDataString(language)}");
         if (!string.IsNullOrWhiteSpace(ns)) query.Add($"namespace={Uri.EscapeDataString(ns)}");
+        var version = options.GetValueOrDefault("version");
+        if (!string.IsNullOrWhiteSpace(version)) query.Add($"version={Uri.EscapeDataString(version)}");
+        var environment = options.GetValueOrDefault("environment");
+        if (!string.IsNullOrWhiteSpace(environment)) query.Add($"environment={Uri.EscapeDataString(environment)}");
 
         var url = $"{cfg.BaseUrl}/api/integration/exports/bundle?{string.Join("&", query)}";
 

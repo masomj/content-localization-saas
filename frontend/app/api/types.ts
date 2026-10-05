@@ -168,6 +168,28 @@ export interface LanguageTask {
   status: string
 }
 
+/** #57: environment-specific copy. languageCode '' means the source text. */
+export interface EnvironmentVariant {
+  id: string
+  contentItemId: string
+  environment: string
+  languageCode: string
+  value: string
+  updatedByEmail: string
+  updatedUtc: string
+}
+
+export interface UpsertEnvironmentVariantRequest {
+  environment: string
+  languageCode: string
+  value: string
+}
+
+export interface ProjectEnvironment {
+  name: string
+  variantCount: number
+}
+
 export interface TranslationSuggestion {
   hasSuggestion: boolean
   suggestion: { id: string; translationText: string; createdUtc: string } | null

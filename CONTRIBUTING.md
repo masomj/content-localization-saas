@@ -57,7 +57,12 @@ Before creating ANY new component, check `components/ui/` first:
 - New generic UI components go in `components/ui/`
 - Domain-specific components go in `components/{domain}/` (e.g. `components/projects/`)
 - Project domain examples include modals like `components/projects/LocaleImportModal.vue`
+- `components/projects/EnvironmentVariantsPanel.vue` — list/add/remove environment variants for one content item (used in the content side panel)
 - All components use `<script setup lang="ts">` with typed props via `defineProps<>()`
+
+### Environment-tagged copy (#57)
+
+A `ContentItem`'s own source and translations are the **production** copy. `ContentEnvironmentOverride` rows hold variants for a named environment (`dev`, `staging`…, never `prod`/`production`/`live`). Every export endpoint accepts `?environment=<name>`; resolution lives in `Application/CopyEnvironments.cs` (`EnvironmentVariantIndex`). Use `db.LoadEnvironmentVariantsAsync(...)` in any new export path rather than querying overrides directly.
 
 ### 2. API Client Pattern
 
@@ -107,6 +112,7 @@ export const myFeatureClient = {
 - `toneCheckClient` — tone config CRUD, tone checking, apply suggestions
 - `governanceClient` — governance dashboard metrics, CSV export
 - `localeImportsClient` — upload existing locale JSON files and import keys/translations
+- `environmentVariantsClient` — environment-specific copy variants per content item (#57), project environment list
 
 **All types live in `api/types.ts`** — add new interfaces/types there, not in client files or pages.
 

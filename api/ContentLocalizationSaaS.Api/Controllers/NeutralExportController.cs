@@ -1,6 +1,8 @@
 using System.Text.Json;
+using ContentLocalizationSaaS.Application;
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
+using ContentLocalizationSaaS.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,9 +16,12 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> ExportNeutral(
         [FromQuery] Guid projectId,
         [FromQuery] string? version,
+        [FromQuery] string? environment,
         CancellationToken cancellationToken)
     {
         if (projectId == Guid.Empty) return BadRequest(new { error = "projectId_required" });
+
+        var variants = await db.LoadEnvironmentVariantsAsync(projectId, environment, cancellationToken);
 
         // Resolve which version to serve from
         var useSnapshot = false;
@@ -48,13 +53,13 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
 
         if (useSnapshot && resolvedVersionId.HasValue)
         {
-            return await ExportFromSnapshot(projectId, resolvedVersionId.Value, languages, cancellationToken);
+            return await ExportFromSnapshot(projectId, resolvedVersionId.Value, languages, variants, cancellationToken);
         }
 
-        return await ExportFromWorkingCopy(projectId, languages, cancellationToken);
+        return await ExportFromWorkingCopy(projectId, languages, variants, cancellationToken);
     }
 
-    private async Task<IActionResult> ExportFromSnapshot(Guid projectId, Guid versionId, List<ProjectLanguage> languages, CancellationToken cancellationToken)
+    private async Task<IActionResult> ExportFromSnapshot(Guid projectId, Guid versionId, List<ProjectLanguage> languages, EnvironmentVariantIndex variants, CancellationToken cancellationToken)
     {
         var snapshots = await db.ProjectVersionSnapshots
             .Where(x => x.VersionId == versionId)
@@ -70,13 +75,13 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
         var result = new Dictionary<string, object>();
 
         // source export
-        var sourceMap = BuildSnapshotLanguageMap(snapshots, languageCode: null);
+        var sourceMap = BuildSnapshotLanguageMap(snapshots, languageCode: null, variants);
         result["source"] = sourceMap;
 
         // per-target export
         foreach (var language in languages.Where(x => !x.IsSource))
         {
-            var map = BuildSnapshotLanguageMap(snapshots, language.Bcp47Code);
+            var map = BuildSnapshotLanguageMap(snapshots, language.Bcp47Code, variants);
             result[language.Bcp47Code] = map;
         }
 
@@ -89,7 +94,7 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
         });
     }
 
-    private async Task<IActionResult> ExportFromWorkingCopy(Guid projectId, List<ProjectLanguage> languages, CancellationToken cancellationToken)
+    private async Task<IActionResult> ExportFromWorkingCopy(Guid projectId, List<ProjectLanguage> languages, EnvironmentVariantIndex variants, CancellationToken cancellationToken)
     {
         var items = await db.ContentItems.Where(x => x.ProjectId == projectId).OrderBy(x => x.Key).ToListAsync(cancellationToken);
         var tasks = await db.ContentItemLanguageTasks
@@ -105,13 +110,13 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
         var result = new Dictionary<string, object>();
 
         // source export
-        var sourceMap = BuildLanguageMap(items, tasks, languageCode: null);
+        var sourceMap = BuildLanguageMap(items, tasks, languageCode: null, variants);
         result["source"] = sourceMap;
 
         // per-target export
         foreach (var language in languages.Where(x => !x.IsSource))
         {
-            var map = BuildLanguageMap(items, tasks, language.Bcp47Code);
+            var map = BuildLanguageMap(items, tasks, language.Bcp47Code, variants);
             result[language.Bcp47Code] = map;
         }
 
@@ -184,7 +189,8 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
     private static Dictionary<string, Dictionary<string, object>> BuildLanguageMap(
         IReadOnlyList<ContentItem> items,
         IReadOnlyList<ContentItemLanguageTask> tasks,
-        string? languageCode)
+        string? languageCode,
+        EnvironmentVariantIndex variants)
     {
         var file = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 
@@ -200,14 +206,12 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
             string value;
             if (string.IsNullOrWhiteSpace(languageCode))
             {
-                value = item.Source;
+                value = variants.ResolveSource(item.Id, item.Source);
             }
             else
             {
                 var task = tasks.FirstOrDefault(x => x.ContentItemId == item.Id && x.LanguageCode == languageCode);
-                value = task is not null && !string.IsNullOrWhiteSpace(task.TranslationText)
-                    ? task.TranslationText
-                    : item.Source;
+                value = variants.ResolveTranslation(item.Id, languageCode, task?.TranslationText, item.Source);
             }
 
             var entry = new Dictionary<string, object?> { ["value"] = value };
@@ -222,7 +226,8 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
 
     private static Dictionary<string, Dictionary<string, string>> BuildSnapshotLanguageMap(
         IReadOnlyList<ProjectVersionSnapshot> snapshots,
-        string? languageCode)
+        string? languageCode,
+        EnvironmentVariantIndex variants)
     {
         var file = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -238,26 +243,25 @@ public sealed class NeutralExportController(AppDbContext db) : ControllerBase
             string value;
             if (string.IsNullOrWhiteSpace(languageCode))
             {
-                value = snap.Source;
+                value = variants.ResolveSource(snap.OriginalContentItemId, snap.Source);
             }
             else
             {
-                value = snap.Source; // default to source
+                string? translatedText = null;
                 if (!string.IsNullOrWhiteSpace(snap.TranslationsJson) && snap.TranslationsJson != "{}")
                 {
                     try
                     {
                         var translations = JsonSerializer.Deserialize<Dictionary<string, string>>(snap.TranslationsJson);
-                        if (translations is not null && translations.TryGetValue(languageCode, out var translatedText) && !string.IsNullOrWhiteSpace(translatedText))
-                        {
-                            value = translatedText;
-                        }
+                        translations?.TryGetValue(languageCode, out translatedText);
                     }
                     catch (JsonException)
                     {
                         // Ignore malformed JSON, fall back to source
                     }
                 }
+
+                value = variants.ResolveTranslation(snap.OriginalContentItemId, languageCode, translatedText, snap.Source);
             }
 
             bucket[key] = value;

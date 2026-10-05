@@ -125,6 +125,31 @@ done</code></pre>
           name: locales
           path: src/locales/</code></pre>
 
+    <h2>Environment-specific copy</h2>
+    <p>
+      To test alternative copy without touching production, add an <strong>environment variant</strong>
+      to a key from its edit panel (for example, environment <code>dev</code>). Then pass
+      <code>&amp;environment=dev</code> on the export call in that environment's pipeline:
+    </p>
+    <pre><code class="language-bash">curl -sS -H "X-Api-Token: $INTERCOPY_API_TOKEN" \
+  "https://api.intercopy.co.uk/api/integration/exports/locales?projectId=$INTERCOPY_PROJECT_ID&amp;version=live&amp;environment=dev"</code></pre>
+    <ul>
+      <li>
+        Keys with a <code>dev</code> variant return the variant. Every other key returns its normal copy.
+      </li>
+      <li>
+        A variant on the source text also shows in languages with no translation yet. To vary a
+        translated language, add a variant for that language.
+      </li>
+      <li>
+        Leaving out <code>environment</code>, or passing <code>production</code>, <code>prod</code> or
+        <code>live</code>, always returns production copy. Your prod pipeline needs no changes.
+      </li>
+      <li>
+        Variants aren't versioned. They're applied on top of whichever <code>version</code> you request.
+      </li>
+    </ul>
+
     <h2>Other CI providers</h2>
     <p>
       The same <code>curl + jq</code> snippet works on any runner with internet access. For

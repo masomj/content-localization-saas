@@ -2,9 +2,10 @@
 import UiButton from '~/components/ui/Button.vue'
 import UiSelect from '~/components/ui/Select.vue'
 import { apiRequest } from '~/api/client'
+import { environmentVariantsClient } from '~/api/environmentVariantsClient'
 import { languagesClient } from '~/api/languagesClient'
 import { versionsClient } from '~/api/versionsClient'
-import type { ProjectLanguage, ProjectVersion } from '~/api/types'
+import type { ProjectEnvironment, ProjectLanguage, ProjectVersion } from '~/api/types'
 
 interface Props {
   projectId: string
@@ -18,6 +19,9 @@ const versions = ref<ProjectVersion[]>([])
 const selectedLanguage = ref('__all__')
 const selectedFormat = ref('json')
 const selectedVersion = ref('working')
+const environments = ref<ProjectEnvironment[]>([])
+const PRODUCTION = 'production'
+const selectedEnvironment = ref(PRODUCTION)
 const isLoadingPreview = ref(false)
 const isExporting = ref(false)
 const previewData = ref<string>('')
@@ -54,6 +58,23 @@ const versionOptions = computed(() => {
   return opts
 })
 
+const environmentOptions = computed(() => [
+  { value: PRODUCTION, label: 'Production (default copy)' },
+  ...environments.value.map(e => ({ value: e.name, label: `${e.name} (${e.variantCount} variant${e.variantCount === 1 ? '' : 's'})` })),
+])
+
+/** Extra query params shared by the preview and the copyable endpoint URL. */
+function exportQuerySuffix(): string {
+  let suffix = ''
+  if (selectedVersion.value && selectedVersion.value !== 'working') {
+    suffix += `&version=${encodeURIComponent(selectedVersion.value)}`
+  }
+  if (selectedEnvironment.value && selectedEnvironment.value !== PRODUCTION) {
+    suffix += `&environment=${encodeURIComponent(selectedEnvironment.value)}`
+  }
+  return suffix
+}
+
 const apiEndpointUrl = computed(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   let base: string
@@ -62,10 +83,7 @@ const apiEndpointUrl = computed(() => {
   } else {
     base = `${origin}/api/integration/exports/bundle?projectId=${props.projectId}&language=${selectedLanguage.value}`
   }
-  if (selectedVersion.value && selectedVersion.value !== 'working') {
-    base += `&version=${encodeURIComponent(selectedVersion.value)}`
-  }
-  return base
+  return base + exportQuerySuffix()
 })
 
 function transformToFlat(data: Record<string, any>, prefix = ''): Record<string, string> {
@@ -144,13 +162,13 @@ async function loadPreview() {
   isLoadingPreview.value = true
   exportError.value = ''
   try {
-    const versionParam = selectedVersion.value !== 'working' ? selectedVersion.value : undefined
+    const suffix = exportQuerySuffix()
     let raw: unknown
     if (selectedLanguage.value === '__all__') {
-      const url = `/exports/neutral?projectId=${encodeURIComponent(props.projectId)}${versionParam ? `&version=${encodeURIComponent(versionParam)}` : ''}`
+      const url = `/exports/neutral?projectId=${encodeURIComponent(props.projectId)}${suffix}`
       raw = await apiRequest<unknown>(url)
     } else {
-      const url = `/integration/exports/bundle?projectId=${encodeURIComponent(props.projectId)}&language=${encodeURIComponent(selectedLanguage.value)}${versionParam ? `&version=${encodeURIComponent(versionParam)}` : ''}`
+      const url = `/integration/exports/bundle?projectId=${encodeURIComponent(props.projectId)}&language=${encodeURIComponent(selectedLanguage.value)}${suffix}`
       raw = await apiRequest<unknown>(url)
     }
     previewData.value = formatExportData(raw)
@@ -260,12 +278,21 @@ async function loadVersions() {
   }
 }
 
-watch([selectedLanguage, selectedFormat, selectedVersion], () => {
+async function loadEnvironments() {
+  try {
+    const data = await environmentVariantsClient.listEnvironments(props.projectId)
+    environments.value = Array.isArray(data) ? data : []
+  } catch {
+    environments.value = []
+  }
+}
+
+watch([selectedLanguage, selectedFormat, selectedVersion, selectedEnvironment], () => {
   if (previewData.value) loadPreview()
 })
 
 onMounted(async () => {
-  await Promise.all([loadLanguages(), loadVersions()])
+  await Promise.all([loadLanguages(), loadVersions(), loadEnvironments()])
   // Default to live version if one exists
   const liveVersion = versions.value.find(v => v.isLive)
   if (liveVersion) {
@@ -297,6 +324,16 @@ onMounted(async () => {
               :options="versionOptions"
             />
             <span class="ep-hint">Choose which version to export from</span>
+          </div>
+
+          <div class="ep-field">
+            <UiSelect
+              id="epEnvironment"
+              v-model="selectedEnvironment"
+              label="Environment"
+              :options="environmentOptions"
+            />
+            <span class="ep-hint">Non-production environments swap in their copy variants</span>
           </div>
 
           <div class="ep-field">
