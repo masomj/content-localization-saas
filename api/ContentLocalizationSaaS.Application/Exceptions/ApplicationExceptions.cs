@@ -9,6 +9,13 @@ public sealed class ResourceNotFoundException(string resource, object key)
     public object Key { get; } = key;
 }
 
+/// <summary>
+/// Thrown when a billing operation is attempted in an environment where billing is switched off
+/// (e.g. the shared dev environment). Mapped to 403 by the API exception middleware.
+/// </summary>
+public sealed class BillingDisabledException()
+    : Exception("Billing is disabled in this environment.");
+
 public sealed class RequestValidationException(IReadOnlyDictionary<string, string[]> errors)
     : Exception("One or more validation errors occurred.")
 {

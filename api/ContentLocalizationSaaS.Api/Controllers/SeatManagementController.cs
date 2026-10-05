@@ -1,4 +1,5 @@
 using ContentLocalizationSaaS.Application.Abstractions;
+using ContentLocalizationSaaS.Application.Exceptions;
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -170,6 +171,11 @@ public sealed class SeatManagementController : ControllerBase
                 status = "pending",
                 message = "Complete the GoCardless setup to activate your Pro subscription."
             });
+        }
+        catch (BillingDisabledException)
+        {
+            // Let ApiExceptionMiddleware map this to a 403 billing_disabled response.
+            throw;
         }
         catch (Exception)
         {

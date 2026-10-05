@@ -1,6 +1,7 @@
 using ContentLocalizationSaaS.Application.Abstractions;
 using ContentLocalizationSaaS.Domain;
 using ContentLocalizationSaaS.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -61,6 +62,7 @@ public class BillingWebhookController : ControllerBase
     }
 
     [HttpPost("checkout")]
+    [Authorize]
     public async Task<IActionResult> CreateCheckout(
         [FromQuery] Guid workspaceId,
         [FromQuery] string redirectUrl,

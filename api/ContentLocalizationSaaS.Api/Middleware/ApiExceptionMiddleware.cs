@@ -40,6 +40,14 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
                     Status = StatusCodes.Status400BadRequest,
                     Title = "Validation failed"
                 }),
+            BillingDisabledException => (
+                StatusCodes.Status403Forbidden,
+                new ProblemDetails
+                {
+                    Status = StatusCodes.Status403Forbidden,
+                    Title = "Billing is disabled in this environment",
+                    Extensions = { ["error"] = "billing_disabled" }
+                }),
             ResourceNotFoundException => (
                 StatusCodes.Status404NotFound,
                 new ProblemDetails

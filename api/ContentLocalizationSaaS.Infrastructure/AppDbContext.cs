@@ -983,7 +983,16 @@ public static class DependencyInjection
 
         // EP11: Billing & Entitlements
         services.Configure<GoCardlessOptions>(configuration.GetSection(GoCardlessOptions.SectionName));
-        services.AddHttpClient<IBillingProvider, GoCardlessProvider>();
+        services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.SectionName));
+        var billingOptions = configuration.GetSection(BillingOptions.SectionName).Get<BillingOptions>() ?? new BillingOptions();
+        if (billingOptions.Enabled)
+        {
+            services.AddHttpClient<IBillingProvider, GoCardlessProvider>();
+        }
+        else
+        {
+            services.AddScoped<IBillingProvider, DisabledBillingProvider>();
+        }
         services.AddScoped<ICiLicensingService, CiLicensingService>();
         services.AddScoped<IEntitlementService, EntitlementService>();
 
