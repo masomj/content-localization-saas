@@ -68,6 +68,8 @@ services:
       Auth__Oidc__Issuer: "https://${AUTH_DOMAIN}/realms/intercopy"
       Auth__Oidc__Audience: "intercopy-web"
       Auth__Oidc__RequireHttpsMetadata: "true"
+      Billing__Enabled: ${BILLING_ENABLED:-true}
+      AccessAllowlist__Emails: ${ALLOWED_EMAILS:-}
     depends_on:
       postgres:
         condition: service_healthy

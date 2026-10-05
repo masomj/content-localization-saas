@@ -217,6 +217,13 @@ Each domain gets its own controller in `Api/Controllers/`:
 
 Entities in `Domain/` — EF Core configurations in `Infrastructure/`.
 
+### Environment switches (API config)
+
+| Setting | Env var (compose) | Default | Purpose |
+|---------|-------------------|---------|---------|
+| `Billing:Enabled` | `BILLING_ENABLED` | `true` (dev compose: `false`) | When false, `DisabledBillingProvider` replaces GoCardless; checkout returns 403 `billing_disabled` |
+| `AccessAllowlist:Emails` | `ALLOWED_EMAILS` | empty (open) | Comma-separated emails / `@domain` entries. `EmailAllowlistMiddleware` returns 403 `email_not_allowlisted` for anyone else |
+
 ### Auth
 
 - **Keycloak OIDC only** — ASP.NET Identity is DEPRECATED

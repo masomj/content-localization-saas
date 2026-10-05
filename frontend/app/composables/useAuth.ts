@@ -75,6 +75,12 @@ function applyAuthenticatedUser(user: User) {
   setStoredOrganization(authState.organization)
 }
 
+const NOT_ALLOWLISTED_MESSAGE = 'This environment is invite-only and your email address is not on the access list. Ask the InterCopy team for access.'
+
+function isNotAllowlistedError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403 && error.message === 'email_not_allowlisted'
+}
+
 async function clearSessionState(config?: { keycloakUrl: string; keycloakRealm: string; keycloakClientId: string }) {
   setAuthToken(null)
   setStoredUser(null)
@@ -129,6 +135,10 @@ async function bootstrapSession(config: { keycloakUrl: string; keycloakRealm: st
       } else {
         await clearSessionState(config)
       }
+    } else if (isNotAllowlistedError(error)) {
+      // Signed in to Keycloak but not permitted in this environment: drop the session
+      // rather than falling back to a cached user.
+      await clearSessionState(config)
     } else {
       const cached = getStoredUser()
       if (cached) {
@@ -228,6 +238,9 @@ export function useAuth() {
           }
         }
         await clearSessionState(config)
+        if (isNotAllowlistedError(error)) {
+          return { success: false, error: NOT_ALLOWLISTED_MESSAGE }
+        }
         return { success: false, error: 'Could not load user profile after sign in.' }
       }
     } catch (error) {

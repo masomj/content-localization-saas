@@ -74,6 +74,10 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// Dev-environment access control: only allowlisted emails may use the app (empty = everyone).
+var allowlistOptions = builder.Configuration.GetSection(AccessAllowlistOptions.SectionName).Get<AccessAllowlistOptions>() ?? new AccessAllowlistOptions();
+builder.Services.AddSingleton(new EmailAllowlist(allowlistOptions.Emails));
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("LocalDevCors", policy =>
@@ -180,6 +184,7 @@ else
 }
 
 app.UseAuthentication();
+app.UseMiddleware<EmailAllowlistMiddleware>();
 app.UseAuthorization();
 
 // EP11-S5: Org access gating — block writes for suspended workspaces
